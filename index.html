@@ -141,7 +141,6 @@
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
 
-  /* 1번 수정: 브리핑 카드를 280px 폭으로 슬림하게 고정 */
   .grid-2col {
     display: grid;
     grid-template-columns: 1fr;
@@ -223,7 +222,6 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 4px 8px; font-size: 11px; }
 
-  /* 1번 수정: 텍스트 박스 가로폭/세로폭 슬림화 */
   .report-area {
     width: 100%;
     min-height: 260px;
@@ -489,7 +487,7 @@
         </div>
       </div>
 
-      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 (1번 수정: 280px 폭) -->
+      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 (연도 없는 월/일 컨트롤) -->
       <div class="card">
         <div class="card-title">
           <span id="briefingTitle">오늘 PM 브리핑</span>
@@ -497,10 +495,13 @@
         </div>
 
         <div class="briefing-control-row" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-          <div style="flex:1;">
-            <input type="date" id="targetDateInput" onchange="onDateChange()" style="width:100%; padding:4px 6px;">
+          <!-- 수정: 연도 완전 제거하고 월/일/오늘 버튼 배치 -->
+          <div style="display:flex; align-items:center; gap:2px;">
+            <input type="number" id="targetMonthInput" min="1" max="12" style="width:38px; text-align:center; padding:4px;" onchange="onTargetDatePartChange()">월
+            <input type="number" id="targetDayInput" min="1" max="31" style="width:38px; text-align:center; padding:4px;" onchange="onTargetDatePartChange()">일
+            <button class="btn btn-sub btn-sm" onclick="setTargetToday()" style="padding:3px 6px; font-size:11px;">오늘</button>
           </div>
-          <div style="width:75px;">
+          <div style="flex:1; min-width:70px;">
             <input type="text" id="passTimeInput" value="7시패스" style="width:100%; padding:4px 6px;" oninput="generateShareText()">
           </div>
           <div class="briefing-btn-group" style="width:100%; display:flex; gap:4px; margin-top:2px;">
@@ -510,7 +511,6 @@
           </div>
         </div>
 
-        <!-- 1번 수정: 슬림한 텍스트 박스 -->
         <textarea id="shareTextOutput" class="report-area"></textarea>
       </div>
     </div>
@@ -566,7 +566,6 @@
         <div class="card">
           <div class="card-title">
             <span>⚡ 2. 전기동 PM 자동 진척 게이지</span>
-            <!-- 2번 수정: '전기동' 단독 표기 -->
             <span class="badge badge-blue" id="elecTodayLinesBadge">전기동</span>
           </div>
 
@@ -576,7 +575,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 (3번 수정: 연도 완전 제거) -->
+  <!-- [탭 3] 화학동 주기 관리 (연도 없는 월/일/시간) -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -599,12 +598,11 @@
       </div>
       
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <div>
-          <label style="font-size:11px; color:var(--text-secondary);">적용 일자:</label><br>
-          <input type="date" id="manualDateInput" style="width:130px;">
+        <div style="display:flex; align-items:center; gap:2px;">
+          <input type="number" id="manualMonthInput" min="1" max="12" style="width:38px; text-align:center; padding:4px;">월
+          <input type="number" id="manualDayInput" min="1" max="31" style="width:38px; text-align:center; padding:4px;">일
         </div>
         <div>
-          <label style="font-size:11px; color:var(--text-secondary);">해당 라인:</label><br>
           <select id="manualLineSelect" style="width:110px;">
             <option value="디스미어 8">디스미어 8</option>
             <option value="디스미어 10">디스미어 10</option>
@@ -625,7 +623,6 @@
           </select>
         </div>
         <div style="flex:1; min-width:160px;">
-          <label style="font-size:11px; color:var(--text-secondary);">특이사항 내용:</label><br>
           <input type="text" id="manualContentInput" placeholder="직접 입력 또는 아래 버튼" style="width:100%;">
         </div>
         <div style="align-self:flex-end;">
@@ -714,10 +711,10 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v15')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v15')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v15')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v15')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v16')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v16')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v16')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v16')) || {};
 
 let selectedDateStr = '2026-09-25';
 
@@ -761,10 +758,10 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v15', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v15', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v15', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v15', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('chem_data_v16', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v16', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v16', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v16', JSON.stringify(equipWorkFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -785,7 +782,6 @@ function formatTimeKr(hour, min) {
   return `${h}시 ${String(m).padStart(2, '0')}분`;
 }
 
-// 3번 수정: 연도 제거하고 월 일 시 분만 표기
 function formatDateTimeKr(d) {
   if (isNaN(d.getTime())) return '-';
   const M = d.getMonth() + 1;
@@ -803,8 +799,14 @@ function formatDateOnly(d) {
 window.onload = function() {
   const today = new Date();
   selectedDateStr = formatDateOnly(today);
-  document.getElementById('targetDateInput').value = selectedDateStr;
-  document.getElementById('manualDateInput').value = selectedDateStr;
+  
+  // 첫 탭 월/일 초기화
+  document.getElementById('targetMonthInput').value = today.getMonth() + 1;
+  document.getElementById('targetDayInput').value = today.getDate();
+  
+  // 탭 4 수동입력 월/일 초기화
+  document.getElementById('manualMonthInput').value = today.getMonth() + 1;
+  document.getElementById('manualDayInput').value = today.getDate();
 
   initFirebase();
 
@@ -830,7 +832,8 @@ function tick() {
     if (!hasAutoTriggered0430) {
       hasAutoTriggered0430 = true;
       selectedDateStr = formatDateOnly(now);
-      document.getElementById('targetDateInput').value = selectedDateStr;
+      document.getElementById('targetMonthInput').value = now.getMonth() + 1;
+      document.getElementById('targetDayInput').value = now.getDate();
       renderWeeklyMatrix();
       generateShareText();
     }
@@ -890,6 +893,8 @@ function renderWeeklyMatrix() {
     if (th) {
       th.innerHTML = `${dayNames[i]} <span style="font-size:10.5px; font-weight:normal; opacity:0.85;">(${d.getMonth()+1}/${d.getDate()})</span>`;
       th.className = (dateStr === selectedDateStr) ? 'today-col' : (i === 5 ? 'weekend-sat-th' : (i === 6 ? 'weekend-th' : ''));
+      th.style.cursor = 'pointer';
+      th.onclick = () => selectDayFromMatrix(dateStr);
     }
   }
 
@@ -921,6 +926,18 @@ function renderWeeklyMatrix() {
   }
 
   renderManualNotesInMatrix(weekDates);
+}
+
+function selectDayFromMatrix(dateStr) {
+  selectedDateStr = dateStr;
+  const d = new Date(dateStr + 'T00:00:00');
+  document.getElementById('targetMonthInput').value = d.getMonth() + 1;
+  document.getElementById('targetDayInput').value = d.getDate();
+  document.getElementById('manualMonthInput').value = d.getMonth() + 1;
+  document.getElementById('manualDayInput').value = d.getDate();
+  renderWeeklyMatrix();
+  generateShareText();
+  updateAllGauges();
 }
 
 function renderManualNotesInMatrix(weekDates) {
@@ -983,12 +1000,44 @@ function onEtchingChange(val) {
   generateShareText();
 }
 
+// 첫 탭 연도 없는 월/일 변경 처리
+function onTargetDatePartChange() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = document.getElementById('targetMonthInput').value;
+  const d = document.getElementById('targetDayInput').value;
+  selectedDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  
+  document.getElementById('manualMonthInput').value = m;
+  document.getElementById('manualDayInput').value = d;
+  
+  renderWeeklyMatrix();
+  generateShareText();
+  updateAllGauges();
+}
+
+function setTargetToday() {
+  const now = new Date();
+  selectedDateStr = formatDateOnly(now);
+  document.getElementById('targetMonthInput').value = now.getMonth() + 1;
+  document.getElementById('targetDayInput').value = now.getDate();
+  document.getElementById('manualMonthInput').value = now.getMonth() + 1;
+  document.getElementById('manualDayInput').value = now.getDate();
+  renderWeeklyMatrix();
+  generateShareText();
+  updateAllGauges();
+}
+
 function addManualNote() {
-  const date = document.getElementById('manualDateInput').value;
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = document.getElementById('manualMonthInput').value;
+  const d = document.getElementById('manualDayInput').value;
+  const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const line = document.getElementById('manualLineSelect').value;
   const text = document.getElementById('manualContentInput').value.trim();
 
-  if (!date || !text) {
+  if (!m || !d || !text) {
     alert('날짜와 특이사항 내용을 모두 입력해주세요.');
     return;
   }
@@ -1125,7 +1174,6 @@ function renderChem12hGauge(now) {
   }
 }
 
-// 2번 수정: 전기동 단독 표기
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   if (!container) return;
@@ -1147,7 +1195,6 @@ function renderElectroGauges(now) {
     todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
   }
 
-  // 2번 수정: '전기동' 단독 표기
   document.getElementById('elecTodayLinesBadge').innerText = '전기동';
 
   const start0830 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 30, 0);
@@ -1365,7 +1412,6 @@ function toggleEquipWork(lineName, isChecked) {
   updateAllGauges();
 }
 
-// 3번 수정: 연도 완전 제거된 화학동 주기관리 입력창
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1391,7 +1437,6 @@ function renderChemList() {
     });
     statusBtnsHtml += `</div>`;
 
-    // 날짜 분해 (연도 제외)
     const t = new Date(c.lastDone);
     const curM = isNaN(t.getTime()) ? (new Date().getMonth() + 1) : (t.getMonth() + 1);
     const curD = isNaN(t.getTime()) ? (new Date().getDate()) : t.getDate();
@@ -1405,7 +1450,6 @@ function renderChemList() {
           <button class="btn btn-sub btn-sm" style="margin-left:4px;" onclick="setChemNow(${idx})">현재시각</button>
         </div>
       </div>
-      <!-- 3번 수정: 연도 없는 월/일/시간 분리 입력폼 -->
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:3px;">
           <input type="number" id="m_${idx}" value="${curM}" min="1" max="12" style="width:42px; text-align:center; padding:4px;" onchange="updateChemFromParts(${idx})">월
@@ -1429,7 +1473,6 @@ function renderChemList() {
   updateChemRealtimeStatuses();
 }
 
-// 3번 수정: 연도 없이 월/일/시간으로 상태 갱신
 function updateChemFromParts(idx) {
   const m = document.getElementById(`m_${idx}`).value;
   const d = document.getElementById(`d_${idx}`).value;
@@ -1579,17 +1622,6 @@ function updatePulseDate(idx, val) {
   renderPulseTable();
 }
 
-function onDateChange() {
-  selectedDateStr = document.getElementById('targetDateInput').value;
-  if (selectedDateStr) {
-    const manualDateEl = document.getElementById('manualDateInput');
-    if (manualDateEl) manualDateEl.value = selectedDateStr;
-    renderWeeklyMatrix();
-    generateShareText();
-    updateAllGauges();
-  }
-}
-
 function sendEmailDirect() {
   const text = document.getElementById('shareTextOutput').value;
   const subject = encodeURIComponent(document.getElementById('briefingTitle').innerText);
@@ -1597,7 +1629,6 @@ function sendEmailDirect() {
   window.location.href = `mailto:wlamutan@gmail.com?subject=${subject}&body=${body}`;
 }
 
-// 1번 수정: 13시 PM 진행중 및 상태 레이블 정확한 표기
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1657,7 +1688,6 @@ function generateShareText() {
     electro.push(`전21 탈지 산세 박리건욕 (7시 30분패스)${getNote('전기동 21')}`);
   }
 
-  // 1번 수정: 'PM 진행중' 단어 정렬
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
     const isRunning = (c.status !== '완료' && c.status !== '대기');
