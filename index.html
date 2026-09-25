@@ -59,20 +59,21 @@
   }
   .live-clock-box span { font-size: 15px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
-  /* 메인 탭 네비게이션 (3개 탭 구성) */
+  /* 5개 탭 네비게이션 */
   .main-nav {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     border-bottom: 2px solid var(--border);
     padding-bottom: 2px;
+    flex-wrap: wrap;
   }
   .nav-btn {
     background: #e2e8f0;
     border: 1px solid var(--border);
     border-bottom: none;
     color: var(--text-secondary);
-    padding: 10px 18px;
-    font-size: 14px;
+    padding: 9px 16px;
+    font-size: 13.5px;
     font-weight: 700;
     cursor: pointer;
     border-radius: 8px 8px 0 0;
@@ -213,11 +214,11 @@
 <body>
 
 <div class="container">
-  <!-- 상단 헤더 -->
+  <!-- 상단 공통 헤더 -->
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 진척 모니터링 시스템</h1>
-      <p>주간 정기 PM (월~일 주말 포함) · 화학동 12시간 액이송 기준 진척 추적 · 펄스 6단계 & 일반 더미 1싸이클</p>
+      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 관리 · 펄스 6단계 & 일반 더미 1싸이클</p>
     </div>
     <div class="live-clock-box">
       <div style="font-size:11px; color:var(--text-secondary);">현재 실시간 시각</div>
@@ -225,16 +226,22 @@
     </div>
   </header>
 
-  <!-- 메인 탭 네비게이션 (3개 탭 구성) -->
+  <!-- 메인 탭 네비게이션 (5개 탭 분리 구성) -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
-      🗓️ 일주일 단위 / 오늘 PM 브리핑
+      🗓️ 일주일 / 오늘 PM 브리핑
     </button>
     <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
       ⚡ 자동 진척 게이지
     </button>
     <button class="nav-btn" id="tabBtn3" onclick="switchTab('tab3')">
-      ⚙️ PM 설정 & 주기 관리
+      🧪 화학동 주기 관리
+    </button>
+    <button class="nav-btn" id="tabBtn4" onclick="switchTab('tab4')">
+      ✏️ 라인별 특이사항 수동 입력
+    </button>
+    <button class="nav-btn" id="tabBtn5" onclick="switchTab('tab5')">
+      💧 펄스 액퍼내기 예정일
     </button>
   </div>
 
@@ -242,7 +249,7 @@
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
       
-      <!-- 좌측: 이번 주 정기 PM 매트릭스 (순서: 데버링/고압수세 -> 에칭 -> 디스미어 -> 화학동/블랙홀 -> 전기동) -->
+      <!-- 좌측: 이번 주 정기 PM 매트릭스 -->
       <div class="card">
         <div class="card-title">
           <span>금주 정기 PM 매트릭스 (주말 토·일 포함)</span>
@@ -393,7 +400,7 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 -->
+  <!-- [탭 2] 자동 진척 게이지 (12시간 액이송 기준) -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col">
       
@@ -433,7 +440,7 @@
             <div id="chemStatusBox" class="status-detail-box"></div>
           </div>
 
-          <!-- C/S 소요 시간 참고 기준 가이드 (참고 기준 박스) -->
+          <!-- C/S 소요 시간 참고 기준 가이드 -->
           <div class="ref-box">
             <strong style="color:var(--accent);">📋 화학동 C/S 세척 소요 시간 참고 기준 (개별 병렬 진행):</strong>
             <ul>
@@ -461,101 +468,100 @@
     </div>
   </div>
 
-  <!-- [탭 3] PM 설정 & 주기 관리 (신규 탭: 수동기입 + 화학동 72H/화8 48H + 펄스 120일) -->
+  <!-- [탭 3] 화학동 주기 관리 (화7~14 주기, 48H 빌드업, 건욕 즉시입력 태그) -->
   <div id="tab3" class="tab-pane">
-    <div class="grid-2col">
+    <div class="card">
+      <div class="card-title">
+        <span>🧪 화학동 72시간 주기 & 화8 48시간 빌드업 설정</span>
+        <button class="btn btn-sub btn-sm" onclick="saveChemData()">데이터 저장</button>
+      </div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:4px;">
+        💡 비고란 옆의 <strong>[+ 촉매건욕]</strong> 또는 <strong>[+ 화학동 건욕]</strong> 버튼을 누르면 해당 라인 비고에 즉시 반영됩니다.
+      </div>
+      <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+  </div>
+
+  <!-- [탭 4] 라인별 특이사항 수동 입력 -->
+  <div id="tab4" class="tab-pane">
+    <div class="card">
+      <div class="card-title">
+        <span>✏️ 라인 / 날짜별 특이사항 수동 입력 관리</span>
+        <span class="badge badge-yellow">매트릭스 & 브리핑 연동</span>
+      </div>
       
-      <!-- 좌측: 라인 / 날짜별 특이사항 수동기입 관리 -->
-      <div class="card">
-        <div class="card-title">
-          <span>✏️ 라인 / 날짜별 특이사항 수동기입 관리</span>
-          <span class="badge badge-yellow">매트릭스 & 브리핑 연동</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary);">적용 일자:</label><br>
+          <input type="date" id="manualDateInput">
         </div>
-        
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <div>
-            <label style="font-size:11px; color:var(--text-secondary);">적용 일자:</label><br>
-            <input type="date" id="manualDateInput">
-          </div>
-          <div>
-            <label style="font-size:11px; color:var(--text-secondary);">해당 라인:</label><br>
-            <select id="manualLineSelect">
-              <option value="디스미어 8">디스미어 8</option>
-              <option value="디스미어 10">디스미어 10</option>
-              <option value="디스미어 11">디스미어 11</option>
-              <option value="디스미어 15">디스미어 15</option>
-              <option value="전기동 9">전기동 9</option>
-              <option value="전기동 13">전기동 13</option>
-              <option value="전기동 14">전기동 14</option>
-              <option value="전기동 16">전기동 16</option>
-              <option value="전기동 17">전기동 17</option>
-              <option value="전기동 20">전기동 20</option>
-              <option value="전기동 21">전기동 21</option>
-              <option value="화7">화7</option>
-              <option value="화8">화8</option>
-              <option value="화9">화9</option>
-              <option value="화13">화13</option>
-              <option value="화14">화14</option>
-            </select>
-          </div>
-          <div style="flex:1; min-width:180px;">
-            <label style="font-size:11px; color:var(--text-secondary);">특이사항 내용:</label><br>
-            <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 버튼 클릭" style="width:100%;">
-          </div>
-          <div style="align-self:flex-end;">
-            <button class="btn" onclick="addManualNote()">등록/추가</button>
-          </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-secondary);">해당 라인:</label><br>
+          <select id="manualLineSelect">
+            <option value="디스미어 8">디스미어 8</option>
+            <option value="디스미어 10">디스미어 10</option>
+            <option value="디스미어 11">디스미어 11</option>
+            <option value="디스미어 15">디스미어 15</option>
+            <option value="전기동 9">전기동 9</option>
+            <option value="전기동 13">전기동 13</option>
+            <option value="전기동 14">전기동 14</option>
+            <option value="전기동 16">전기동 16</option>
+            <option value="전기동 17">전기동 17</option>
+            <option value="전기동 20">전기동 20</option>
+            <option value="전기동 21">전기동 21</option>
+            <option value="화7">화7</option>
+            <option value="화8">화8</option>
+            <option value="화9">화9</option>
+            <option value="화13">화13</option>
+            <option value="화14">화14</option>
+          </select>
         </div>
-
-        <!-- 빠른 태그 버튼들 (건욕 태그 포함) -->
-        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('화학동 건욕')">+ 화학동 건욕</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('스웰러 건욕')">+ 스웰러 건욕</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('망간 건욕')">+ 망간 건욕</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('전체건욕')">+ 전체건욕</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('인써트 교체')">+ 인써트 교체</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('유산동필터')">+ 유산동필터</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('설비작업')">+ 설비작업(17시)</button>
-          <button class="btn btn-sub btn-sm" onclick="setQuickTag('촉매건욕')">+ 촉매건욕</button>
+        <div style="flex:1; min-width:180px;">
+          <label style="font-size:11px; color:var(--text-secondary);">특이사항 내용:</label><br>
+          <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 버튼 클릭" style="width:100%;">
         </div>
-
-        <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"></div>
+        <div style="align-self:flex-end;">
+          <button class="btn" onclick="addManualNote()">등록/추가</button>
+        </div>
       </div>
 
-      <!-- 우측: 화학동 72시간 주기 & 펄스 120일 액퍼내기 -->
-      <div style="display:flex; flex-direction:column; gap:14px;">
-        
-        <!-- 화학동 72H 주기 & 화8 48H 빌드업 타이머 -->
-        <div class="card">
-          <div class="card-title">
-            <span>화학동 72시간 주기 & 화8 48시간 빌드업 관리</span>
-            <button class="btn btn-sub btn-sm" onclick="saveChemData()">데이터 저장</button>
-          </div>
-          <div id="chemListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
-        </div>
-
-        <!-- 펄스라인 120일 액퍼내기 계산기 -->
-        <div class="card">
-          <div class="card-title">
-            <span>펄스라인 액퍼내기 계산기 (120일 주기)</span>
-            <button class="btn btn-sub btn-sm" onclick="savePulseData()">펄스 저장</button>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>라인</th>
-                <th>최근 작업일</th>
-                <th>1차 (+120일)</th>
-                <th>2차 (+240일)</th>
-                <th>D-Day</th>
-              </tr>
-            </thead>
-            <tbody id="pulseTableBody"></tbody>
-          </table>
-        </div>
-
+      <!-- 빠른 태그 버튼들 (촉매건욕, 화학동건욕 제외 완료) -->
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+        <button class="btn btn-sub btn-sm" onclick="setQuickTag('스웰러 건욕')">+ 스웰러 건욕</button>
+        <button class="btn btn-sub btn-sm" onclick="setQuickTag('망간 건욕')">+ 망간 건욕</button>
+        <button class="btn btn-sub btn-sm" onclick="setQuickTag('전체건욕')">+ 전체건욕</button>
+        <button class="btn btn-sub btn-sm" onclick="setQuickTag('인써트 교체')">+ 인써트 교체</button>
+        <button class="btn btn-sub btn-sm" onclick="setQuickTag('유산동필터')">+ 유산동필터</button>
+        <button class="btn btn-sub btn-sm" onclick="setQuickTag('설비작업')">+ 설비작업(17시)</button>
       </div>
 
+      <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <!-- [탭 5] 펄스 액퍼내기 예정일 (120일 주기) -->
+  <div id="tab5" class="tab-pane">
+    <div class="card">
+      <div class="card-title">
+        <span>💧 펄스라인 액퍼내기 예정일 관리 (120일 주기)</span>
+        <button class="btn btn-sub btn-sm" onclick="savePulseData()">펄스 데이터 저장</button>
+      </div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:4px;">
+        펄스라인 액퍼내기 완료 날짜를 기입하면 1차(+120일), 2차(+240일), 3차(+360일) 예정일 및 잔여 D-Day가 자동 산출됩니다.
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>라인명</th>
+            <th>최근 작업일</th>
+            <th>1차 예정 (+120일)</th>
+            <th>2차 예정 (+240일)</th>
+            <th>3차 예정 (+360일)</th>
+            <th>상태 (D-Day)</th>
+          </tr>
+        </thead>
+        <tbody id="pulseTableBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -580,19 +586,19 @@ const DEFAULT_PULSE = [
 
 const DEFAULT_MANUAL_NOTES = [];
 
+// 요구사항 4: 고압수세 PM일정 9월 28일 기준 (2주 마다)
 const ANCHOR_BIWEEK = {
   des11: new Date('2026-09-14T00:00:00'),
   elec12: new Date('2026-09-18T00:00:00'),
-  wash1: new Date('2026-09-20T00:00:00')
+  wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v7')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v7')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v7')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v7')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v8')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v8')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v8')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v8')) || {};
 
-let currentCalDate = new Date();
-let selectedDateStr = '';
+let selectedDateStr = '2026-09-25';
 
 // --- [2. 시간 포맷 헬퍼] ---
 function formatTimeKr(hour, min) {
@@ -658,21 +664,26 @@ function switchTab(t) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
-  if (t === 'tab1') {
-    document.getElementById('tabBtn1').classList.add('active');
-    document.getElementById('tab1').classList.add('active');
-    renderWeeklyMatrix();
-  } else if (t === 'tab2') {
-    document.getElementById('tabBtn2').classList.add('active');
-    document.getElementById('tab2').classList.add('active');
-    updateAllGauges();
-  } else if (t === 'tab3') {
-    document.getElementById('tabBtn3').classList.add('active');
-    document.getElementById('tab3').classList.add('active');
-    renderManualNotesList();
-    renderChemList();
-    renderPulseTable();
+  const btnMap = {
+    'tab1': 'tabBtn1',
+    'tab2': 'tabBtn2',
+    'tab3': 'tabBtn3',
+    'tab4': 'tabBtn4',
+    'tab5': 'tabBtn5'
+  };
+
+  if (document.getElementById(btnMap[t])) {
+    document.getElementById(btnMap[t]).classList.add('active');
   }
+  if (document.getElementById(t)) {
+    document.getElementById(t).classList.add('active');
+  }
+
+  if (t === 'tab1') renderWeeklyMatrix();
+  else if (t === 'tab2') updateAllGauges();
+  else if (t === 'tab3') renderChemList();
+  else if (t === 'tab4') renderManualNotesList();
+  else if (t === 'tab5') renderPulseTable();
 }
 
 // --- [4. 주간 매트릭스 렌더링 (금주 / 차주 반영 & 7일 표시)] ---
@@ -700,7 +711,7 @@ function renderWeeklyMatrix() {
 
   document.getElementById('weekRangeBadge').innerText = `${monday.getMonth()+1}/${monday.getDate()} ~ ${weekDates[6].date.getMonth()+1}/${weekDates[6].date.getDate()}`;
 
-  // 요구사항 1 반영: 이번주 -> 금주, 격주제외 -> 차주
+  // 요구사항 1 & 4 반영: 금주 / 차주 표기
   setTag('tag_w_des11', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
   setTag('tag_w_des15', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
   setTag('tag_w_elec12', checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate));
@@ -768,12 +779,26 @@ function renderManualNotesInMatrix(weekDates) {
 function setTag(id, active) {
   const el = document.getElementById(id);
   if (!el) return;
-  // 요구사항 1: 금주 / 차주
   el.innerText = active ? '금주' : '차주';
   el.className = active ? 'badge badge-green' : 'badge badge-sub';
 }
 
-// --- [5. 수동기입 엔진 (탭 3)] ---
+function getMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+}
+
+function checkBiWeek(anchorDate, targetDate) {
+  const targetMon = getMonday(targetDate);
+  const anchorMon = getMonday(anchorDate);
+  const diffDays = Math.round((targetMon - anchorMon) / 86400000);
+  const diffWeeks = Math.round(diffDays / 7);
+  return (Math.abs(diffWeeks) % 2 === 0);
+}
+
+// --- [5. 수동기입 엔진 (탭 4)] ---
 function addManualNote() {
   const date = document.getElementById('manualDateInput').value;
   const line = document.getElementById('manualLineSelect').value;
@@ -818,16 +843,12 @@ function renderManualNotesList() {
   });
 }
 
-function saveManualNotes() { localStorage.setItem('manual_notes_v7', JSON.stringify(manualNotes)); }
+function saveManualNotes() { localStorage.setItem('manual_notes_v8', JSON.stringify(manualNotes)); }
 
-// --- [6. 자동 진척 게이지 엔진 (탭 2: 요구사항 3 화학동 12시간 액이송 기준 반영)] ---
+// --- [6. 자동 진척 게이지 엔진 (탭 2: 화학동 12시간 액이송 기준)] ---
 function updateAllGauges() {
   const now = new Date();
-
-  // 1. 화학동 진척: PM 시작 후 12시간 후 액이송 기준
   renderChem12hGauge(now);
-
-  // 2. 전기동 개별 라인 진척 게이지
   renderElectroGauges(now);
 }
 
@@ -860,7 +881,6 @@ function renderChem12hGauge(now) {
   const elapsedMin = Math.max(0, (now - startTime) / 60000);
   const target12hMin = 720; // 12시간 = 720분
 
-  // 12시간 액이송 기준 진척률 (%)
   const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
   chemBar.style.width = pct.toFixed(1) + '%';
   badgeElem.innerText = `${pct.toFixed(0)}%`;
@@ -892,7 +912,6 @@ function renderChem12hGauge(now) {
       </div>
     `;
   } else if (elapsedMin >= target12hMin && elapsedMin < 840) {
-    // 12시간 ~ 14시간: 액이송 진행 및 양산 준비 구간
     chemBar.className = 'progress-fill alert';
     chemBox.className = 'status-detail-box alert';
     badgeElem.className = 'badge badge-red';
@@ -910,7 +929,6 @@ function renderChem12hGauge(now) {
       </div>
     `;
   } else {
-    // 14시간 이상 경과
     chemBar.className = 'progress-fill done';
     chemBox.className = 'status-detail-box';
     badgeElem.className = 'badge badge-green';
@@ -963,7 +981,6 @@ function renderElectroGauges(now) {
     const isEquipWorkActive = (equipWorkFlags[line.name] !== undefined) ? equipWorkFlags[line.name] : hasManualEquipNote;
 
     if (line.isPulse) {
-      // 펄스 라인 (전9, 전20, 전21)
       let progressPct = 0;
       let stepName = '';
       let barClass = 'progress-fill';
@@ -1065,7 +1082,6 @@ function renderElectroGauges(now) {
       `;
 
     } else {
-      // 일반 전기동 (비-펄스 라인: 더미 1싸이클 1.5H 투입 후 양산)
       let progressPct = 0;
       let stepName = '';
       let barClass = 'progress-fill';
@@ -1155,7 +1171,7 @@ function renderElectroGauges(now) {
 
 function toggleEquipWork(lineName, isChecked) {
   equipWorkFlags[lineName] = isChecked;
-  localStorage.setItem('equip_work_flags_v7', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('equip_work_flags_v8', JSON.stringify(equipWorkFlags));
 
   const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
   if (isChecked && existingIdx === -1) {
@@ -1170,7 +1186,7 @@ function toggleEquipWork(lineName, isChecked) {
   updateAllGauges();
 }
 
-// --- [8. 화학동 72H 주기 관리 & 화8 48H 빌드업 (탭 3)] ---
+// --- [8. 화학동 72H 주기 관리 & 화8 48H 빌드업 (탭 3: 요구사항 2 반영)] ---
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1182,13 +1198,13 @@ function renderChemList() {
     card.style.background = '#f8fafc';
     card.style.border = '1px solid var(--border-light)';
     card.style.borderRadius = '8px';
-    card.style.padding = '10px';
+    card.style.padding = '12px';
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
-    card.style.gap = '6px';
+    card.style.gap = '8px';
 
     card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지 규정</span>' : ''}</strong>
         <div>
           <select id="stat_${idx}" onchange="changeChemStatus(${idx}, this.value)">
@@ -1196,18 +1212,34 @@ function renderChemList() {
             <option value="진행중" ${c.status === '진행중' ? 'selected' : ''}>진행중</option>
             <option value="완료" ${c.status === '완료' ? 'selected' : ''}>완료</option>
           </select>
-          <button class="btn btn-sub btn-sm" onclick="setChemNow(${idx})">현재</button>
+          <button class="btn btn-sub btn-sm" onclick="setChemNow(${idx})">현재시각</button>
         </div>
       </div>
       <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px;">
         <input type="datetime-local" id="time_${idx}" value="${c.lastDone}" onchange="updateChemTime(${idx}, this.value)">
-        <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고(촉매건욕 등)" oninput="updateChemNote(${idx}, this.value)">
+        <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고 입력" oninput="updateChemNote(${idx}, this.value)">
+      </div>
+      <!-- 요구사항 2: 촉매건욕, 화학동건욕 태그 바로입력 버튼 -->
+      <div style="display:flex; gap:6px; align-items:center;">
+        <span style="font-size:11px; color:var(--text-secondary);">태그 즉시입력:</span>
+        <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '촉매건욕')">+ 촉매건욕</button>
+        <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '화학동 건욕')">+ 화학동 건욕</button>
+        <button class="btn btn-sub btn-sm" style="background:#94a3b8;" onclick="setChemNoteTag(${idx}, '')">초기화</button>
       </div>
       <div id="chem_box_${idx}" style="font-size:11.5px; padding:6px; background:#ffffff; border:1px solid #e2e8f0; border-radius:4px;"></div>
     `;
     container.appendChild(card);
   });
   updateChemRealtimeStatuses();
+}
+
+function setChemNoteTag(idx, tag) {
+  chemList[idx].note = tag;
+  const noteInput = document.getElementById(`note_${idx}`);
+  if (noteInput) noteInput.value = tag;
+  saveChemData();
+  updateAllGauges();
+  generateShareText();
 }
 
 function updateChemRealtimeStatuses() {
@@ -1251,9 +1283,9 @@ function setChemNow(idx) {
   if (timeInput) timeInput.value = chemList[idx].lastDone;
   saveChemData(); updateAllGauges(); generateShareText();
 }
-function saveChemData() { localStorage.setItem('chem_data_v7', JSON.stringify(chemList)); }
+function saveChemData() { localStorage.setItem('chem_data_v8', JSON.stringify(chemList)); }
 
-// --- [9. 펄스라인 120일 액퍼내기 (탭 3)] ---
+// --- [9. 펄스라인 120일 액퍼내기 (탭 5: 독립 탭 구성)] ---
 function renderPulseTable() {
   const tbody = document.getElementById('pulseTableBody');
   if (!tbody) return;
@@ -1264,6 +1296,7 @@ function renderPulseTable() {
     const base = new Date(p.lastDate + 'T00:00:00');
     const d1 = new Date(base.getTime() + 120 * 86400000);
     const d2 = new Date(base.getTime() + 240 * 86400000);
+    const d3 = new Date(base.getTime() + 360 * 86400000);
     const diff = Math.ceil((d1 - now) / 86400000);
 
     let badge = diff < 0 ? `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`
@@ -1276,13 +1309,14 @@ function renderPulseTable() {
       <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)"></td>
       <td><strong>${formatDateOnly(d1)}</strong></td>
       <td>${formatDateOnly(d2)}</td>
+      <td>${formatDateOnly(d3)}</td>
       <td>${badge}</td>
     `;
     tbody.appendChild(tr);
   });
 }
 function updatePulseDate(idx, val) { pulseList[idx].lastDate = val; savePulseData(); renderPulseTable(); }
-function savePulseData() { localStorage.setItem('pulse_data_v7', JSON.stringify(pulseList)); }
+function savePulseData() { localStorage.setItem('pulse_data_v8', JSON.stringify(pulseList)); }
 
 // --- [10. 날짜 변경 핸들러] ---
 function onDateChange() {
@@ -1296,7 +1330,7 @@ function onDateChange() {
   }
 }
 
-// --- [11. 야간 05시 이전 브리핑 공유 텍스트 자동 완성] ---
+// --- [11. 브리핑 공유 텍스트 자동 완성 (요구사항 3 정기PM/기본PM 엄격 반영)] ---
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1323,35 +1357,36 @@ function generateShareText() {
   let chems = [];
   let ongoing = [];
 
+  // 요구사항 3: 디스미어, 전기동, 화학동은 태그 없으면 기본PM 통일, 정기PM은 블랙홀만!
   if (day === 1) {
-    if (checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) desmear.push('고압수세 1라인');
+    if (checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) desmear.push('고압수세 1라인 기본PM');
     desmear.push(`디8 기본PM${getNote('디스미어 8')}`);
-    if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디11${getNote('디스미어 11')}`);
-    if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디15${getNote('디스미어 15')}`);
-    blackhole = `화12 정기PM${getNote('화12')}`;
+    if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디11 기본PM${getNote('디스미어 11')}`);
+    if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디15 기본PM${getNote('디스미어 15')}`);
+    blackhole = `화12 정기PM${getNote('화12')}`; // 블랙홀만 정기PM
     electro.push(`전9 탈지 산세 박리건욕 (${pass})${getNote('전기동 9')}`);
     electro.push(`전16 유산동 (${pass})${getNote('전기동 16')}`);
   } else if (day === 2) {
-    desmear.push(`디9${getNote('디스미어 9')}`, `디6${getNote('디스미어 6')}`);
-    electro.push(`전18 (${pass})${getNote('전기동 18')}`, `전22 (${pass})${getNote('전기동 22')}`);
+    desmear.push(`디9 기본PM${getNote('디스미어 9')}`, `디6 기본PM${getNote('디스미어 6')}`);
+    electro.push(`전18 기본PM (${pass})${getNote('전기동 18')}`, `전22 기본PM (${pass})${getNote('전기동 22')}`);
   } else if (day === 3) {
     debarr = '데3';
-    desmear.push(`디12${getNote('디스미어 12')}`);
-    blackhole = `화11 정기PM${getNote('화11')}`;
-    electro.push(`전15 (${pass})${getNote('전기동 15')}`, `전20 (${pass})${getNote('전기동 20')}`);
+    desmear.push(`디12 기본PM${getNote('디스미어 12')}`);
+    blackhole = `화11 정기PM${getNote('화11')}`; // 블랙홀만 정기PM
+    electro.push(`전15 기본PM (${pass})${getNote('전기동 15')}`, `전20 기본PM (${pass})${getNote('전기동 20')}`);
   } else if (day === 4) {
-    desmear.push(`디7${getNote('디스미어 7')}`);
-    electro.push(`전11 (${pass})${getNote('전기동 11')}`, `전14 유산동 (${pass})${getNote('전기동 14')}`, `전17 유산동 (${pass})${getNote('전기동 17')}`);
+    desmear.push(`디7 기본PM${getNote('디스미어 7')}`);
+    electro.push(`전11 기본PM (${pass})${getNote('전기동 11')}`, `전14 유산동 (${pass})${getNote('전기동 14')}`, `전17 유산동 (${pass})${getNote('전기동 17')}`);
   } else if (day === 5) {
     debarr = '데2';
     desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
-    blackhole = `화10 정기PM${getNote('화10')}`;
+    blackhole = `화10 정기PM${getNote('화10')}`; // 블랙홀만 정기PM
     if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 유산동 (${pass})${getNote('전기동 12')}`);
     electro.push(`전13 탈지 산세 박리건욕 (${pass})${getNote('전기동 13')}`);
     electro.push(`전21 탈지 산세 박리건욕 (7시 30분패스)${getNote('전기동 21')}`);
   }
 
-  // 화학동 진행 및 도래 건 취합
+  // 화학동: 다른 태그 없으면 기본PM 통일 (정기PM 사용 금지)
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
     if (c.status === '진행중') {
@@ -1363,7 +1398,7 @@ function generateShareText() {
       if (nextDue >= windowStart && nextDue <= windowEnd) {
         const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
         const prefix = (nextDue.getDate() !== targetDate.getDate()) ? `익일(${nextDue.getDate()}일) ` : '';
-        const noteText = manualChemNote || (c.note ? ` ${c.note}` : ' 정기PM');
+        const noteText = manualChemNote || (c.note ? ` ${c.note}` : ' 기본PM');
         chems.push(`${c.id} ${prefix}${timeKr}${noteText}`);
       } else if (manualChemNote) {
         chems.push(`${c.id} ${manualChemNote}`);
@@ -1402,11 +1437,6 @@ function copyShareText() {
   navigator.clipboard.writeText(el.value).then(() => {
     alert('PM 공유 텍스트가 클립보드에 복사되었습니다.');
   });
-}
-
-function checkBiWeek(anchor, target) {
-  const diffDays = Math.floor((target - anchor) / 86400000);
-  return (Math.floor(diffDays / 7) % 2 === 0);
 }
 </script>
 </body>
