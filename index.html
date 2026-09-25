@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>동도금 PM 일정 & 실시간 통합 모니터링 시스템</title>
 
-<!-- Firebase SDK (무설치 CDN) -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -194,22 +194,23 @@
     cursor: pointer;
     transition: 0.15s;
     white-space: nowrap;
-    touch-action: manipulation;
   }
   .btn:hover { background: #0369a1; }
   .btn-sub { background: #64748b; color: #fff; }
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 4px 8px; font-size: 11px; }
 
+  /* 1번 수정: 텍스트칸 높이 최적화 (250px) */
   .report-area {
     width: 100%;
-    min-height: 380px;
+    min-height: 250px;
+    height: 260px;
     background: #f8fafc;
     color: #0f172a;
     font-family: Consolas, "Courier New", monospace;
     font-size: 12.5px;
-    line-height: 1.6;
-    padding: 12px;
+    line-height: 1.55;
+    padding: 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
     resize: vertical;
@@ -280,15 +281,14 @@
     .briefing-control-row { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
     .briefing-control-row > div { width: 100%; }
     .briefing-btn-group { text-align: right; width: 100%; }
-    .report-area { min-height: 320px; font-size: 12px; }
-    .chem-input-grid { grid-template-columns: 1fr !important; }
+    .report-area { min-height: 240px; height: 250px; font-size: 12px; }
   }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- 상단 공통 헤더 -->
+  <!-- 상단 헤더 -->
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 실시간 통합 모니터링</h1>
@@ -305,7 +305,7 @@
     </div>
   </header>
 
-  <!-- 메인 탭 네비게이션 -->
+  <!-- 메인 탭 5개 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       🗓️ 일주일 / 오늘 PM 브리핑
@@ -324,7 +324,7 @@
     </button>
   </div>
 
-  <!-- [탭 1] 일주일 단위 주간 PM 일정 & 오늘 브리핑 공유 -->
+  <!-- [탭 1] 일주일 주간 PM 매트릭스 & 오늘 브리핑 공유 -->
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
       <div class="card">
@@ -342,7 +342,7 @@
           <table>
             <thead>
               <tr>
-                <th style="width:80px;">공정</th>
+                <th style="width:85px;">공정</th>
                 <th id="th_1">월</th>
                 <th id="th_2">화</th>
                 <th id="th_3">수</th>
@@ -353,6 +353,7 @@
               </tr>
             </thead>
             <tbody>
+              <!-- 1. 데버링 / 고압수세 -->
               <tr>
                 <td><strong>데버링 /<br>고압수세</strong></td>
                 <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
@@ -363,6 +364,7 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
+              <!-- 2. 디스미어 -->
               <tr>
                 <td><strong>디스미어</strong></td>
                 <td>
@@ -386,33 +388,29 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
+              <!-- 3. 일반 화학동 (분리) -->
               <tr style="background:#f0fdf4;">
-                <td><strong style="color:var(--accent);">화학동 /<br>블랙홀</strong></td>
-                <td>
-                  <div><span class="badge badge-purple">화12</span> <span id="custom_화12"></span></div>
-                  <div id="chem_cell_1" style="margin-top:3px;">-</div>
-                </td>
-                <td>
-                  <div id="chem_cell_2">-</div>
-                </td>
-                <td>
-                  <div><span class="badge badge-purple">화11</span> <span id="custom_화11"></span></div>
-                  <div id="chem_cell_3" style="margin-top:3px;">-</div>
-                </td>
-                <td>
-                  <div id="chem_cell_4">-</div>
-                </td>
-                <td>
-                  <div><span class="badge badge-purple">화10</span> <span id="custom_화10"></span></div>
-                  <div id="chem_cell_5" style="margin-top:3px;">-</div>
-                </td>
-                <td>
-                  <div id="chem_cell_6">-</div>
-                </td>
-                <td>
-                  <div id="chem_cell_7">-</div>
-                </td>
+                <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:10px; color:var(--text-secondary);">(72H 주기)</span></td>
+                <td id="chem_cell_1">-</td>
+                <td id="chem_cell_2">-</td>
+                <td id="chem_cell_3">-</td>
+                <td id="chem_cell_4">-</td>
+                <td id="chem_cell_5">-</td>
+                <td id="chem_cell_6">-</td>
+                <td id="chem_cell_7">-</td>
               </tr>
+              <!-- 4. 블랙홀 (분리) -->
+              <tr style="background:#faf5ff;">
+                <td><strong style="color:var(--purple);">블랙홀</strong><br><span style="font-size:10px; color:var(--text-secondary);">(7일 고정)</span></td>
+                <td><div><span class="badge badge-purple">화12 정기PM</span> <span id="custom_화12"></span></div></td>
+                <td>-</td>
+                <td><div><span class="badge badge-purple">화11 정기PM</span> <span id="custom_화11"></span></div></td>
+                <td>-</td>
+                <td><div><span class="badge badge-purple">화10 정기PM</span> <span id="custom_화10"></span></div></td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <!-- 5. 전기동 -->
               <tr>
                 <td><strong>전기동</strong></td>
                 <td>
@@ -445,9 +443,10 @@
         </div>
       </div>
 
+      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 -->
       <div class="card">
         <div class="card-title">
-          <span id="briefingTitle">오늘 PM 브리핑 & 공유 양식</span>
+          <span id="briefingTitle">오늘 PM 브리핑</span>
           <span class="badge badge-blue">익일 08시 30분 이전 자동 취합</span>
         </div>
 
@@ -463,30 +462,30 @@
           <div class="briefing-btn-group" style="flex:1; text-align:right; align-self:flex-end;">
             <button class="btn btn-sub" onclick="generateShareText()">새로고침</button>
             <button class="btn" onclick="copyShareText()">텍스트 복사</button>
+            <button class="btn btn-sub" style="background:#059669;" onclick="sendEmailDirect()">✉️ 메일 발송</button>
           </div>
         </div>
 
+        <!-- 1번 반영: 텍스트 상자 크기 축소 -->
         <textarea id="shareTextOutput" class="report-area"></textarea>
       </div>
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 (12시간 액이송 기준) -->
+  <!-- [탭 2] 자동 진척 게이지 -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col">
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
-            <span>🧪 1. 일반 화학동 진척 (12시간 액이송)</span>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <select id="activeChemSelect" onchange="updateAllGauges()" style="font-size:11.5px; padding:4px 6px;">
-                <option value="화7">화7</option>
-                <option value="화8">화8</option>
-                <option value="화9">화9</option>
-                <option value="화13">화13</option>
-                <option value="화14">화14</option>
-              </select>
-            </div>
+            <span>🧪 1. 일반 화학동 진척 (12시간 액이송 기준)</span>
+            <select id="activeChemSelect" onchange="updateAllGauges()" style="font-size:11.5px; padding:4px 6px;">
+              <option value="화7">화7</option>
+              <option value="화8">화8</option>
+              <option value="화9">화9</option>
+              <option value="화13">화13</option>
+              <option value="화14">화14</option>
+            </select>
           </div>
 
           <div class="gauge-box">
@@ -510,7 +509,7 @@
           <div class="ref-box">
             <strong style="color:var(--accent);">📋 화학동 C/S 세척 소요 시간 참고 기준:</strong>
             <ul>
-              <li><strong>전처리 (150분):</strong> 물세척 30분 → 박리세척 30분 → 박리후세척 30분 → 물세척 30분 → 물세척 30분</li>
+              <li><strong>전처리 (150분):</strong> 물세척 30분 → 박리 30분 → 박리후세척 30분 → 물세척 30분 → 물세척 30분</li>
               <li><strong>촉매 (370분, 화7·화13):</strong> 액이송 30분 → 물세척 40분 → 박리 120분 → 박리후세척 40분 → 물세척 40분 → 물세척 40분 → 액이송 30분</li>
               <li><strong>화학동 (480분):</strong> 액이송 30분 → 물세척 30분 → 박리 300분 → 박리후세척 30분 → 알카리 30분 → 알카리후세척 30분 → 액이송 30분</li>
               <li>💡 <em>12시간째 액이송 시작 ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 시편 확인 후 양산</em></li>
@@ -602,7 +601,7 @@
     </div>
   </div>
 
-  <!-- [탭 5] 펄스 액퍼내기 예정일 (120일 주기) -->
+  <!-- [탭 5] 펄스 액퍼내기 예정일 -->
   <div id="tab5" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -633,9 +632,7 @@
 </div>
 
 <script>
-// =================================================================
-// ★ Firebase 실제 발급 키 반영 완료
-// =================================================================
+// Firebase Config 연동
 const firebaseConfig = {
   apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
   authDomain: "pm1234-3069b.firebaseapp.com",
@@ -673,10 +670,10 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_final')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_final')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_final')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_final')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v13')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v13')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v13')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v13')) || {};
 
 let selectedDateStr = '2026-09-25';
 
@@ -711,20 +708,19 @@ function initFirebase() {
         updateAllGauges();
         generateShareText();
       } else {
-        // 최초 실행 시 서버가 비어있으면 초기값 저장
         syncDataToFirebase();
       }
     });
   } catch (e) {
-    statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 저장 모드</span>`;
+    statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 모드</span>`;
   }
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_final', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_final', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_final', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_final', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('chem_data_v13', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v13', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v13', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v13', JSON.stringify(equipWorkFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -761,10 +757,7 @@ function formatDateOnly(d) {
 
 window.onload = function() {
   const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, '0');
-  const d = String(today.getDate()).padStart(2, '0');
-  selectedDateStr = `${y}-${m}-${d}`;
+  selectedDateStr = formatDateOnly(today);
   document.getElementById('targetDateInput').value = selectedDateStr;
   document.getElementById('manualDateInput').value = selectedDateStr;
 
@@ -780,11 +773,27 @@ window.onload = function() {
   setInterval(tick, 1000);
 };
 
+// 4번 반영: 04시 30분에 자동 업데이트 실행
+let hasAutoTriggered0430 = false;
+
 function tick() {
   const now = new Date();
   document.getElementById('liveClock').innerText = formatClock(now);
   updateAllGauges();
   updateChemRealtimeStatuses();
+
+  // 매일 04시 30분 정각 도래 시 당일 PM 일정으로 자동 갱신 트리거
+  if (now.getHours() === 4 && now.getMinutes() === 30) {
+    if (!hasAutoTriggered0430) {
+      hasAutoTriggered0430 = true;
+      selectedDateStr = formatDateOnly(now);
+      document.getElementById('targetDateInput').value = selectedDateStr;
+      renderWeeklyMatrix();
+      generateShareText();
+    }
+  } else {
+    hasAutoTriggered0430 = false;
+  }
 }
 
 function formatClock(d) {
@@ -848,8 +857,9 @@ function renderWeeklyMatrix() {
   setTag('tag_w_elec12', checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate));
   setTag('tag_w_wash1', checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate));
 
+  // 3번 수정: 화학동 72시간 1회차 도래 예정일만 표기 (144시간 등 중복 제외)
   for (let i = 0; i < 7; i++) {
-    const dObj = weekDates[i].date;
+    const dStr = weekDates[i].dateStr;
     const cell = document.getElementById(`chem_cell_${i+1}`);
     cell.innerHTML = '';
     let matches = [];
@@ -857,10 +867,9 @@ function renderWeeklyMatrix() {
     chemList.forEach(c => {
       const base = new Date(c.lastDone);
       if (!isNaN(base.getTime())) {
-        const diffMs = dObj.getTime() - new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
-        const diffDays = Math.round(diffMs / 86400000);
-        if (diffDays >= 0 && diffDays % 3 === 0) {
-          const timeKr = formatTimeKr(base.getHours(), base.getMinutes());
+        const nextDue = new Date(base.getTime() + 72 * 3600000);
+        if (formatDateOnly(nextDue) === dStr) {
+          const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
           matches.push(`<strong>${c.id}</strong> <span style="color:var(--accent);">(${timeKr})</span>`);
         }
       }
@@ -1454,6 +1463,14 @@ function onDateChange() {
     generateShareText();
     updateAllGauges();
   }
+}
+
+// 5번 수동 메일 발송 기능
+function sendEmailDirect() {
+  const text = document.getElementById('shareTextOutput').value;
+  const subject = encodeURIComponent(document.getElementById('briefingTitle').innerText);
+  const body = encodeURIComponent(text);
+  window.location.href = `mailto:wlamutan@gmail.com?subject=${subject}&body=${body}`;
 }
 
 function generateShareText() {
