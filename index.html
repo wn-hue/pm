@@ -398,7 +398,6 @@
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
       <div class="card">
-        <!-- 2번 수정: 에칭 PM을 우측 상단 타이틀에 빈틈없이 배치 -->
         <div class="card-title">
           <span>금주 정기 PM 매트릭스 (월~일)</span>
           <div style="display:flex; align-items:center; gap:6px;">
@@ -539,16 +538,17 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 -->
+  <!-- [탭 2] 자동 진척 게이지 (화학동 예정 시간 도래 시 자동 생성 & 양방향 시작 연동) -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col">
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
             <span>🧪 1. 일반 화학동 진행 진척 (12시간 액이송 기준)</span>
-            <span class="badge badge-blue">진행 라인 자동 연동</span>
+            <span class="badge badge-blue">예정 도래 & 진행 라인 자동 연동</span>
           </div>
 
+          <!-- 화학동 게이지 동적 컨테이너 -->
           <div id="activeChemGaugesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
 
           <div class="ref-box">
@@ -587,7 +587,7 @@
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
       <div style="font-size:11.5px; color:var(--text-secondary);">
-        💡 상태는 <strong>[시작 / 분석 / 완료]</strong>로 관리되며, 시간은 <strong>0분 / 30분</strong>만 선택됩니다.
+        💡 <strong>[시작]</strong>을 누르면 현재 일시로 자동 갱신되며, 탭 2 진척 게이지에서 12시간 액이송 카운트다운이 시작됩니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -693,7 +693,6 @@ const firebaseConfig = {
 let db = null;
 let isFirebaseConnected = false;
 
-// 1번 디버그: 데이터 구조를 안전한 배열로 강제 보정하는 헬퍼 함수
 function ensureArray(data, defaultVal) {
   if (!data) return defaultVal;
   if (Array.isArray(data)) return data;
@@ -727,14 +726,14 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v22')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v22')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v22')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v22')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v23')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v23')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v23')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v23')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v22')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v22')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v22')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v23')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v23')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v23')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -758,7 +757,6 @@ function initFirebase() {
         }
       });
 
-      // 1번 디버그: Firebase에서 Object로 들어오는 현상 원천 차단
       db.ref('pm_system_data').on('value', (snapshot) => {
         const remoteData = snapshot.val();
         if (remoteData) {
@@ -785,13 +783,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v22', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v22', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v22', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v22', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v22', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v22', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v22', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v23', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v23', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v23', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v23', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v23', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v23', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v23', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -829,7 +827,6 @@ function formatDateOnly(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 1번 디버그: 전체 렌더링을 안전하게 감싸서 특정 모듈 오류 시에도 전체 시스템 보호
 function safeRenderAll() {
   try { renderWeeklyMatrix(); } catch(e){ console.error("Matrix error", e); }
   try { renderManualNotesList(); } catch(e){ console.error("Manual error", e); }
@@ -857,16 +854,13 @@ window.onload = function() {
   initFirebase();
   safeRenderAll();
 
-  // 최초 1회 즉시 시계 가동
   tick();
   setInterval(tick, 1000);
 };
 
-// 1번 디버그: tick() 최상단에서 시계를 우선 갱신하고 내부를 예외 처리
 function tick() {
   const now = new Date();
   
-  // 시계 표시 최우선 실행 (절대 멈추지 않음)
   const clockEl = document.getElementById('liveClock');
   if (clockEl) {
     clockEl.innerText = formatClock(now);
@@ -1171,11 +1165,12 @@ function renderManualNotesList() {
   });
 }
 
-// 1초 단위 실시간 자동 갱신
 function updateLiveTimesOnly(now) {
   // 화학동 진행 갱신
-  const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
-  activeChems.forEach(line => {
+  chemList.forEach(line => {
+    const isRunning = (line.status === '시작' || line.status === '분석');
+    if (!isRunning) return;
+
     const bar = document.getElementById(`chem_bar_${line.id}`);
     const pctBadge = document.getElementById(`chem_pct_${line.id}`);
     const statusBox = document.getElementById(`chem_status_${line.id}`);
@@ -1352,21 +1347,33 @@ function updateLiveTimesOnly(now) {
   });
 }
 
-// 1번 디버그: 화학동 시작된 라인이 없더라도 빠른 시작 버튼 제공
+// 요구사항 1 & 2: PM 예정 시간 도래 시 자동 게이지 생성 + [시작] 시 25일 현재 n시 자동 갱신
 function renderActiveChemGauges(now) {
   const container = document.getElementById('activeChemGaugesContainer');
   if (!container) return;
 
-  const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
+  // 1) 현재 시작/분석 진행 중인 라인
+  // 2) 완료 상태이지만 72시간 주기(nextDue)에 도달했거나 초과한 라인 (자동 생성)
+  const activeOrDueChems = chemList.filter(c => {
+    if (c.status === '시작' || c.status === '분석') return true;
+    if (c.status === '완료') {
+      const base = new Date(c.lastDone);
+      if (!isNaN(base.getTime())) {
+        const nextDue = new Date(base.getTime() + 72 * 3600000);
+        return (now >= nextDue); // 예정 시간 도래/초과 시 자동 포함
+      }
+    }
+    return false;
+  });
 
-  if (activeChems.length === 0) {
+  if (activeOrDueChems.length === 0) {
     let quickStartBtns = chemList.map(c => `
       <button class="btn btn-sub btn-sm" onclick="setChemStepStatusById('${c.id}', '시작')">+ ${c.id} 시작</button>
     `).join(' ');
 
     container.innerHTML = `
       <div class="status-detail-box" style="padding:14px; text-align:center; color:var(--text-secondary);">
-        현재 PM 진행 중(시작/분석)인 화학동 라인이 없습니다.<br>
+        현재 진행 중이거나 PM 예정 주기가 도래한 화학동 라인이 없습니다.<br>
         <div style="margin-top:8px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
           ${quickStartBtns}
         </div>
@@ -1377,8 +1384,33 @@ function renderActiveChemGauges(now) {
 
   let html = '';
 
-  activeChems.forEach(line => {
+  activeOrDueChems.forEach(line => {
+    const isDuePending = (line.status === '완료'); // 72시간 도래했지만 아직 '시작' 안 누른 상태
     const startTime = new Date(line.lastDone);
+    const nextDue = new Date(startTime.getTime() + 72 * 3600000);
+
+    if (isDuePending) {
+      // 1번 수정: 예정 시간 도래 시 탭 2에 자동 생성되는 대기/착수 카드
+      html += `
+        <div class="gauge-box" style="border-left: 4px solid var(--warning); background:#fffbeb;">
+          <div class="gauge-top">
+            <div>
+              <strong style="font-size:14px; color:#b45309;">🔔 ${line.id} PM 예정 시간 도래!</strong>
+              <span class="badge badge-yellow" style="margin-left:4px;">주기 도래</span>
+            </div>
+            <!-- 2번 수정: 클릭 시 25일 현재 n시로 자동 시작 -->
+            <button class="btn btn-sm" style="background:var(--accent); padding:4px 10px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${line.id} PM 시작</button>
+          </div>
+          <div style="font-size:12px; color:#78350f;">
+            직전 완료: <strong>${formatDateTimeKr(startTime)}</strong> ➔ PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong><br>
+            💡 위 <strong>[PM 시작]</strong> 버튼을 누르면 시작 일시가 <strong>현재 시각</strong>으로 자동 갱신되며 탭3과 연동됩니다.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // 이미 시작/분석 진행 중인 라인의 게이지
     const elapsedMin = Math.max(0, (now - startTime) / 60000);
     const target12hMin = 720;
     const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
@@ -1419,19 +1451,31 @@ function renderActiveChemGauges(now) {
   updateLiveTimesOnly(now);
 }
 
+// 2번 수정 핵심: '시작' 클릭 시 현재 일시(오늘 날짜 & 현재 n시)로 lastDone을 자동 갱신하고 탭3과 연동
 function setChemStepStatusById(lineId, st) {
   const line = chemList.find(c => c.id === lineId);
   if (!line) return;
+
   line.status = st;
+
   if (st === '시작') {
-    line.lastDone = new Date().toISOString();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+    const h = now.getHours();
+    const min = now.getMinutes() >= 30 ? 30 : 0; // 0분 or 30분 정렬
+    // 25일 현재 n시로 시작 시간 자동 변경!
+    line.lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
     delete line.analyzingStartTime;
   } else if (st === '분석' && !line.analyzingStartTime) {
     line.analyzingStartTime = new Date().toISOString();
   }
+
   syncDataToFirebase();
-  renderChemList();
-  renderActiveChemGauges(new Date());
+  renderChemList(); // 탭 3 연동 반영
+  renderWeeklyMatrix();
+  renderActiveChemGauges(new Date()); // 탭 2 연동 반영
   generateShareText();
 }
 
@@ -1750,6 +1794,7 @@ function toggleEquipWork(lineName, isChecked) {
   renderElectroGauges(new Date());
 }
 
+// 탭 3 화학동 주기 관리
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1838,16 +1883,26 @@ function updateChemFromParts(idx) {
   generateShareText();
 }
 
+// 2번 수정: 탭 3에서 [시작]을 누를 때도 현재 일시(오늘 날짜 & 현재 n시)로 시작 시간 자동 갱신!
 function setChemStepStatus(idx, st) {
   chemList[idx].status = st;
+
   if (st === '시작') {
-    chemList[idx].lastDone = new Date().toISOString();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+    const h = now.getHours();
+    const min = now.getMinutes() >= 30 ? 30 : 0;
+    chemList[idx].lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
     delete chemList[idx].analyzingStartTime;
   } else if (st === '분석' && !chemList[idx].analyzingStartTime) {
     chemList[idx].analyzingStartTime = new Date().toISOString();
   }
+
   syncDataToFirebase();
   renderChemList();
+  renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
   generateShareText();
 }
@@ -1878,7 +1933,7 @@ function updateChemRealtimeStatuses() {
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const remainH = (nextDue - now) / 3600000;
-      let html = `다음 PM(72H): <strong>${formatDateTimeKr(nextDue)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '도래'})`;
+      let html = `다음 PM(72H): <strong>${formatDateTimeKr(nextDue)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '<span style="color:var(--danger); font-weight:700;">주기 도래 (탭2 확인)</span>'})`;
 
       if (c.id === '화8') {
         const buildupLimit = new Date(t.getTime() + 48 * 3600000);
