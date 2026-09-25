@@ -239,17 +239,17 @@
 
   /* 브리핑 영역 */
   .briefing-box {
-    max-width: 760px;
+    max-width: 780px;
     width: 100%;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
   }
   .report-area {
     width: 100%;
-    min-height: 420px;
-    height: 460px;
+    min-height: 400px;
+    height: 440px;
     background: #f8fafc;
     color: #0f172a;
     font-family: Consolas, "Courier New", monospace;
@@ -323,7 +323,7 @@
   .status-step-btn {
     border: none;
     background: transparent;
-    padding: 4px 10px;
+    padding: 4px 12px;
     font-size: 11.5px;
     font-weight: 700;
     color: var(--text-secondary);
@@ -332,7 +332,6 @@
     transition: 0.15s;
   }
   .status-step-btn.active-시작 { background: var(--accent); color: #fff; }
-  .status-step-btn.active-분석 { background: var(--purple); color: #fff; }
   .status-step-btn.active-완료 { background: var(--success); color: #fff; }
 
   .pulse-step-container {
@@ -400,7 +399,7 @@
     </div>
   </header>
 
-  <!-- 메인 탭 네비게이션 (6개 탭 구조) -->
+  <!-- 메인 탭 네비게이션 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       📋 오늘 PM 브리핑 & 공유
@@ -422,7 +421,7 @@
     </button>
   </div>
 
-  <!-- [탭 1] 오늘 PM 브리핑 & 공유 (첫 화면) -->
+  <!-- [탭 1] 오늘 PM 브리핑 & 공유 (첫 화면: 오늘/내일 버튼 + 화학동 PM 현황 추가) -->
   <div id="tab1" class="tab-pane active">
     <div class="briefing-box">
       <div class="card">
@@ -431,13 +430,11 @@
           <span class="badge badge-blue">익일 08:30 이전 취합</span>
         </div>
 
+        <!-- 1번 수정: 날짜 선택창을 없애고 [오늘] / [내일] 두 가지 버튼으로만 구성 -->
         <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="display:flex; align-items:center; gap:4px;">
-            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(-1)" title="이전 날">◀</button>
-            <input type="number" id="targetMonthInput" min="1" max="12" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">월
-            <input type="number" id="targetDayInput" min="1" max="31" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">일
-            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(1)" title="다음 날">▶</button>
-            <button class="btn btn-sub btn-sm" onclick="setTargetToday()">오늘</button>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
+            <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
           </div>
           <div style="display:flex; align-items:center; gap:5px;">
             <span style="font-size:12px; color:var(--text-secondary);">패스 기준:</span>
@@ -450,6 +447,17 @@
         </div>
 
         <textarea id="shareTextOutput" class="report-area" placeholder="PM 브리핑 텍스트가 자동 생성됩니다..."></textarea>
+
+        <!-- 3번 수정: 일반 화학동 7,8,9,13,14 차기 PM 예정 시간 / PM 시작 시간 표시 카드 -->
+        <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
+          <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🧪 일반 화학동 PM 현황 (화7, 화8, 화9, 화13, 화14)</span>
+            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">* PM 진행 시 시작 시각 표기</span>
+          </div>
+          <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -620,7 +628,7 @@
     </div>
   </div>
 
-  <!-- [탭 4] 화학동 주기 관리 -->
+  <!-- [탭 4] 화학동 주기 관리 (2번 수정: [분석] 탭 삭제, [시작 / 완료]만 제공) -->
   <div id="tab4" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -628,7 +636,7 @@
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
       <div style="font-size:12px; color:var(--text-secondary);">
-        💡 상태는 <strong>[시작 / 분석 / 완료]</strong>로 관리되며, 시간은 <strong>0분 / 30분</strong>으로 선택됩니다.
+        💡 상태는 <strong>[시작 / 완료]</strong>로 관리되며, 시간은 <strong>0분 / 30분</strong>으로 선택됩니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -802,17 +810,18 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v28')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v28')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v28')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v28')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v29')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v29')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v29')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v29')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v28')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v28')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v28')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v29')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v29')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v29')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
+let currentDateChoice = 'today'; // 'today' or 'tomorrow'
 
 function initFirebase() {
   const statusEl = document.getElementById('syncStatus');
@@ -859,13 +868,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v28', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v28', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v28', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v28', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v28', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v28', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v28', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v29', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v29', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v29', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v29', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v29', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v29', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v29', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -903,8 +912,83 @@ function formatDateOnly(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 1번 수정: 오늘/내일 퀵 버튼 UI 업데이트
+function updateDateToggleUI() {
+  const btnToday = document.getElementById('btnDateToday');
+  const btnTomorrow = document.getElementById('btnDateTomorrow');
+  if (!btnToday || !btnTomorrow) return;
+  if (currentDateChoice === 'tomorrow') {
+    btnToday.className = 'btn btn-sub btn-sm';
+    btnTomorrow.className = 'btn btn-sm';
+  } else {
+    btnToday.className = 'btn btn-sm';
+    btnTomorrow.className = 'btn btn-sub btn-sm';
+  }
+}
+
+// 1번 수정: 오늘 또는 내일 선택
+function selectQuickDay(choice) {
+  currentDateChoice = choice;
+  const now = new Date();
+  const target = new Date(now);
+  if (choice === 'tomorrow') {
+    target.setDate(target.getDate() + 1);
+  }
+  selectedDateStr = formatDateOnly(target);
+  updateDateToggleUI();
+  safeRenderAll();
+}
+
+// 3번 수정: 탭 1 브리핑 하단에 일반 화학동(화7, 8, 9, 13, 14) 현황 렌더링
+function renderTab1ChemStatus() {
+  const container = document.getElementById('tab1ChemStatusContainer');
+  if (!container) return;
+
+  const targetIds = ['화7', '화8', '화9', '화13', '화14'];
+  let html = '';
+
+  targetIds.forEach(id => {
+    const line = chemList.find(c => c.id === id);
+    if (!line) return;
+
+    const t = new Date(line.lastDone);
+    const isRunning = (line.status === '시작');
+
+    if (isRunning) {
+      const startKr = formatDateTimeKr(t);
+      html += `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <strong style="color: var(--text-primary); font-size: 13.5px;">${line.id}</strong>
+            <span class="badge badge-green">PM 진행중</span>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 11px;">PM 시작 시각:</div>
+          <div style="font-weight: 800; color: #15803d; font-size: 12px; margin-top: 1px;">${startKr}</div>
+        </div>
+      `;
+    } else {
+      const nextDue = new Date(t.getTime() + 72 * 3600000);
+      const dueKr = formatDateTimeKr(nextDue);
+      const isOverdue = new Date() >= nextDue;
+      html += `
+        <div style="background: ${isOverdue ? '#fffbeb' : '#f8fafc'}; border: 1px solid ${isOverdue ? '#fde68a' : '#e2e8f0'}; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <strong style="color: var(--text-primary); font-size: 13.5px;">${line.id}</strong>
+            <span class="badge ${isOverdue ? 'badge-yellow' : 'badge-sub'}">${isOverdue ? '주기도래' : '완료'}</span>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 11px;">차기 PM 예정:</div>
+          <div style="font-weight: 800; color: ${isOverdue ? 'var(--warning)' : 'var(--accent)'}; font-size: 12px; margin-top: 1px;">${dueKr}</div>
+        </div>
+      `;
+    }
+  });
+
+  container.innerHTML = html;
+}
+
 function safeRenderAll() {
   try { generateShareText(); } catch(e){ console.error("ShareText error", e); }
+  try { renderTab1ChemStatus(); } catch(e){ console.error("Tab1ChemStatus error", e); }
   try { renderWeeklyMatrix(); } catch(e){ console.error("Matrix error", e); }
   try { renderManualNotesList(); } catch(e){ console.error("Manual error", e); }
   try { renderChemList(); } catch(e){ console.error("ChemList error", e); }
@@ -917,17 +1001,15 @@ window.onload = function() {
   const today = new Date();
   selectedDateStr = formatDateOnly(today);
   lastCheckedDate = selectedDateStr;
+  currentDateChoice = 'today';
   
-  const tM = document.getElementById('targetMonthInput');
-  const tD = document.getElementById('targetDayInput');
   const mM = document.getElementById('manualMonthInput');
   const mD = document.getElementById('manualDayInput');
-  if (tM) tM.value = today.getMonth() + 1;
-  if (tD) tD.value = today.getDate();
   if (mM) mM.value = today.getMonth() + 1;
   if (mD) mD.value = today.getDate();
 
   initFirebase();
+  updateDateToggleUI();
   safeRenderAll();
 
   tick();
@@ -949,13 +1031,15 @@ function tick() {
   const currentTodayStr = formatDateOnly(now);
   if (lastCheckedDate !== currentTodayStr) {
     lastCheckedDate = currentTodayStr;
-    selectedDateStr = currentTodayStr;
-    const tM = document.getElementById('targetMonthInput');
-    const tD = document.getElementById('targetDayInput');
+    if (currentDateChoice === 'today') {
+      selectedDateStr = currentTodayStr;
+    } else if (currentDateChoice === 'tomorrow') {
+      const tmr = new Date(now);
+      tmr.setDate(tmr.getDate() + 1);
+      selectedDateStr = formatDateOnly(tmr);
+    }
     const mM = document.getElementById('manualMonthInput');
     const mD = document.getElementById('manualDayInput');
-    if (tM) tM.value = now.getMonth() + 1;
-    if (tD) tD.value = now.getDate();
     if (mM) mM.value = now.getMonth() + 1;
     if (mD) mD.value = now.getDate();
     safeRenderAll();
@@ -989,7 +1073,10 @@ function switchTab(t) {
   if (document.getElementById(t)) document.getElementById(t).classList.add('active');
 
   const now = new Date();
-  if (t === 'tab1') generateShareText();
+  if (t === 'tab1') {
+    generateShareText();
+    renderTab1ChemStatus();
+  }
   else if (t === 'tab2') renderWeeklyMatrix();
   else if (t === 'tab3') {
     renderActiveChemGauges(now);
@@ -1060,18 +1147,29 @@ function renderWeeklyMatrix() {
 
 function selectDayFromMatrix(dateStr) {
   selectedDateStr = dateStr;
+  const now = new Date();
+  const tmr = new Date(now);
+  tmr.setDate(tmr.getDate() + 1);
+
+  if (dateStr === formatDateOnly(now)) {
+    currentDateChoice = 'today';
+  } else if (dateStr === formatDateOnly(tmr)) {
+    currentDateChoice = 'tomorrow';
+  } else {
+    currentDateChoice = 'custom';
+  }
+  updateDateToggleUI();
+
   const d = new Date(dateStr + 'T00:00:00');
-  const tM = document.getElementById('targetMonthInput');
-  const tD = document.getElementById('targetDayInput');
   const mM = document.getElementById('manualMonthInput');
   const mD = document.getElementById('manualDayInput');
-  if (tM) tM.value = d.getMonth() + 1;
-  if (tD) tD.value = d.getDate();
   if (mM) mM.value = d.getMonth() + 1;
   if (mD) mD.value = d.getDate();
+
   renderWeeklyMatrix();
   generateShareText();
   renderElectroGauges(new Date());
+  renderTab1ChemStatus();
 }
 
 function renderManualNotesInMatrix(weekDates) {
@@ -1143,58 +1241,6 @@ function onEtchingChange(val) {
   generateShareText();
 }
 
-function moveTargetDay(delta) {
-  const cur = new Date(selectedDateStr + 'T00:00:00');
-  cur.setDate(cur.getDate() + delta);
-  selectedDateStr = formatDateOnly(cur);
-  
-  const tM = document.getElementById('targetMonthInput');
-  const tD = document.getElementById('targetDayInput');
-  const mM = document.getElementById('manualMonthInput');
-  const mD = document.getElementById('manualDayInput');
-  if (tM) tM.value = cur.getMonth() + 1;
-  if (tD) tD.value = cur.getDate();
-  if (mM) mM.value = cur.getMonth() + 1;
-  if (mD) mD.value = cur.getDate();
-
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
-}
-
-function onTargetDatePartChange() {
-  const cur = new Date(selectedDateStr + 'T00:00:00');
-  const y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
-  const m = document.getElementById('targetMonthInput').value;
-  const d = document.getElementById('targetDayInput').value;
-  selectedDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  
-  const mM = document.getElementById('manualMonthInput');
-  const mD = document.getElementById('manualDayInput');
-  if (mM) mM.value = m;
-  if (mD) mD.value = d;
-  
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
-}
-
-function setTargetToday() {
-  const now = new Date();
-  selectedDateStr = formatDateOnly(now);
-  const tM = document.getElementById('targetMonthInput');
-  const tD = document.getElementById('targetDayInput');
-  const mM = document.getElementById('manualMonthInput');
-  const mD = document.getElementById('manualDayInput');
-  if (tM) tM.value = now.getMonth() + 1;
-  if (tD) tD.value = now.getDate();
-  if (mM) mM.value = now.getMonth() + 1;
-  if (mD) mD.value = now.getDate();
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
-}
-
 function checkCustomLineInput(val) {
   const customInput = document.getElementById('manualCustomLineInput');
   if (val === 'CUSTOM') {
@@ -1264,7 +1310,7 @@ function renderManualNotesList() {
 
 function updateLiveTimesOnly(now) {
   chemList.forEach(line => {
-    const isRunning = (line.status === '시작' || line.status === '분석');
+    const isRunning = (line.status === '시작');
     if (!isRunning) return;
 
     const bar = document.getElementById(`chem_bar_${line.id}`);
@@ -1281,13 +1327,6 @@ function updateLiveTimesOnly(now) {
     bar.style.width = pct.toFixed(1) + '%';
     if (pctBadge) pctBadge.innerText = `${pct.toFixed(0)}%`;
 
-    let prodEstHtml = '';
-    if (line.status === '분석') {
-      const analStart = line.analyzingStartTime ? new Date(line.analyzingStartTime) : now;
-      const estProdTime = new Date(analStart.getTime() + 90 * 60000);
-      prodEstHtml = `<div style="color:var(--purple); font-weight:800; font-size:13px; margin-top:3px;">🎯 [분석중] 양산 예정 시각: <strong>${formatTimeKr(estProdTime.getHours(), estProdTime.getMinutes())}</strong> (분석/시편 확인 후)</div>`;
-    }
-
     if (elapsedMin < target12hMin) {
       const remainMin = Math.ceil(target12hMin - elapsedMin);
       const rH = Math.floor(remainMin / 60);
@@ -1298,7 +1337,6 @@ function updateLiveTimesOnly(now) {
           <strong style="color:var(--danger);">액이송(12H)까지 ${rH > 0 ? rH + '시간 ' : ''}${rM}분 남음</strong>
         </div>
         <div>💡 하단의 C/S 세척 기준에 맞춰 작업 진행 ➔ <strong>12시간 도래 시 액이송 시작</strong></div>
-        ${prodEstHtml}
       `;
     } else if (elapsedMin >= target12hMin && elapsedMin < 840) {
       const to14hMin = Math.max(0, Math.ceil(840 - elapsedMin));
@@ -1308,7 +1346,6 @@ function updateLiveTimesOnly(now) {
           <span>경과: <strong>${elapsedH}시간</strong></span>
         </div>
         <div>작업: <strong>액이송 시작 ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 시편 확인</strong> (${to14hMin}분 남음)</div>
-        ${prodEstHtml}
       `;
     } else {
       statusBox.innerHTML = `
@@ -1317,7 +1354,6 @@ function updateLiveTimesOnly(now) {
           <span>경과: <strong>${elapsedH}시간</strong></span>
         </div>
         <div>상태: 시편 이상 없음 확인 후 양산 진행 | PM 종료 시 <strong>[완료]</strong> 버튼을 눌러주세요.</div>
-        ${prodEstHtml}
       `;
     }
   });
@@ -1470,7 +1506,7 @@ function renderActiveChemGauges(now) {
   if (!container) return;
 
   const activeOrDueChems = chemList.filter(c => {
-    if (c.status === '시작' || c.status === '분석') return true;
+    if (c.status === '시작') return true;
     if (c.status === '완료') {
       const base = new Date(c.lastDone);
       if (!isNaN(base.getTime())) {
@@ -1527,20 +1563,16 @@ function renderActiveChemGauges(now) {
     const target12hMin = 720;
     const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
 
-    const isStart = (line.status === '시작');
-    const isAnal = (line.status === '분석');
-
     html += `
       <div class="gauge-box" id="gauge_card_${line.id}">
         <div class="gauge-top">
           <div>
             <strong style="font-size:15px; color:#0f172a;">${line.id} PM</strong>
-            <span class="badge ${isAnal ? 'badge-purple' : 'badge-blue'}" style="margin-left:4px;">${line.status}</span>
+            <span class="badge badge-blue" style="margin-left:4px;">${line.status}</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
             <div class="status-step-group">
-              <button class="status-step-btn ${isStart ? 'active-시작' : ''}" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
-              <button class="status-step-btn ${isAnal ? 'active-분석' : ''}" onclick="setChemStepStatusById('${line.id}', '분석')">분석</button>
+              <button class="status-step-btn active-시작" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
               <button class="status-step-btn" onclick="completeChemPM('${line.id}')">완료</button>
             </div>
             <span class="badge badge-blue" id="chem_pct_${line.id}">${pct.toFixed(0)}%</span>
@@ -1577,15 +1609,13 @@ function setChemStepStatusById(lineId, st) {
     const h = now.getHours();
     const min = now.getMinutes() >= 30 ? 30 : 0;
     line.lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-    delete line.analyzingStartTime;
-  } else if (st === '분석' && !line.analyzingStartTime) {
-    line.analyzingStartTime = new Date().toISOString();
   }
 
   syncDataToFirebase();
   renderChemList();
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
+  renderTab1ChemStatus();
   generateShareText();
 }
 
@@ -1596,12 +1626,12 @@ function completeChemPM(lineId) {
   
   line.status = '완료';
   line.lastDone = new Date().toISOString();
-  delete line.analyzingStartTime;
 
   syncDataToFirebase();
   renderChemList();
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
+  renderTab1ChemStatus();
   generateShareText();
 }
 
@@ -1888,16 +1918,16 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
+// 2번 수정: 탭 4 화학동 주기 관리에서 [분석] 삭제하고 [시작 / 완료]만 렌더링
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
   container.innerHTML = '';
 
-  const statusList = ['시작', '분석', '완료'];
+  const statusList = ['시작', '완료'];
 
   chemList.forEach((c, idx) => {
-    if (c.status === '대기') c.status = '완료';
-    if (c.status === '메이크업') c.status = '시작';
+    if (c.status === '대기' || c.status === '분석') c.status = '시작';
 
     const isHwa8 = c.id === '화8';
     const card = document.createElement('div');
@@ -1973,9 +2003,11 @@ function updateChemFromParts(idx) {
   chemList[idx].lastDone = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
   syncDataToFirebase();
   renderActiveChemGauges(new Date());
+  renderTab1ChemStatus();
   generateShareText();
 }
 
+// 2번 수정: 시작과 완료 2단계로만 동작
 function setChemStepStatus(idx, st) {
   chemList[idx].status = st;
 
@@ -1987,15 +2019,13 @@ function setChemStepStatus(idx, st) {
     const h = now.getHours();
     const min = now.getMinutes() >= 30 ? 30 : 0;
     chemList[idx].lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-    delete chemList[idx].analyzingStartTime;
-  } else if (st === '분석' && !chemList[idx].analyzingStartTime) {
-    chemList[idx].analyzingStartTime = new Date().toISOString();
   }
 
   syncDataToFirebase();
   renderChemList();
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
+  renderTab1ChemStatus();
   generateShareText();
 }
 
@@ -2005,6 +2035,7 @@ function setChemNoteTag(idx, tag) {
   if (noteInput) noteInput.value = tag;
   syncDataToFirebase();
   renderActiveChemGauges(new Date());
+  renderTab1ChemStatus();
   generateShareText();
 }
 
@@ -2016,7 +2047,7 @@ function updateChemRealtimeStatuses() {
     const t = new Date(c.lastDone);
     if (isNaN(t.getTime())) { box.innerText = '일시 확인 필요'; return; }
 
-    const isRunning = (c.status === '시작' || c.status === '분석');
+    const isRunning = (c.status === '시작');
 
     if (isRunning) {
       const elapsedH = (now - t) / 3600000;
@@ -2063,6 +2094,7 @@ function setChemNow(idx) {
 
   syncDataToFirebase();
   renderActiveChemGauges(new Date());
+  renderTab1ChemStatus();
   generateShareText();
 }
 
@@ -2131,7 +2163,6 @@ function updatePulseDate(idx, val) {
   renderPulseTable();
 }
 
-// 펄스(전9, 전20, 전21) 및 전14: 산탈지.산세.박리 반영
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -2198,12 +2229,11 @@ function generateShareText() {
 
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
-    const isRunning = (c.status === '시작' || c.status === '분석');
+    const isRunning = (c.status === '시작');
 
     if (isRunning) {
       const timeKr = formatTimeKr(t.getHours(), t.getMinutes());
-      const statusLabel = (c.status === '분석') ? '분석 진행중' : 'PM 진행중';
-      ongoing.push(`-${c.id} ${timeKr} ${statusLabel}`);
+      ongoing.push(`-${c.id} ${timeKr} PM 진행중`);
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const manualChemNote = getNote(c.id);
