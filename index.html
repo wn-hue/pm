@@ -100,7 +100,7 @@
   }
   .live-clock-box span { font-size: 15px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
-  /* 메인 탭 네비게이션 */
+  /* 메인 탭 네비게이션 (6개 탭 구조) */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -158,7 +158,7 @@
     flex-wrap: wrap;
   }
 
-  /* 테이블 스타일 (확장 및 가독성 극대화) */
+  /* 테이블 스타일 (100% Full-Width 확장 뷰) */
   .table-responsive {
     width: 100%;
     overflow-x: auto;
@@ -237,9 +237,9 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 4px 9px; font-size: 11.5px; }
 
-  /* 4번째 탭 브리핑 영역 */
+  /* 브리핑 영역 (독립 탭) */
   .briefing-box {
-    max-width: 720px;
+    max-width: 760px;
     width: 100%;
     margin: 0 auto;
     display: flex;
@@ -248,14 +248,14 @@
   }
   .report-area {
     width: 100%;
-    min-height: 380px;
-    height: 440px;
+    min-height: 420px;
+    height: 460px;
     background: #f8fafc;
     color: #0f172a;
     font-family: Consolas, "Courier New", monospace;
     font-size: 13.5px;
     line-height: 1.6;
-    padding: 14px;
+    padding: 16px;
     border-radius: 8px;
     border: 1px solid var(--border);
     resize: vertical;
@@ -378,7 +378,7 @@
 <body>
 
 <div class="container">
-  <!-- 펄스 건욕 4주 전 리마인드 배너 -->
+  <!-- 펄스 건욕 4주 전 알림 배너 -->
   <div id="remindBanner" class="remind-banner">
     <div id="remindBannerText">🔔 <strong>[펄스 건욕 4주 전 알림]</strong> 건욕 리마인드 일정이 도래했습니다.</div>
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
@@ -401,19 +401,19 @@
     </div>
   </header>
 
-  <!-- 메인 탭 네비게이션 (6개 탭 구조) -->
+  <!-- 1번 수정: 탭 1을 브리핑 공유로 변경, 전체 6개 탭 구성 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
-      🗓️ 주간 PM 매트릭스
+      📋 오늘 PM 브리핑 & 공유
     </button>
     <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
-      ⚡ 자동 진척 게이지
+      🗓️ 주간 PM 매트릭스
     </button>
     <button class="nav-btn" id="tabBtn3" onclick="switchTab('tab3')">
-      🧪 화학동 주기 관리
+      ⚡ 자동 진척 게이지
     </button>
     <button class="nav-btn" id="tabBtn4" onclick="switchTab('tab4')">
-      📋 오늘 PM 브리핑 & 공유
+      🧪 화학동 주기 관리
     </button>
     <button class="nav-btn" id="tabBtn5" onclick="switchTab('tab5')">
       ✏️ 라인별 특이사항 수동 입력
@@ -423,8 +423,40 @@
     </button>
   </div>
 
-  <!-- [탭 1] 주간 PM 매트릭스 (100% Full-Width 대형 뷰 / 잘림 현상 원천 해결) -->
+  <!-- [탭 1] 1번 수정: 오늘 PM 브리핑 & 공유 (첫 화면으로 배치) -->
   <div id="tab1" class="tab-pane active">
+    <div class="briefing-box">
+      <div class="card">
+        <div class="card-title">
+          <span id="briefingTitle" style="font-size:16px;">오늘 PM 브리핑</span>
+          <span class="badge badge-blue">익일 08:30 이전 취합</span>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:4px;">
+            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(-1)" title="이전 날">◀</button>
+            <input type="number" id="targetMonthInput" min="1" max="12" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">월
+            <input type="number" id="targetDayInput" min="1" max="31" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">일
+            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(1)" title="다음 날">▶</button>
+            <button class="btn btn-sub btn-sm" onclick="setTargetToday()">오늘</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px;">
+            <span style="font-size:12px; color:var(--text-secondary);">패스 기준:</span>
+            <input type="text" id="passTimeInput" value="7시패스" style="width:85px; padding:5px 8px;" oninput="generateShareText()">
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sub btn-sm" onclick="generateShareText()">새로고침</button>
+            <button class="btn btn-sm" onclick="copyShareText()">텍스트 복사</button>
+          </div>
+        </div>
+
+        <textarea id="shareTextOutput" class="report-area" placeholder="PM 브리핑 텍스트가 자동 생성됩니다..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- [탭 2] 주간 PM 매트릭스 (100% Full-Width 대형 뷰) -->
+  <div id="tab2" class="tab-pane">
     <div class="card">
       <div class="card-title">
         <div style="display:flex; align-items:center; gap:8px;">
@@ -436,7 +468,7 @@
             <span>⚡ <strong>금일 에칭 PM:</strong></span>
             <input type="text" id="todayEtchingInput" value="에3.4" style="width:70px; padding:3px 6px; font-weight:700; color:var(--accent); font-size:12.5px;" oninput="onEtchingChange(this.value)">
           </div>
-          <button class="btn btn-sub btn-sm" onclick="switchTab('tab4')">📋 오늘 브리핑 보기</button>
+          <button class="btn btn-sub btn-sm" onclick="switchTab('tab1')">📋 브리핑 공유로 이동</button>
         </div>
       </div>
 
@@ -458,11 +490,11 @@
             <!-- 1. 데버링 / 고압수세 -->
             <tr>
               <td style="background:#fafafa;"><strong>데버링 /<br>고압수세</strong></td>
-              <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
+              <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span> <span id="custom_wash1"></span></td>
               <td>-</td>
-              <td><strong>데버링 3</strong></td>
+              <td><strong>데버링 3</strong> <span id="custom_deb3"></span></td>
               <td>-</td>
-              <td><strong>데버링 2</strong></td>
+              <td><strong>데버링 2</strong> <span id="custom_deb2"></span></td>
               <td>-</td>
               <td>-</td>
             </tr>
@@ -493,13 +525,13 @@
             <!-- 3. 일반 화학동 -->
             <tr style="background:#f0fdf4;">
               <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:11px; color:var(--text-secondary);">(72H 주기)</span></td>
-              <td id="chem_cell_1">-</td>
-              <td id="chem_cell_2">-</td>
-              <td id="chem_cell_3">-</td>
-              <td id="chem_cell_4">-</td>
-              <td id="chem_cell_5">-</td>
-              <td id="chem_cell_6">-</td>
-              <td id="chem_cell_7">-</td>
+              <td><div id="chem_cell_1">-</div><span id="custom_화13_mon"></span></td>
+              <td><div id="chem_cell_2">-</div></td>
+              <td><div id="chem_cell_3">-</div></td>
+              <td><div id="chem_cell_4">-</div></td>
+              <td><div id="chem_cell_5">-</div></td>
+              <td><div id="chem_cell_6">-</div></td>
+              <td><div id="chem_cell_7">-</div></td>
             </tr>
             <!-- 4. 블랙홀 -->
             <tr style="background:#faf5ff;">
@@ -549,8 +581,8 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 -->
-  <div id="tab2" class="tab-pane">
+  <!-- [탭 3] 자동 진척 게이지 -->
+  <div id="tab3" class="tab-pane">
     <div class="grid-2col-even">
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
@@ -589,8 +621,8 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 -->
-  <div id="tab3" class="tab-pane">
+  <!-- [탭 4] 화학동 주기 관리 -->
+  <div id="tab4" class="tab-pane">
     <div class="card">
       <div class="card-title">
         <span>🧪 화학동 72시간 주기 & 화8 48시간 빌드업 설정</span>
@@ -603,39 +635,7 @@
     </div>
   </div>
 
-  <!-- [탭 4] 오늘 PM 브리핑 & 공유 (독립 탭 / DOM 충돌 완전 제거) -->
-  <div id="tab4" class="tab-pane">
-    <div class="briefing-box">
-      <div class="card">
-        <div class="card-title">
-          <span id="briefingTitle" style="font-size:16px;">오늘 PM 브리핑</span>
-          <span class="badge badge-blue">익일 08:30 이전 취합</span>
-        </div>
-
-        <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="display:flex; align-items:center; gap:3px;">
-            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(-1)" title="이전 날">◀</button>
-            <input type="number" id="targetMonthInput" min="1" max="12" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">월
-            <input type="number" id="targetDayInput" min="1" max="31" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">일
-            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(1)" title="다음 날">▶</button>
-            <button class="btn btn-sub btn-sm" onclick="setTargetToday()">오늘</button>
-          </div>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <span style="font-size:12px; color:var(--text-secondary);">패스 기준:</span>
-            <input type="text" id="passTimeInput" value="7시패스" style="width:85px; padding:5px 8px;" oninput="generateShareText()">
-          </div>
-          <div style="display:flex; gap:6px;">
-            <button class="btn btn-sub btn-sm" onclick="generateShareText()">새로고침</button>
-            <button class="btn btn-sm" onclick="copyShareText()">텍스트 복사</button>
-          </div>
-        </div>
-
-        <textarea id="shareTextOutput" class="report-area" placeholder="PM 브리핑 텍스트가 자동 생성됩니다..."></textarea>
-      </div>
-    </div>
-  </div>
-
-  <!-- [탭 5] 라인별 특이사항 수동 입력 -->
+  <!-- [탭 5] 2번 수정: 라인별 특이사항 수동 입력 (전체 라인 optgroup 추가 & 직접 입력 지원) -->
   <div id="tab5" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -648,26 +648,62 @@
           <input type="number" id="manualMonthInput" min="1" max="12" style="width:42px; text-align:center; padding:5px;">월
           <input type="number" id="manualDayInput" min="1" max="31" style="width:42px; text-align:center; padding:5px;">일
         </div>
+        
+        <!-- 2번 수정: 빠짐없는 전체 라인 선택 목록 -->
         <div>
-          <select id="manualLineSelect" style="width:120px;">
-            <option value="디스미어 8">디스미어 8</option>
-            <option value="디스미어 10">디스미어 10</option>
-            <option value="디스미어 11">디스미어 11</option>
-            <option value="디스미어 15">디스미어 15</option>
-            <option value="전기동 9">전기동 9</option>
-            <option value="전기동 13">전기동 13</option>
-            <option value="전기동 14">전기동 14</option>
-            <option value="전기동 16">전기동 16</option>
-            <option value="전기동 17">전기동 17</option>
-            <option value="전기동 20">전기동 20</option>
-            <option value="전기동 21">전기동 21</option>
-            <option value="화7">화7</option>
-            <option value="화8">화8</option>
-            <option value="화9">화9</option>
-            <option value="화13">화13</option>
-            <option value="화14">화14</option>
+          <select id="manualLineSelect" onchange="checkCustomLineInput(this.value)" style="width:150px; font-weight:700;">
+            <optgroup label="데버링 / 고압수세">
+              <option value="고압수세 1">고압수세 1</option>
+              <option value="데버링 2">데버링 2</option>
+              <option value="데버링 3">데버링 3</option>
+            </optgroup>
+            <optgroup label="에칭">
+              <option value="에3.4">에3.4 (에칭)</option>
+            </optgroup>
+            <optgroup label="디스미어">
+              <option value="디스미어 6">디스미어 6</option>
+              <option value="디스미어 7">디스미어 7</option>
+              <option value="디스미어 8">디스미어 8</option>
+              <option value="디스미어 9">디스미어 9</option>
+              <option value="디스미어 10">디스미어 10</option>
+              <option value="디스미어 11">디스미어 11</option>
+              <option value="디스미어 12">디스미어 12</option>
+              <option value="디스미어 15">디스미어 15</option>
+            </optgroup>
+            <optgroup label="일반 화학동">
+              <option value="화7">화7</option>
+              <option value="화8">화8</option>
+              <option value="화9">화9</option>
+              <option value="화13">화13</option>
+              <option value="화14">화14</option>
+            </optgroup>
+            <optgroup label="블랙홀 (정기PM)">
+              <option value="화10">화10</option>
+              <option value="화11">화11</option>
+              <option value="화12">화12</option>
+            </optgroup>
+            <optgroup label="전기동">
+              <option value="전기동 9">전기동 9 (펄스)</option>
+              <option value="전기동 11">전기동 11</option>
+              <option value="전기동 12">전기동 12</option>
+              <option value="전기동 13">전기동 13</option>
+              <option value="전기동 14">전기동 14</option>
+              <option value="전기동 15">전기동 15</option>
+              <option value="전기동 16">전기동 16</option>
+              <option value="전기동 17">전기동 17</option>
+              <option value="전기동 18">전기동 18</option>
+              <option value="전기동 20">전기동 20 (펄스)</option>
+              <option value="전기동 21">전기동 21 (펄스)</option>
+              <option value="전기동 22">전기동 22</option>
+              <option value="MSF 전기동">MSF 전기동</option>
+            </optgroup>
+            <optgroup label="기타">
+              <option value="CUSTOM">[직접 입력]</option>
+            </optgroup>
           </select>
+          <input type="text" id="manualCustomLineInput" placeholder="라인명 직접입력" style="display:none; width:120px; margin-left:4px;">
         </div>
+
         <div style="flex:1; min-width:180px;">
           <input type="text" id="manualContentInput" placeholder="직접 입력 또는 아래 빠른 태그 클릭" style="width:100%;">
         </div>
@@ -768,15 +804,14 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-// 일관된 v25 키로 일괄 통합 (불일치 버그 해결)
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v25')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v25')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v25')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v25')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v26')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v26')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v26')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v26')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v25')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v25')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v25')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v26')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v26')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v26')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -826,13 +861,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v25', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v25', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v25', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v25', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v25', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v25', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v25', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v26', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v26', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v26', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v26', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v26', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v26', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v26', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -871,13 +906,13 @@ function formatDateOnly(d) {
 }
 
 function safeRenderAll() {
+  try { generateShareText(); } catch(e){ console.error("ShareText error", e); }
   try { renderWeeklyMatrix(); } catch(e){ console.error("Matrix error", e); }
   try { renderManualNotesList(); } catch(e){ console.error("Manual error", e); }
   try { renderChemList(); } catch(e){ console.error("ChemList error", e); }
   try { renderPulseTable(); } catch(e){ console.error("Pulse error", e); }
   try { renderActiveChemGauges(new Date()); } catch(e){ console.error("ChemGauges error", e); }
   try { renderElectroGauges(new Date()); } catch(e){ console.error("ElecGauges error", e); }
-  try { generateShareText(); } catch(e){ console.error("ShareText error", e); }
 }
 
 window.onload = function() {
@@ -939,6 +974,7 @@ function formatClock(d) {
   return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 }
 
+// 1번 수정: 6개 탭 전환 매핑
 function switchTab(t) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -956,13 +992,13 @@ function switchTab(t) {
   if (document.getElementById(t)) document.getElementById(t).classList.add('active');
 
   const now = new Date();
-  if (t === 'tab1') renderWeeklyMatrix();
-  else if (t === 'tab2') {
+  if (t === 'tab1') generateShareText();
+  else if (t === 'tab2') renderWeeklyMatrix();
+  else if (t === 'tab3') {
     renderActiveChemGauges(now);
     renderElectroGauges(now);
   }
-  else if (t === 'tab3') renderChemList();
-  else if (t === 'tab4') generateShareText();
+  else if (t === 'tab4') renderChemList();
   else if (t === 'tab5') renderManualNotesList();
   else if (t === 'tab6') renderPulseTable();
 }
@@ -1041,6 +1077,7 @@ function selectDayFromMatrix(dateStr) {
   renderElectroGauges(new Date());
 }
 
+// 2번 수정: 모든 라인의 수동 메모를 매트릭스에 매핑
 function renderManualNotesInMatrix(weekDates) {
   document.querySelectorAll('[id^="custom_"]').forEach(el => el.innerHTML = '');
 
@@ -1049,24 +1086,33 @@ function renderManualNotesInMatrix(weekDates) {
     if (!isInWeek) return;
 
     let targetId = '';
-    if (item.line === '디스미어 8') targetId = 'custom_des8';
-    else if (item.line === '디스미어 10') targetId = 'custom_des10';
-    else if (item.line === '디스미어 11') targetId = 'custom_des11';
-    else if (item.line === '디스미어 15') targetId = 'custom_des15';
-    else if (item.line === '디스미어 9') targetId = 'custom_des9';
-    else if (item.line === '디스미어 6') targetId = 'custom_des6';
-    else if (item.line === '디스미어 12') targetId = 'custom_des12';
-    else if (item.line === '디스미어 7') targetId = 'custom_des7';
-    else if (item.line.includes('전기동 9') || item.line === '전9') targetId = 'custom_전9';
-    else if (item.line.includes('전기동 13') || item.line === '전13') targetId = 'custom_전13';
-    else if (item.line.includes('전기동 14') || item.line === '전14') targetId = 'custom_전14';
-    else if (item.line.includes('전기동 16') || item.line === '전16') targetId = 'custom_전16';
-    else if (item.line.includes('전기동 17') || item.line === '전17') targetId = 'custom_전17';
-    else if (item.line.includes('전기동 20') || item.line === '전20') targetId = 'custom_전20';
-    else if (item.line.includes('전기동 21') || item.line === '전21') targetId = 'custom_전21';
-    else if (item.line.includes('화12')) targetId = 'custom_화12';
-    else if (item.line.includes('화11')) targetId = 'custom_화11';
-    else if (item.line.includes('화10')) targetId = 'custom_화10';
+    const l = item.line;
+    if (l.includes('고압수세 1') || l.includes('고압수세1')) targetId = 'custom_wash1';
+    else if (l.includes('데버링 3') || l.includes('데3')) targetId = 'custom_deb3';
+    else if (l.includes('데버링 2') || l.includes('데2')) targetId = 'custom_deb2';
+    else if (l.includes('디스미어 8') || l === '디8') targetId = 'custom_des8';
+    else if (l.includes('디스미어 10') || l === '디10') targetId = 'custom_des10';
+    else if (l.includes('디스미어 11') || l === '디11') targetId = 'custom_des11';
+    else if (l.includes('디스미어 15') || l === '디15') targetId = 'custom_des15';
+    else if (l.includes('디스미어 9') || l === '디9') targetId = 'custom_des9';
+    else if (l.includes('디스미어 6') || l === '디6') targetId = 'custom_des6';
+    else if (l.includes('디스미어 12') || l === '디12') targetId = 'custom_des12';
+    else if (l.includes('디스미어 7') || l === '디7') targetId = 'custom_des7';
+    else if (l.includes('전기동 9') || l === '전9') targetId = 'custom_전9';
+    else if (l.includes('전기동 11') || l === '전11') targetId = 'custom_전11';
+    else if (l.includes('전기동 12') || l === '전12') targetId = 'custom_전12';
+    else if (l.includes('전기동 13') || l === '전13') targetId = 'custom_전13';
+    else if (l.includes('전기동 14') || l === '전14') targetId = 'custom_전14';
+    else if (l.includes('전기동 15') || l === '전15') targetId = 'custom_전15';
+    else if (l.includes('전기동 16') || l === '전16') targetId = 'custom_전16';
+    else if (l.includes('전기동 17') || l === '전17') targetId = 'custom_전17';
+    else if (l.includes('전기동 18') || l === '전18') targetId = 'custom_전18';
+    else if (l.includes('전기동 20') || l === '전20') targetId = 'custom_전20';
+    else if (l.includes('전기동 21') || l === '전21') targetId = 'custom_전21';
+    else if (l.includes('전기동 22') || l === '전22') targetId = 'custom_전22';
+    else if (l.includes('화12')) targetId = 'custom_화12';
+    else if (l.includes('화11')) targetId = 'custom_화11';
+    else if (l.includes('화10')) targetId = 'custom_화10';
 
     if (targetId) {
       const el = document.getElementById(targetId);
@@ -1153,13 +1199,34 @@ function setTargetToday() {
   renderElectroGauges(new Date());
 }
 
+// 2번 수정: [직접 입력] 선택 시 커스텀 인풋창 표시 토글
+function checkCustomLineInput(val) {
+  const customInput = document.getElementById('manualCustomLineInput');
+  if (val === 'CUSTOM') {
+    customInput.style.display = 'inline-block';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+  }
+}
+
+// 2번 수정: 전체 라인 등록 지원
 function addManualNote() {
   const cur = new Date(selectedDateStr + 'T00:00:00');
   const y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
   const m = document.getElementById('manualMonthInput').value;
   const d = document.getElementById('manualDayInput').value;
   const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const line = document.getElementById('manualLineSelect').value;
+  
+  let line = document.getElementById('manualLineSelect').value;
+  if (line === 'CUSTOM') {
+    line = document.getElementById('manualCustomLineInput').value.trim();
+    if (!line) {
+      alert('직접 입력할 라인명을 입력해주세요.');
+      return;
+    }
+  }
+
   const text = document.getElementById('manualContentInput').value.trim();
 
   if (!m || !d || !text) {
@@ -1203,7 +1270,6 @@ function renderManualNotesList() {
 
 // 1초 단위 실시간 자동 갱신
 function updateLiveTimesOnly(now) {
-  // 화학동 진행 갱신
   chemList.forEach(line => {
     const isRunning = (line.status === '시작' || line.status === '분석');
     if (!isRunning) return;
@@ -1263,7 +1329,6 @@ function updateLiveTimesOnly(now) {
     }
   });
 
-  // 전기동 진행 갱신
   const day = new Date(selectedDateStr + 'T00:00:00').getDay();
   let todayElecLines = [];
   if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
@@ -1278,7 +1343,6 @@ function updateLiveTimesOnly(now) {
     if (isCompleted) return;
 
     if (line.isPulse) {
-      // 펄스 라인 4단계 자동 시간 계산 및 스텝 자동 체크 갱신
       const pData = pulseProcessFlags[line.name];
       const box = document.getElementById(`pulse_status_detail_${line.name}`);
       const bar = document.getElementById(`pulse_bar_${line.name}`);
@@ -1288,7 +1352,6 @@ function updateLiveTimesOnly(now) {
       const curH = pData.h !== undefined ? pData.h : 14;
       const curM = pData.m !== undefined ? pData.m : 0;
       
-      // selectedDateStr 기준으로 앵커링하여 날짜 경과 시에도 안정적 계산
       const baseD = new Date(selectedDateStr + 'T00:00:00');
       const t0 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), curH, curM, 0);
 
@@ -1460,7 +1523,7 @@ function renderActiveChemGauges(now) {
           </div>
           <div style="font-size:12.5px; color:#78350f;">
             직전 완료: <strong>${formatDateTimeKr(startTime)}</strong> ➔ PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong><br>
-            💡 위 <strong>[PM 시작]</strong> 버튼을 누르면 시작 일시가 <strong>현재 시각</strong>으로 자동 갱신되며 탭3과 연동됩니다.
+            💡 위 <strong>[PM 시작]</strong> 버튼을 누르면 시작 일시가 <strong>현재 시각</strong>으로 자동 갱신되며 탭4와 연동됩니다.
           </div>
         </div>
       `;
@@ -1969,7 +2032,7 @@ function updateChemRealtimeStatuses() {
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const remainH = (nextDue - now) / 3600000;
-      let html = `다음 PM(72H): <strong>${formatDateTimeKr(nextDue)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '<span style="color:var(--danger); font-weight:700;">주기 도래 (탭2 확인)</span>'})`;
+      let html = `다음 PM(72H): <strong>${formatDateTimeKr(nextDue)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '<span style="color:var(--danger); font-weight:700;">주기 도래 (탭3 확인)</span>'})`;
 
       if (c.id === '화8') {
         const buildupLimit = new Date(t.getTime() + 48 * 3600000);
@@ -2097,7 +2160,7 @@ function generateShareText() {
   let debarr = '';
   let wash = '';
   const etchingInput = document.getElementById('todayEtchingInput');
-  let etching = etchingInput ? etchingInput.value.trim() : '에3.4';
+  let etching = (etchingInput ? etchingInput.value.trim() : '에3.4') + getNote('에3.4');
   let desmear = [];
   let blackhole = '';
   let electro = [];
@@ -2105,7 +2168,7 @@ function generateShareText() {
   let ongoing = [];
 
   if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) {
-    wash = '고압수세 1라인';
+    wash = '고압수세 1라인' + getNote('고압수세');
   }
 
   if (day === 1) {
@@ -2119,7 +2182,7 @@ function generateShareText() {
     desmear.push(`디9 기본PM${getNote('디스미어 9')}`, `디6 기본PM${getNote('디스미어 6')}`);
     electro.push(`전18 기본PM (${pass})${getNote('전기동 18')}`, `전22 기본PM (${pass})${getNote('전기동 22')}`);
   } else if (day === 3) {
-    debarr = '데3';
+    debarr = '데3' + getNote('데버링 3');
     desmear.push(`디12 기본PM${getNote('디스미어 12')}`);
     blackhole = `화11 정기PM${getNote('화11')}`;
     electro.push(`전15 기본PM (${pass})${getNote('전기동 15')}`, `전20 기본PM (${pass})${getNote('전기동 20')}`);
@@ -2127,7 +2190,7 @@ function generateShareText() {
     desmear.push(`디7 기본PM${getNote('디스미어 7')}`);
     electro.push(`전11 기본PM (${pass})${getNote('전기동 11')}`, `전14 유산동 (${pass})${getNote('전기동 14')}`, `전17 유산동 (${pass})${getNote('전기동 17')}`);
   } else if (day === 5) {
-    debarr = '데2';
+    debarr = '데2' + getNote('데버링 2');
     desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
     blackhole = `화10 정기PM${getNote('화10')}`;
     if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 유산동 (${pass})${getNote('전기동 12')}`);
