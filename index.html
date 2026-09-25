@@ -54,6 +54,7 @@
     font-size: 12.5px;
     color: #86198f;
   }
+  .remind-banner strong { font-weight: 800; }
   .remind-close-btn {
     background: none;
     border: none;
@@ -303,7 +304,7 @@
   .status-step-btn {
     border: none;
     background: transparent;
-    padding: 3px 8px;
+    padding: 4px 10px;
     font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary);
@@ -315,21 +316,37 @@
   .status-step-btn.active-분석 { background: var(--purple); color: #fff; }
   .status-step-btn.active-완료 { background: var(--success); color: #fff; }
 
-  .pulse-step-btn {
-    border: 1px solid var(--border);
-    background: #fff;
-    padding: 2px 6px;
+  /* 펄스 자동 단계 스텝 인디케이터 스타일 */
+  .pulse-step-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .pulse-step-item {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: 5px;
+    padding: 4px 6px;
     font-size: 10.5px;
+    text-align: center;
     font-weight: 700;
     color: var(--text-secondary);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    transition: 0.2s;
   }
-  .pulse-step-btn.active {
-    background: var(--purple);
-    color: #fff;
-    border-color: var(--purple);
+  .pulse-step-item.done {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: var(--success);
+  }
+  .pulse-step-item.active {
+    background: #f3e8ff;
+    border-color: #c084fc;
+    color: var(--purple);
+    box-shadow: 0 0 0 1px var(--purple);
   }
 
   @media (max-width: 768px) {
@@ -343,6 +360,7 @@
     .briefing-control-row > div { width: 100%; }
     .briefing-btn-group { text-align: right; width: 100%; }
     .report-area { min-height: 250px; height: 260px; font-size: 12px; }
+    .pulse-step-container { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -357,7 +375,7 @@
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 실시간 통합 모니터링</h1>
-      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 · 펄스 4단계 공정 (총 6H) & 일반 더미</p>
+      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 · 펄스 4단계 자동 공정 (총 6H) & 일반 더미</p>
     </div>
     <div class="header-right">
       <div id="syncStatus" class="sync-status-badge">
@@ -538,7 +556,7 @@
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
-            <span>🧪 1. 일반 화학동 진행 진척 게이지 (12시간 액이송 기준)</span>
+            <span>🧪 1. 일반 화학동 진행 진척 (12시간 액이송 기준)</span>
             <span class="badge badge-blue">진행 라인 자동 연동</span>
           </div>
 
@@ -560,7 +578,10 @@
         <div class="card">
           <div class="card-title">
             <span>⚡ 2. 전기동 PM 자동 진척 게이지</span>
-            <span class="badge badge-blue" id="elecTodayLinesBadge">전기동</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="badge badge-blue" id="elecTodayLinesBadge">전기동</span>
+              <button class="btn btn-sub btn-sm" id="btnRestoreElec" style="display:none; padding:2px 6px; font-size:10.5px;" onclick="restoreCompletedElec()">복구</button>
+            </div>
           </div>
 
           <div id="elecGaugesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
@@ -705,16 +726,19 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v20')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v20')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v20')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v20')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v21')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v21')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v21')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v21')) || {};
 
-// 전기동 더미/펄스 공정 플래그
-let elecDummyFlags = JSON.parse(localStorage.getItem('elec_dummy_flags_v20')) || {};
-let pulseProcessFlags = JSON.parse(localStorage.getItem('pulse_process_flags_v20')) || {};
+let elecDummyFlags = JSON.parse(localStorage.getItem('elec_dummy_flags_v21')) || {};
+let pulseProcessFlags = JSON.parse(localStorage.getItem('pulse_process_flags_v21')) || {};
+
+// 2번 수정: 전기동 완료 처리 플래그 (완료 시 진척창에서 제외)
+let elecCompletedFlags = JSON.parse(localStorage.getItem('elec_completed_flags_v21')) || {};
 
 let selectedDateStr = '2026-09-25';
+let lastCheckedDate = '';
 
 function initFirebase() {
   const statusEl = document.getElementById('syncStatus');
@@ -741,6 +765,7 @@ function initFirebase() {
         if (remoteData.equipWorkFlags) equipWorkFlags = remoteData.equipWorkFlags;
         if (remoteData.elecDummyFlags) elecDummyFlags = remoteData.elecDummyFlags;
         if (remoteData.pulseProcessFlags) pulseProcessFlags = remoteData.pulseProcessFlags;
+        if (remoteData.elecCompletedFlags) elecCompletedFlags = remoteData.elecCompletedFlags;
 
         renderWeeklyMatrix();
         renderManualNotesList();
@@ -759,12 +784,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v20', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v20', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v20', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v20', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v20', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v20', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('chem_data_v21', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v21', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v21', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v21', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v21', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v21', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v21', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -774,6 +800,7 @@ function syncDataToFirebase() {
       equipWorkFlags: equipWorkFlags,
       elecDummyFlags: elecDummyFlags,
       pulseProcessFlags: pulseProcessFlags,
+      elecCompletedFlags: elecCompletedFlags,
       lastUpdated: new Date().toISOString()
     }).catch(err => console.error("Firebase sync error:", err));
   }
@@ -804,6 +831,7 @@ function formatDateOnly(d) {
 window.onload = function() {
   const today = new Date();
   selectedDateStr = formatDateOnly(today);
+  lastCheckedDate = selectedDateStr;
   
   document.getElementById('targetMonthInput').value = today.getMonth() + 1;
   document.getElementById('targetDayInput').value = today.getDate();
@@ -823,8 +851,7 @@ window.onload = function() {
   setInterval(tick, 1000);
 };
 
-let hasAutoTriggered0430 = false;
-
+// 3번 수정: 00시(자정)에 날짜가 바뀌면 자동으로 당일 PM 일정으로 갱신
 function tick() {
   const now = new Date();
   document.getElementById('liveClock').innerText = formatClock(now);
@@ -832,17 +859,18 @@ function tick() {
   updateLiveTimesOnly(now);
   updateChemRealtimeStatuses();
 
-  if (now.getHours() === 4 && now.getMinutes() === 30) {
-    if (!hasAutoTriggered0430) {
-      hasAutoTriggered0430 = true;
-      selectedDateStr = formatDateOnly(now);
-      document.getElementById('targetMonthInput').value = now.getMonth() + 1;
-      document.getElementById('targetDayInput').value = now.getDate();
-      renderWeeklyMatrix();
-      generateShareText();
-    }
-  } else {
-    hasAutoTriggered0430 = false;
+  const currentTodayStr = formatDateOnly(now);
+  // 자정이 지나 날짜가 변경되었을 때 자동 갱신
+  if (lastCheckedDate !== currentTodayStr) {
+    lastCheckedDate = currentTodayStr;
+    selectedDateStr = currentTodayStr;
+    document.getElementById('targetMonthInput').value = now.getMonth() + 1;
+    document.getElementById('targetDayInput').value = now.getDate();
+    document.getElementById('manualMonthInput').value = now.getMonth() + 1;
+    document.getElementById('manualDayInput').value = now.getDate();
+    renderWeeklyMatrix();
+    generateShareText();
+    renderElectroGauges(now);
   }
 }
 
@@ -1098,7 +1126,7 @@ function renderManualNotesList() {
   });
 }
 
-// 1초 단위 텍스트 & 바 너비만 부드럽게 갱신 (선택창 포커스 끊김 방지)
+// 1초 단위 실시간 자동 갱신 (1번 펄스 자동 단계 계산 포함)
 function updateLiveTimesOnly(now) {
   // 화학동
   const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
@@ -1169,8 +1197,12 @@ function updateLiveTimesOnly(now) {
   else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
 
   todayElecLines.forEach(line => {
+    // 완료된 라인은 업데이트 스킵
+    const isCompleted = !!elecCompletedFlags[selectedDateStr + '_' + line.name];
+    if (isCompleted) return;
+
     if (line.isPulse) {
-      // 펄스 라인 4단계 공정 계산
+      // 1번 수정: 펄스 라인 4단계 자동 시간 계산 및 스텝 자동 체크 갱신
       const pData = pulseProcessFlags[line.name];
       const box = document.getElementById(`pulse_status_detail_${line.name}`);
       const bar = document.getElementById(`pulse_bar_${line.name}`);
@@ -1181,57 +1213,82 @@ function updateLiveTimesOnly(now) {
       const curM = pData.m !== undefined ? pData.m : 0;
       const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), curH, curM, 0);
 
-      const t1 = new Date(t0.getTime() + 90 * 60000);  // 0.5 DC 완료 (1.5H)
-      const t2 = new Date(t1.getTime() + 90 * 60000);  // 1.5 DC 완료 (3.0H)
-      const t3 = new Date(t2.getTime() + 90 * 60000);  // 펄스패스 완료 (4.5H)
-      const t4 = new Date(t3.getTime() + 90 * 60000);  // 펄스더미 완료/양산 (6.0H)
+      const t1 = new Date(t0.getTime() + 90 * 60000);  // 0.5 DC 더미 완료 (1.5H)
+      const t2 = new Date(t1.getTime() + 90 * 60000);  // 1.5 DC 더미 완료 (3.0H)
+      const t3 = new Date(t2.getTime() + 90 * 60000);  // 펄스대비 패스 완료 (4.5H)
+      const t4 = new Date(t3.getTime() + 90 * 60000);  // 펄스 더미 완료/양산 (6.0H)
 
-      // 진행률 계산 (총 360분 = 6시간)
       const totalElapsedMin = Math.max(0, (now - t0) / 60000);
       const totalPct = Math.min(100, Math.max(0, (totalElapsedMin / 360) * 100));
       bar.style.width = totalPct.toFixed(1) + '%';
       if (pctBadge) pctBadge.innerText = `${totalPct.toFixed(0)}%`;
 
-      let currentStepAuto = '';
+      let activeStepIdx = 0;
       let remainMinStep = 0;
-      let barColor = 'progress-fill warn';
+      let currentStepName = '';
 
+      // 4단계 스텝 박스 요소
+      const s1 = document.getElementById(`pulse_step_${line.name}_1`);
+      const s2 = document.getElementById(`pulse_step_${line.name}_2`);
+      const s3 = document.getElementById(`pulse_step_${line.name}_3`);
+      const s4 = document.getElementById(`pulse_step_${line.name}_4`);
+
+      // 1번 수정: 시간 경과에 따라 자동으로 다음 단계 체크 및 전환
       if (now < t1) {
-        currentStepAuto = '0.5 DC 더미';
+        activeStepIdx = 1;
+        currentStepName = '0.5 DC 더미';
         remainMinStep = Math.ceil((t1 - now) / 60000);
+        if (s1) s1.className = 'pulse-step-item active';
+        if (s2) s2.className = 'pulse-step-item';
+        if (s3) s3.className = 'pulse-step-item';
+        if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t1 && now < t2) {
-        currentStepAuto = '1.5 DC 더미';
+        activeStepIdx = 2;
+        currentStepName = '1.5 DC 더미';
         remainMinStep = Math.ceil((t2 - now) / 60000);
+        if (s1) s1.className = 'pulse-step-item done';
+        if (s2) s2.className = 'pulse-step-item active';
+        if (s3) s3.className = 'pulse-step-item';
+        if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t2 && now < t3) {
-        currentStepAuto = '펄스대비 패스';
+        activeStepIdx = 3;
+        currentStepName = '펄스대비 패스';
         remainMinStep = Math.ceil((t3 - now) / 60000);
-        barColor = 'progress-fill';
+        if (s1) s1.className = 'pulse-step-item done';
+        if (s2) s2.className = 'pulse-step-item done';
+        if (s3) s3.className = 'pulse-step-item active';
+        if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t3 && now < t4) {
-        currentStepAuto = '펄스 더미';
+        activeStepIdx = 4;
+        currentStepName = '펄스 더미';
         remainMinStep = Math.ceil((t4 - now) / 60000);
-        barColor = 'progress-fill alert';
+        if (s1) s1.className = 'pulse-step-item done';
+        if (s2) s2.className = 'pulse-step-item done';
+        if (s3) s3.className = 'pulse-step-item done';
+        if (s4) s4.className = 'pulse-step-item active';
       } else {
-        currentStepAuto = '광 확인 및 양산 가동';
+        activeStepIdx = 5;
+        currentStepName = '광 확인 및 양산 가동';
         remainMinStep = 0;
-        barColor = 'progress-fill done';
+        if (s1) s1.className = 'pulse-step-item done';
+        if (s2) s2.className = 'pulse-step-item done';
+        if (s3) s3.className = 'pulse-step-item done';
+        if (s4) s4.className = 'pulse-step-item done';
       }
-
-      bar.className = barColor;
 
       box.innerHTML = `
         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <span>현재 공정: <strong style="color:var(--purple);">[${pData.manualStep || currentStepAuto}]</strong></span>
-          <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '전체 더미/패스 완료'}</strong>
+          <span>현재 진행: <strong style="color:var(--purple);">[${currentStepName}]</strong></span>
+          <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '전체 4단계 완료'}</strong>
         </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">
-          ⏱️ <strong>단계별 일정:</strong> 0.5 DC(${formatTimeKr(t1.getHours(), t1.getMinutes())}) ➔ 1.5 DC(${formatTimeKr(t2.getHours(), t2.getMinutes())}) ➔ 펄스패스(${formatTimeKr(t3.getHours(), t3.getMinutes())}) ➔ 펄스더미(${formatTimeKr(t4.getHours(), t4.getMinutes())})
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
+          ⏱️ <strong>단계별 자동 일정:</strong> 0.5 DC(${formatTimeKr(t1.getHours(), t1.getMinutes())}) ➔ 1.5 DC(${formatTimeKr(t2.getHours(), t2.getMinutes())}) ➔ 펄스패스(${formatTimeKr(t3.getHours(), t3.getMinutes())}) ➔ 펄스더미(${formatTimeKr(t4.getHours(), t4.getMinutes())})
         </div>
         <div style="color:var(--success); font-weight:800; font-size:12.5px; margin-top:4px;">
-          🎯 [펄스 4단계 공정] 최종 양산 예정: <strong>${formatTimeKr(t4.getHours(), t4.getMinutes())}</strong> (광 상태 확인 후 양산)
+          🎯 [펄스 4단계 완료] 최종 양산 예정: <strong>${formatTimeKr(t4.getHours(), t4.getMinutes())}</strong> (광 상태 확인 후 양산)
         </div>
       `;
     } else {
-      // 일반 라인 단일 더미 투입
       const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
       const dummyBox = document.getElementById(`elec_dummy_est_${line.name}`);
       if (dummyBox && isDummyChecked) {
@@ -1254,97 +1311,7 @@ function updateLiveTimesOnly(now) {
   });
 }
 
-// 탭 2 화학동 진척게이지 자동 연동 렌더링
-function renderActiveChemGauges(now) {
-  const container = document.getElementById('activeChemGaugesContainer');
-  if (!container) return;
-
-  const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
-
-  if (activeChems.length === 0) {
-    container.innerHTML = `
-      <div class="status-detail-box" style="padding:14px; text-align:center; color:var(--text-secondary);">
-        현재 PM 진행 중인 화학동 라인이 없습니다.<br>
-        <span style="font-size:11.5px;">(탭 3 <strong>[화학동 주기 관리]</strong>에서 라인 상태를 <strong>'시작'</strong>으로 변경하면 게이지가 여기에 자동으로 나타납니다)</span>
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-
-  activeChems.forEach(line => {
-    const startTime = new Date(line.lastDone);
-    const elapsedMin = Math.max(0, (now - startTime) / 60000);
-    const target12hMin = 720;
-    const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
-
-    const isStart = (line.status === '시작');
-    const isAnal = (line.status === '분석');
-
-    html += `
-      <div class="gauge-box" id="gauge_card_${line.id}">
-        <div class="gauge-top">
-          <div>
-            <strong style="font-size:14px; color:#0f172a;">${line.id} PM</strong>
-            <span class="badge ${isAnal ? 'badge-purple' : 'badge-blue'}" style="margin-left:4px;">${line.status}</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <div class="status-step-group">
-              <button class="status-step-btn ${isStart ? 'active-시작' : ''}" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
-              <button class="status-step-btn ${isAnal ? 'active-분석' : ''}" onclick="setChemStepStatusById('${line.id}', '분석')">분석</button>
-              <button class="status-step-btn" onclick="completeChemPM('${line.id}')">완료</button>
-            </div>
-            <span class="badge badge-blue" id="chem_pct_${line.id}">${pct.toFixed(0)}%</span>
-          </div>
-        </div>
-        <div class="progress-track"><div id="chem_bar_${line.id}" class="progress-fill ${pct>=100?'done':(pct>=90?'alert':'warn')}" style="width:${pct}%;"></div></div>
-        <div class="timeline-ticks">
-          <span>0H (PM시작)</span>
-          <span>4H (C/S진행)</span>
-          <span>8H (세척)</span>
-          <span style="color:var(--danger); font-weight:700;">★12H (액이송)</span>
-          <span style="color:var(--success); font-weight:700;">14H (양산)</span>
-        </div>
-        <div class="status-detail-box" id="chem_status_${line.id}"></div>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  updateLiveTimesOnly(now);
-}
-
-function setChemStepStatusById(lineId, st) {
-  const line = chemList.find(c => c.id === lineId);
-  if (!line) return;
-  line.status = st;
-  if (st === '분석' && !line.analyzingStartTime) {
-    line.analyzingStartTime = new Date().toISOString();
-  }
-  syncDataToFirebase();
-  renderChemList();
-  renderActiveChemGauges(new Date());
-  generateShareText();
-}
-
-function completeChemPM(lineId) {
-  if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
-  const line = chemList.find(c => c.id === lineId);
-  if (!line) return;
-  
-  line.status = '완료';
-  line.lastDone = new Date().toISOString();
-  delete line.analyzingStartTime;
-
-  syncDataToFirebase();
-  renderChemList();
-  renderWeeklyMatrix();
-  renderActiveChemGauges(new Date());
-  generateShareText();
-}
-
-// 펄스 라인 전용 4단계 공정 토글 & 시간/단계 업데이트
+// 1번 수정: 펄스라인 0.5 DC 더미 시작 토글
 function togglePulseProcess(lineName, isChecked) {
   if (isChecked) {
     const now = new Date();
@@ -1352,8 +1319,7 @@ function togglePulseProcess(lineName, isChecked) {
     pulseProcessFlags[lineName] = {
       isStarted: true,
       h: now.getHours(),
-      m: roundMin,
-      manualStep: '0.5 DC 더미'
+      m: roundMin
     };
   } else {
     delete pulseProcessFlags[lineName];
@@ -1369,17 +1335,36 @@ function updatePulseProcessTime(lineName, part, val) {
   updateLiveTimesOnly(new Date());
 }
 
-function setPulseStepManual(lineName, stepName) {
-  if (!pulseProcessFlags[lineName]) {
-    const now = new Date();
-    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
-    pulseProcessFlags[lineName] = {
-      isStarted: true,
-      h: now.getHours(),
-      m: roundMin
-    };
-  }
-  pulseProcessFlags[lineName].manualStep = stepName;
+// 2번 수정: 전기동 PM 완료 처리 (진척 게이지에서 제외)
+function completeElecPM(lineName) {
+  if (!confirm(`[${lineName}] PM을 완료하시겠습니까?\n진척 게이지 목록에서 제외됩니다.`)) return;
+
+  const key = selectedDateStr + '_' + lineName;
+  elecCompletedFlags[key] = true;
+
+  // 더미 플래그 정리
+  delete elecDummyFlags[lineName];
+  delete pulseProcessFlags[lineName];
+
+  syncDataToFirebase();
+  renderElectroGauges(new Date());
+}
+
+// 완료된 전기동 복구 함수
+function restoreCompletedElec() {
+  const day = new Date(selectedDateStr + 'T00:00:00').getDay();
+  let todayElecLines = [];
+  if (day === 1) todayElecLines = ['전기동 9라인', '전기동 16라인'];
+  else if (day === 2) todayElecLines = ['전기동 18라인', '전기동 22라인'];
+  else if (day === 3) todayElecLines = ['전기동 15라인', '전기동 20라인'];
+  else if (day === 4) todayElecLines = ['전기동 11라인', '전기동 14라인', '전기동 17라인'];
+  else if (day === 5) todayElecLines = ['전기동 13라인', '전기동 21라인'];
+  else todayElecLines = ['전기동 13라인', '전기동 21라인'];
+
+  todayElecLines.forEach(name => {
+    delete elecCompletedFlags[selectedDateStr + '_' + name];
+  });
+
   syncDataToFirebase();
   renderElectroGauges(new Date());
 }
@@ -1408,9 +1393,10 @@ function updateElecDummyTimeSelect(lineName, part, val) {
   updateLiveTimesOnly(new Date());
 }
 
-// 전기동 진척 게이지 (펄스 4단계 vs 일반 더미 완전 분리)
+// 전기동 진척 게이지 렌더링 (완료된 라인 제외 & 펄스 4단계 스텝 박스 적용)
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
+  const restoreBtn = document.getElementById('btnRestoreElec');
   if (!container) return;
 
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1424,24 +1410,39 @@ function renderElectroGauges(now) {
   else if (day === 5) todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
   else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
 
-  document.getElementById('elecTodayLinesBadge').innerText = '전기동';
+  // 2번 수정: 완료 처리된 라인 필터링
+  const pendingElecLines = todayElecLines.filter(l => !elecCompletedFlags[selectedDateStr + '_' + l.name]);
+  const hasCompletedAny = todayElecLines.some(l => !!elecCompletedFlags[selectedDateStr + '_' + l.name]);
+
+  if (restoreBtn) {
+    restoreBtn.style.display = hasCompletedAny ? 'inline-block' : 'none';
+  }
+
+  if (pendingElecLines.length === 0) {
+    container.innerHTML = `
+      <div class="status-detail-box" style="padding:14px; text-align:center; color:var(--text-secondary);">
+        금일 예정된 모든 전기동 PM이 <strong>완료</strong>되었습니다. ✅<br>
+        <button class="btn btn-sub btn-sm" style="margin-top:6px;" onclick="restoreCompletedElec()">완료 라인 다시 표시하기</button>
+      </div>
+    `;
+    return;
+  }
 
   const start0830 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 30, 0);
   const end1400 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0, 0);
 
   let html = '';
 
-  todayElecLines.forEach(line => {
+  pendingElecLines.forEach(line => {
     const hasManualEquipNote = manualNotes.some(n => n.date === selectedDateStr && n.line.includes(line.name.split('라인')[0]) && n.text.includes('설비작업'));
     const isEquipWorkActive = (equipWorkFlags[line.name] !== undefined) ? equipWorkFlags[line.name] : hasManualEquipNote;
 
     if (line.isPulse) {
-      // ===== [펄스 라인 전용: 0.5 DC(1.5H) -> 1.5 DC(1.5H) -> 펄스패스(1.5H) -> 펄스더미(1.5H)] =====
+      // ===== [펄스 라인: 0.5 DC 시작 시간 입력 시 1.5H마다 4단계 자동 체크] =====
       const pData = pulseProcessFlags[line.name] || {};
       const isPulseStarted = !!pData.isStarted;
       const curH = isPulseStarted ? (pData.h !== undefined ? pData.h : 14) : 14;
       const curM = isPulseStarted ? (pData.m !== undefined ? pData.m : 0) : 0;
-      const activeStep = pData.manualStep || '0.5 DC 더미';
 
       let hourOptions = '';
       for (let h = 0; h <= 23; h++) {
@@ -1462,56 +1463,66 @@ function renderElectroGauges(now) {
         `;
       }
 
-      const pulseSteps = ['0.5 DC 더미', '1.5 DC 더미', '펄스대비 패스', '펄스 더미'];
-      let stepBtnsHtml = '';
-      pulseSteps.forEach(st => {
-        const isSelected = (activeStep === st);
-        stepBtnsHtml += `<button class="pulse-step-btn ${isSelected?'active':''}" onclick="setPulseStepManual('${line.name}', '${st}')">${st}</button>`;
-      });
-
       html += `
         <div class="gauge-box">
           <div class="gauge-top">
             <div>
-              <strong>${line.name} <span class="badge badge-purple">펄스 전용 공정</span></strong>
+              <strong>${line.name} <span class="badge badge-purple">펄스 4단계 공정</span></strong>
               <label style="margin-left:6px; font-size:11px; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
                 🛠️ 설비(17시)
               </label>
             </div>
             <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-              <label style="font-size:11px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px;">
+              <!-- 2번 수정: 전기동 완료 버튼 -->
+              <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
+              <label style="font-size:11px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
                 <input type="checkbox" ${isPulseStarted ? 'checked' : ''} onchange="togglePulseProcess('${line.name}', this.checked)">
-                ⚡ 펄스 공정 시작
+                ⚡ 0.5 DC 시작
               </label>
               ${pulseTimeControls}
               <span class="badge badge-purple" id="pulse_pct_${line.name}">0%</span>
             </div>
           </div>
 
-          <!-- 펄스 4단계 수동 전환 탭 -->
-          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:2px;">
-            ${stepBtnsHtml}
+          <!-- 1번 수정: 1.5H마다 자동으로 체크(✔)되는 4단계 스텝 박스 -->
+          <div class="pulse-step-container">
+            <div class="pulse-step-item" id="pulse_step_${line.name}_1">
+              <span>1단계 (1.5H)</span>
+              <div>0.5 DC 더미</div>
+            </div>
+            <div class="pulse-step-item" id="pulse_step_${line.name}_2">
+              <span>2단계 (1.5H)</span>
+              <div>1.5 DC 더미</div>
+            </div>
+            <div class="pulse-step-item" id="pulse_step_${line.name}_3">
+              <span>3단계 (1.5H)</span>
+              <div>펄스대비 패스</div>
+            </div>
+            <div class="pulse-step-item" id="pulse_step_${line.name}_4">
+              <span>4단계 (1.5H)</span>
+              <div>펄스 더미</div>
+            </div>
           </div>
 
           <div class="progress-track"><div id="pulse_bar_${line.name}" class="progress-fill warn" style="width:0%;"></div></div>
           
           <div class="timeline-ticks">
-            <span>0.5 DC(1.5H)</span>
-            <span>1.5 DC(1.5H)</span>
-            <span>펄스대비 패스(1.5H)</span>
-            <span>펄스 더미(1.5H)</span>
+            <span>0.5 DC 시작</span>
+            <span>1.5 DC</span>
+            <span>패스</span>
+            <span>더미</span>
             <span style="color:var(--success); font-weight:700;">광확인/양산</span>
           </div>
 
           <div class="status-detail-box" id="pulse_status_detail_${line.name}">
-            <div>${isPulseStarted ? '진행 상태 계산 중...' : '08:30 PM 시작 ➔ 14:00 건욕 완료 후 <strong>[펄스 공정 시작]</strong>을 체크하세요.'}</div>
+            <div>${isPulseStarted ? '진행 상태 계산 중...' : '08:30 PM 시작 ➔ 14:00 건욕 완료 후 <strong>[0.5 DC 시작]</strong>을 체크하면 시간마다 자동으로 단계가 넘어갑니다.'}</div>
           </div>
         </div>
       `;
 
     } else {
-      // ===== [일반 전기동 라인: 건욕 후 단일 더미 투입 (1.5H)] =====
+      // ===== [일반 전기동 라인] =====
       const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
       const curH = isDummyChecked ? (elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14) : 14;
       const curM = isDummyChecked ? (elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0) : 0;
@@ -1563,7 +1574,9 @@ function renderElectroGauges(now) {
               </label>
             </div>
             <div style="display:flex; align-items:center; gap:2px; flex-wrap:wrap;">
-              <label style="font-size:11px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px;">
+              <!-- 2번 수정: 전기동 완료 버튼 -->
+              <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
+              <label style="font-size:11px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
                 <input type="checkbox" ${isDummyChecked ? 'checked' : ''} onchange="toggleElecDummy('${line.name}', this.checked)">
                 🔄 더미투입
               </label>
@@ -1591,22 +1604,6 @@ function renderElectroGauges(now) {
 
   container.innerHTML = html;
   updateLiveTimesOnly(now);
-}
-
-function toggleEquipWork(lineName, isChecked) {
-  equipWorkFlags[lineName] = isChecked;
-
-  const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
-  if (isChecked && existingIdx === -1) {
-    manualNotes.push({ date: selectedDateStr, line: lineName.split(' ')[0], text: '설비작업' });
-  } else if (!isChecked && existingIdx !== -1) {
-    manualNotes.splice(existingIdx, 1);
-  }
-  syncDataToFirebase();
-  renderManualNotesList();
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
 }
 
 // 탭 3 화학동 주기 관리
