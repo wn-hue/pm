@@ -63,7 +63,7 @@
     background: none; border: none; font-size: 16px; cursor: pointer; color: #86198f; font-weight: bold; padding: 0 6px;
   }
 
-  /* 2번 수정: 헤더 완벽 대칭 레이아웃 */
+  /* 헤더: 완벽한 상하/좌우 대칭 정렬 */
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -91,7 +91,7 @@
     background: #f8fafc;
     border: 1px solid var(--border-light);
     border-radius: 8px;
-    padding: 7px 12px;
+    padding: 8px 12px;
   }
   .sync-status-badge {
     font-size: 12px;
@@ -165,7 +165,7 @@
     flex-wrap: wrap;
   }
 
-  /* iOS 최적화 폼 */
+  /* 입력폼 iOS 최적화 */
   input, select, textarea {
     background: #ffffff;
     border: 1px solid var(--border);
@@ -199,7 +199,7 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
-  /* 카톡 자동 파서 박스 글자 잘림 방지 */
+  /* 카톡 파서 박스 */
   .parser-box {
     background: #fefce8;
     border: 1px solid #fef08a;
@@ -229,6 +229,7 @@
     resize: vertical;
   }
 
+  /* 게이지 영역 */
   .grid-2col-even {
     display: grid;
     grid-template-columns: 1fr;
@@ -297,13 +298,13 @@
     background: #e2e8f0;
     border-radius: 8px;
     padding: 3px;
-    gap: 3px;
+    gap: 4px;
   }
   .status-step-btn-large {
     border: none;
     background: transparent;
-    padding: 8px 18px;
-    font-size: 13px;
+    padding: 9px 24px;
+    font-size: 14px;
     font-weight: 800;
     color: var(--text-secondary);
     border-radius: 6px;
@@ -372,7 +373,7 @@
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
   </div>
 
-  <!-- 1번, 2번 수정: 헤더 간소화 및 서버연결/현재시간 완벽 대칭 정렬 -->
+  <!-- 헤더 (요청 2: 좌우 완벽 대칭) -->
   <header>
     <div class="header-top">
       <h1>동도금 PM 모니터링</h1>
@@ -411,7 +412,7 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
-      <!-- 카톡 복사 붙여넣기 스마트 파서 (3번, 4번 수정 반영) -->
+      <!-- 카톡 복사 붙여넣기 스마트 파서 (요청 3 & 4 반영) -->
       <div class="parser-box">
         <div class="parser-header">
           <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
@@ -446,7 +447,7 @@
 
         <textarea id="shareTextOutput" class="report-area"></textarea>
 
-        <!-- 일반 화학동 7,8,9,13,14 차기 PM 예정 시간 / PM 시작 시간 현황판 -->
+        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
             <span>🧪 일반 화학동 PM 현황 (화7, 화8, 화9, 화13, 화14)</span>
@@ -486,7 +487,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 (5번 수정: 시작/완료 버튼 크기 확대) -->
+  <!-- [탭 3] 화학동 주기 관리 (요청 5: 시작/완료 버튼 크기 확대) -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -519,6 +520,7 @@
             <optgroup label="에칭">
               <option value="에1.2">에1.2</option>
               <option value="에3.4">에3.4</option>
+              <option value="에6">에6</option>
             </optgroup>
             <optgroup label="디스미어">
               <option value="디스미어 6">디스미어 6</option>
@@ -585,7 +587,7 @@
     </div>
   </div>
 
-  <!-- [모달 팝업 1: 주간 PM 매트릭스] (6번 수정: 데버링/고압수세 제거, 에칭 PM 첫 행 순차 배치) -->
+  <!-- [모달 1: 주간 PM 매트릭스] (요청 1, 2, 3 반영: 에칭/데버링/고압수세 통합 & 카테고리 칸 비움 & 1,2/3,4/6 순환) -->
   <div id="matrixModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
@@ -600,7 +602,7 @@
           <table>
             <thead>
               <tr>
-                <th style="width:85px;">공정</th>
+                <th style="width:75px;">공정</th>
                 <th id="th_1">월</th>
                 <th id="th_2">화</th>
                 <th id="th_3">수</th>
@@ -611,15 +613,30 @@
               </tr>
             </thead>
             <tbody>
-              <!-- 6번 수정: 데버링/고압수세 삭제 후 첫 행에 에칭 PM 순차 배치 -->
-              <tr style="background:#fff7ed;">
-                <td style="background:#ffedd5;"><strong>에칭 PM</strong></td>
-                <td><strong>에1.2</strong> <span id="custom_etch1"></span></td>
-                <td><strong>에3.4</strong> <span id="custom_etch2"></span></td>
-                <td><strong>에1.2</strong> <span id="custom_etch3"></span></td>
-                <td><strong>에3.4</strong> <span id="custom_etch4"></span></td>
-                <td><strong>에1.2</strong> <span id="custom_etch5"></span></td>
-                <td><strong>에3.4</strong> <span id="custom_etch6"></span></td>
+              <!-- 요청 1, 2, 3 반영: 좌측 카테고리 빈칸 + 에칭(1,2 / 3,4 / 6 순환) + 데버링/고압수세 동시 배치 -->
+              <tr style="background:#fffcf5;">
+                <td style="background:#fafafa;"></td>
+                <td>
+                  <div><strong>에1.2</strong> <span id="custom_etch1"></span></div>
+                  <div>고압수세 1 <span id="tag_w_wash1" class="badge"></span> <span id="custom_wash1"></span></div>
+                </td>
+                <td>
+                  <div><strong>에3.4</strong> <span id="custom_etch2"></span></div>
+                </td>
+                <td>
+                  <div><strong>에6</strong> <span id="custom_etch3"></span></div>
+                  <div><strong>데버링 3</strong> <span id="custom_deb3"></span></div>
+                </td>
+                <td>
+                  <div><strong>에1.2</strong> <span id="custom_etch4"></span></div>
+                </td>
+                <td>
+                  <div><strong>에3.4</strong> <span id="custom_etch5"></span></div>
+                  <div><strong>데버링 2</strong> <span id="custom_deb2"></span></div>
+                </td>
+                <td>
+                  <div><strong>에6</strong> <span id="custom_etch6"></span></div>
+                </td>
                 <td>-</td>
               </tr>
               <!-- 2. 디스미어 -->
@@ -703,7 +720,7 @@
     </div>
   </div>
 
-  <!-- [모달 팝업 2: 액퍼내기 120일] (1번 수정: '액퍼내기'로 통일) -->
+  <!-- [모달 2: 액퍼내기 120일] (요청 1 반영: '액퍼내기') -->
   <div id="pulseModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
@@ -781,17 +798,18 @@ const DEFAULT_MANUAL_NOTES = [];
 
 const ANCHOR_BIWEEK = {
   des11: new Date('2026-09-14T00:00:00'),
-  elec12: new Date('2026-09-18T00:00:00')
+  elec12: new Date('2026-09-18T00:00:00'),
+  wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v31')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v31')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v31')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v31')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v32')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v32')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v32')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v32')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v31')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v31')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v31')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v32')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v32')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v32')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -842,13 +860,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v31', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v31', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v31', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v31', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v31', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v31', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v31', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v32', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v32', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v32', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v32', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v32', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v32', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v32', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -966,7 +984,7 @@ function renderTab1ChemStatus() {
   container.innerHTML = html;
 }
 
-// 3번, 4번 수정: 동일 라인 중복 방지 & 탭 3 화학동 관리 예정시간 100% 동기화
+// 요청 3, 4: 중복 방지 + 탭 3 화학동 관리 100% 동기화
 function parseAndApplyKakaoMsg() {
   const raw = document.getElementById('kakaoRawInput').value.trim();
   if (!raw) {
@@ -975,9 +993,9 @@ function parseAndApplyKakaoMsg() {
   }
 
   let updatedCount = 0;
-  const processedChems = new Set(); // 3번 수정: 중복 파싱 방지 셋
+  const processedChems = new Set(); // 중복 방지
 
-  // 1. 날짜 추출 (예: "9월 25일")
+  // 1. 날짜 추출
   const dateMatch = raw.match(/(\d{1,2})월\s*(\d{1,2})일/);
   if (dateMatch) {
     const curYear = new Date().getFullYear();
@@ -990,7 +1008,7 @@ function parseAndApplyKakaoMsg() {
     updatedCount++;
   }
 
-  // 2. 패스 기준 시간 추출 (예: "7시패스")
+  // 2. 패스 기준 시간 추출
   const passMatch = raw.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
   if (passMatch) {
     const el = document.getElementById('passTimeInput');
@@ -998,11 +1016,10 @@ function parseAndApplyKakaoMsg() {
     updatedCount++;
   }
 
-  // 3. 화학동 라인 추출 (3번: 중복 방지 & 4번: 탭3 연동)
+  // 3. 화학동 라인 추출 (중복 방지 & 72시간 역산 탭 3 동기화)
   const lines = raw.split('\n');
   lines.forEach(lineText => {
     ['화7', '화8', '화9', '화13', '화14'].forEach(cid => {
-      // 이미 파싱한 라인은 중복 처리 방지
       if (processedChems.has(cid)) return;
 
       const regex = new RegExp(`(^|[^가-힣a-zA-Z0-9])${cid}([^가-힣a-zA-Z0-9]|$)`);
@@ -1021,8 +1038,6 @@ function parseAndApplyKakaoMsg() {
             item.status = '시작';
             item.lastDone = `${selectedDateStr}T${hh}:${mm}`;
           } else {
-            // 4번 수정: 카톡에 적힌 시간은 PM 예정시간이므로 역산하여 72시간 전을 lastDone으로 저장
-            // -> 이렇게 해야 탭3 주기관리에서 예정시간이 카톡 시간과 100% 동일하게 뜸!
             item.status = '완료';
             const scheduledTime = new Date(`${selectedDateStr}T${hh}:${mm}:00`);
             const calculatedLastDone = new Date(scheduledTime.getTime() - 72 * 3600000);
@@ -1039,7 +1054,7 @@ function parseAndApplyKakaoMsg() {
           if (lineText.includes('촉매건욕')) item.note = '촉매건욕';
           else if (lineText.includes('화학동 건욕')) item.note = '화학동 건욕';
 
-          processedChems.add(cid); // 중복 등록 방지
+          processedChems.add(cid);
           updatedCount++;
         }
       }
@@ -1144,7 +1159,7 @@ function switchTab(t) {
   else if (t === 'tab4') renderManualNotesList();
 }
 
-// 6번 수정: 매트릭스 렌더링 시 데버링/고압수세 삭제 & 에칭 PM 첫 행 순차 배치
+// 주간 매트릭스 렌더링
 function renderWeeklyMatrix() {
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
   const currentDay = targetDate.getDay();
@@ -1177,6 +1192,7 @@ function renderWeeklyMatrix() {
   setTag('tag_w_des11', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
   setTag('tag_w_des15', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
   setTag('tag_w_elec12', checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate));
+  setTag('tag_w_wash1', checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate));
 
   for (let i = 0; i < 7; i++) {
     const dStr = weekDates[i].dateStr;
@@ -1229,7 +1245,10 @@ function renderManualNotesInMatrix(weekDates) {
 
     let targetId = '';
     const l = item.line;
-    if (l.includes('디스미어 8') || l === '디8') targetId = 'custom_des8';
+    if (l.includes('고압수세 1') || l.includes('고압수세1')) targetId = 'custom_wash1';
+    else if (l.includes('데버링 3') || l.includes('데3')) targetId = 'custom_deb3';
+    else if (l.includes('데버링 2') || l.includes('데2')) targetId = 'custom_deb2';
+    else if (l.includes('디스미어 8') || l === '디8') targetId = 'custom_des8';
     else if (l.includes('디스미어 10') || l === '디10') targetId = 'custom_des10';
     else if (l.includes('디스미어 11') || l === '디11') targetId = 'custom_des11';
     else if (l.includes('디스미어 15') || l === '디15') targetId = 'custom_des15';
@@ -1435,7 +1454,6 @@ function updateLiveTimesOnly(now) {
       bar.style.width = totalPct.toFixed(1) + '%';
       if (pctBadge) pctBadge.innerText = `${totalPct.toFixed(0)}%`;
 
-      let activeStepIdx = 0;
       let remainMinStep = 0;
       let currentStepName = '';
 
@@ -1452,7 +1470,6 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t0 && now < t1) {
-        activeStepIdx = 1;
         currentStepName = '0.5 DC 더미';
         remainMinStep = Math.ceil((t1 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item active';
@@ -1460,7 +1477,6 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t1 && now < t2) {
-        activeStepIdx = 2;
         currentStepName = '1.5 DC 더미';
         remainMinStep = Math.ceil((t2 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item done';
@@ -1468,7 +1484,6 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t2 && now < t3) {
-        activeStepIdx = 3;
         currentStepName = '펄스대비 패스';
         remainMinStep = Math.ceil((t3 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item done';
@@ -1476,7 +1491,6 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item active';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t3 && now < t4) {
-        activeStepIdx = 4;
         currentStepName = '펄스 더미';
         remainMinStep = Math.ceil((t4 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item done';
@@ -1484,7 +1498,6 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item done';
         if (s4) s4.className = 'pulse-step-item active';
       } else {
-        activeStepIdx = 5;
         currentStepName = '광 확인 및 양산 가동';
         remainMinStep = 0;
         if (s1) s1.className = 'pulse-step-item done';
@@ -1959,7 +1972,7 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-// 5번 수정: 탭 3 화학동 관리 버튼 크기 큼직하게 렌더링
+// 탭 3 화학동 주기 관리
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -2203,7 +2216,7 @@ function updatePulseDate(idx, val) {
   renderPulseTable();
 }
 
-// 6번 수정: 데버링/고압수세 삭제, 에칭 PM 요일별 순차 자동 반영
+// 1번 수정: 에칭 1,2 / 3,4 / 6 라인 순환 + 데버링/고압수세 원복 브리핑
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -2223,12 +2236,27 @@ function generateShareText() {
     return found.length > 0 ? ` ${found.map(f => f.text).join(' ')}` : '';
   };
 
-  // 6번 수정: 월/수/금 = 에1.2, 화/목/토 = 에3.4 순차 자동 표기
+  let debarr = '';
+  let wash = '';
   let etching = '';
-  if (day === 1 || day === 3 || day === 5) {
+
+  // 2번 수정: 데버링 2, 3 라인과 고압수세 복원
+  if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) {
+    wash = '고압수세 1라인' + getNote('고압수세');
+  }
+  if (day === 3) {
+    debarr = '데3' + getNote('데버링 3');
+  } else if (day === 5) {
+    debarr = '데2' + getNote('데버링 2');
+  }
+
+  // 1번 수정: 1,2 / 3,4 / 6 순차 순환
+  if (day === 1 || day === 4) {
     etching = '에1.2' + getNote('에1.2');
-  } else if (day === 2 || day === 4 || day === 6) {
+  } else if (day === 2 || day === 5) {
     etching = '에3.4' + getNote('에3.4');
+  } else if (day === 3 || day === 6) {
+    etching = '에6' + getNote('에6');
   }
 
   let desmear = [];
@@ -2290,6 +2318,8 @@ function generateShareText() {
   });
 
   let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
+  if (debarr) out += `${debarr}\n\n`;
+  if (wash) out += `${wash}\n\n`;
   if (etching) out += `${etching}\n\n`;
   if (desmear.length > 0) out += `${desmear.join('\n')}\n\n`;
 
