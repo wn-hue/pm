@@ -1,1 +1,1539 @@
-# pm
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>동도금 PM 일정 & 진척 모니터링 시스템</title>
+<style>
+  :root {
+    --bg-base: #f1f5f9;
+    --bg-card: #ffffff;
+    --border: #cbd5e1;
+    --border-light: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --accent: #0284c7;
+    --accent-light: #e0f2fe;
+    --warning: #d97706;
+    --warning-light: #fef3c7;
+    --danger: #dc2626;
+    --danger-light: #fee2e2;
+    --success: #16a34a;
+    --success-light: #dcfce7;
+    --purple: #7c3aed;
+    --purple-light: #ede9fe;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+  header {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .header-left h1 { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .header-left p { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .live-clock-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 8px;
+    text-align: right;
+  }
+  .live-clock-box span { font-size: 15px; font-weight: 700; color: var(--accent); font-family: monospace; }
+
+  .main-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 2px;
+  }
+  .nav-btn {
+    background: #e2e8f0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    color: var(--text-secondary);
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: 0.15s;
+  }
+  .nav-btn.active {
+    background: var(--bg-card);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-bottom: 2px solid var(--bg-card);
+    margin-bottom: -2px;
+  }
+  .nav-btn:hover:not(.active) { background: #cbd5e1; color: var(--text-primary); }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .grid-2col {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media(min-width: 1080px) {
+    .grid-2col { grid-template-columns: 1.35fr 1fr; }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 8px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; }
+  th, td { padding: 8px 8px; border: 1px solid var(--border-light); text-align: left; vertical-align: top; }
+  th { background: #f8fafc; color: var(--text-secondary); font-weight: 700; }
+  .today-col { background: #f0f9ff !important; border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  .weekend-th { background: #fef2f2; color: #b91c1c; }
+  .weekend-sat-th { background: #eff6ff; color: #1d4ed8; }
+
+  .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; }
+  .badge-blue { background: var(--accent-light); color: var(--accent); }
+  .badge-yellow { background: var(--warning-light); color: var(--warning); }
+  .badge-red { background: var(--danger-light); color: var(--danger); }
+  .badge-green { background: var(--success-light); color: var(--success); }
+  .badge-purple { background: var(--purple-light); color: var(--purple); }
+  .badge-custom { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+
+  input, select, textarea {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .btn:hover { background: #0369a1; }
+  .btn-sub { background: #64748b; color: #fff; }
+  .btn-sub:hover { background: #475569; }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+  .report-area {
+    width: 100%; min-height: 400px; background: #f8fafc; color: #0f172a;
+    font-family: Consolas, "Courier New", monospace; font-size: 13px; line-height: 1.6;
+    padding: 14px; border-radius: 8px; border: 1px solid var(--border); resize: vertical;
+  }
+
+  .gauge-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .gauge-top { display: flex; justify-content: space-between; align-items: center; }
+  .progress-track {
+    width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #0284c7); transition: width 0.4s ease; }
+  .progress-fill.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .progress-fill.alert { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+  .progress-fill.done { background: linear-gradient(90deg, #22c55e, #16a34a); }
+
+  .timeline-ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-secondary); }
+  .status-detail-box {
+    background: #ffffff; border: 1px solid var(--border-light); border-left: 4px solid var(--accent);
+    padding: 8px 10px; border-radius: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 3px;
+  }
+  .status-detail-box.warn { border-left-color: var(--warning); background: #fffbeb; }
+  .status-detail-box.alert { border-left-color: var(--danger); background: #fef2f2; }
+
+  .cal-header { display: flex; justify-content: space-between; align-items: center; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 6px; }
+  .cal-day-name { text-align: center; font-weight: 700; font-size: 11.5px; padding: 6px 0; background: #f8fafc; border-radius: 4px; }
+  .cal-cell {
+    min-height: 96px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: 0.15s;
+  }
+  .cal-cell:hover { border-color: var(--accent); background: #f0f9ff; }
+  .cal-cell.other-month { opacity: 0.3; background: #fafafa; }
+  .cal-cell.selected { border: 2px solid var(--accent); background: #e0f2fe; }
+  .cal-cell.today .date-num {
+    background: var(--accent); color: #fff; border-radius: 50%; width: 20px; height: 20px;
+    display: inline-flex; align-items: center; justify-content: center; font-weight: 700;
+  }
+  .date-num { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+
+  .cal-pill {
+    font-size: 10px; padding: 2px 4px; border-radius: 3px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; line-height: 1.2; font-weight: 700;
+  }
+  .pill-chem { background: var(--accent-light); color: var(--accent); }
+  .pill-black { background: var(--purple-light); color: var(--purple); }
+  .pill-fixed { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+  .note-chip {
+    display: inline-flex; align-items: center; gap: 4px; background: #ffedd5;
+    color: #9a3412; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-top: 2px;
+  }
+  .note-chip button {
+    background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 상단 공통 헤더 -->
+  <header>
+    <div class="header-left">
+      <h1>동도금 PM 일정 & 진척 모니터링 시스템</h1>
+      <p>주간 정기 PM (월~일 주말 포함) · 화학동 7라인 정밀 진척 (화7: 1,000분 / 화8·9 전처리통합 630분) · 펄스 6단계 & 일반 더미</p>
+    </div>
+    <div class="live-clock-box">
+      <div style="font-size:11px; color:var(--text-secondary);">현재 실시간 시각</div>
+      <span id="liveClock">로딩 중...</span>
+    </div>
+  </header>
+
+  <!-- 메인 탭 네비게이션 (1. 주간/오늘 -> 2. 진척게이지 -> 3. 캘린더) -->
+  <div class="main-nav">
+    <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
+      🗓️ 일주일 단위 / 오늘 PM 브리핑
+    </button>
+    <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
+      ⚡ 자동 진척 게이지 & PM 계산기
+    </button>
+    <button class="nav-btn" id="tabBtn3" onclick="switchTab('tab3')">
+      📅 월간 캘린더
+    </button>
+  </div>
+
+  <!-- [탭 1] 일주일 단위 주간 PM 일정 (순서 재배치 및 주말 포함) & 오늘 브리핑 공유 -->
+  <div id="tab1" class="tab-pane active">
+    <div class="grid-2col">
+      
+      <!-- 좌측: 이번 주 정기 PM 매트릭스 (데버링/고압수세 -> 에칭 -> 디스미어 -> 화학동/블랙홀 -> 전기동) -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="card">
+          <div class="card-title">
+            <span>이번 주 정기 PM 매트릭스 (주말 토·일 포함)</span>
+            <span class="badge badge-blue" id="weekRangeBadge">이번 주</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:85px;">공정</th>
+                <th id="th_1">월</th>
+                <th id="th_2">화</th>
+                <th id="th_3">수</th>
+                <th id="th_4">목</th>
+                <th id="th_5">금</th>
+                <th id="th_6" class="weekend-sat-th">토</th>
+                <th id="th_7" class="weekend-th">일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 1순위: 데버링 / 고압수세 -->
+              <tr>
+                <td><strong>데버링 /<br>고압수세</strong></td>
+                <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
+                <td>-</td>
+                <td><strong>데버링 3</strong></td>
+                <td>-</td>
+                <td><strong>데버링 2</strong></td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <!-- 2순위: 에칭 -->
+              <tr>
+                <td><strong>에칭</strong></td>
+                <td colspan="7" style="text-align:center; background:#fafafa; color:var(--text-secondary);">
+                  에3.4 순차 진행 (소프트 에칭 1,2 / 3,4 / 5 순차)
+                </td>
+              </tr>
+              <!-- 3순위: 디스미어 -->
+              <tr>
+                <td><strong>디스미어</strong></td>
+                <td>
+                  <div>디스미어 8 <span id="custom_des8"></span></div>
+                  <div>디스미어 11 <span id="tag_w_des11" class="badge"></span> <span id="custom_des11"></span></div>
+                  <div>디스미어 15 <span id="tag_w_des15" class="badge"></span> <span id="custom_des15"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 9 <span id="custom_des9"></span></div>
+                  <div>디스미어 6 <span id="custom_des6"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 12 <span id="custom_des12"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 7 <span id="custom_des7"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 10 <span id="custom_des10"></span></div>
+                </td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <!-- 4순위: 화학동 / 블랙홀 (주말 포함 직접 시간 기재) -->
+              <tr style="background:#f0fdf4;">
+                <td><strong style="color:var(--accent);">화학동 /<br>블랙홀</strong></td>
+                <td>
+                  <div><span class="badge badge-purple">화12</span> <span id="custom_화12"></span></div>
+                  <div id="chem_cell_1" style="margin-top:3px;">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_2">-</div>
+                </td>
+                <td>
+                  <div><span class="badge badge-purple">화11</span> <span id="custom_화11"></span></div>
+                  <div id="chem_cell_3" style="margin-top:3px;">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_4">-</div>
+                </td>
+                <td>
+                  <div><span class="badge badge-purple">화10</span> <span id="custom_화10"></span></div>
+                  <div id="chem_cell_5" style="margin-top:3px;">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_6">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_7">-</div>
+                </td>
+              </tr>
+              <!-- 5순위: 전기동 -->
+              <tr>
+                <td><strong>전기동</strong></td>
+                <td>
+                  <div>전기동 9 <span id="custom_전9"></span></div>
+                  <div>전기동 16 <span id="custom_전16"></span></div>
+                </td>
+                <td>
+                  <div>전기동 18 <span id="custom_전18"></span></div>
+                  <div>전기동 22 <span id="custom_전22"></span></div>
+                </td>
+                <td>
+                  <div>전기동 15 <span id="custom_전15"></span></div>
+                  <div>전기동 20 <span id="custom_전20"></span></div>
+                </td>
+                <td>
+                  <div>전기동 11 <span id="custom_전11"></span></div>
+                  <div>전기동 14 <span id="custom_전14"></span></div>
+                  <div>전기동 17 <span id="custom_전17"></span></div>
+                </td>
+                <td>
+                  <div>전기동 12 <span id="tag_w_elec12" class="badge"></span> <span id="custom_전12"></span></div>
+                  <div>전기동 13 <span id="custom_전13"></span></div>
+                  <div>전기동 21 <span id="custom_전21"></span></div>
+                </td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 라인 / 날짜별 특이사항 수동기입 관리 (기본 샘플 없음) -->
+        <div class="card">
+          <div class="card-title">
+            <span>✏️ 라인 / 날짜별 특이사항 수동기입 관리</span>
+            <span class="badge badge-yellow">브리핑 및 게이지 연동</span>
+          </div>
+          
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <div>
+              <label style="font-size:11px; color:var(--text-secondary);">적용 일자:</label><br>
+              <input type="date" id="manualDateInput">
+            </div>
+            <div>
+              <label style="font-size:11px; color:var(--text-secondary);">해당 라인:</label><br>
+              <select id="manualLineSelect">
+                <option value="디스미어 8">디스미어 8</option>
+                <option value="디스미어 10">디스미어 10</option>
+                <option value="디스미어 11">디스미어 11</option>
+                <option value="디스미어 15">디스미어 15</option>
+                <option value="전기동 9">전기동 9</option>
+                <option value="전기동 13">전기동 13</option>
+                <option value="전기동 14">전기동 14</option>
+                <option value="전기동 16">전기동 16</option>
+                <option value="전기동 17">전기동 17</option>
+                <option value="전기동 20">전기동 20</option>
+                <option value="전기동 21">전기동 21</option>
+                <option value="화7">화7</option>
+                <option value="화8">화8</option>
+                <option value="화9">화9</option>
+                <option value="화13">화13</option>
+                <option value="화14">화14</option>
+              </select>
+            </div>
+            <div style="flex:1; min-width:180px;">
+              <label style="font-size:11px; color:var(--text-secondary);">특이사항 내용:</label><br>
+              <input type="text" id="manualContentInput" placeholder="예: 인써트 교체, 유산동필터, 설비작업, 촉매건욕" style="width:100%;">
+            </div>
+            <div style="align-self:flex-end;">
+              <button class="btn" onclick="addManualNote()">등록/추가</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('인써트 교체')">+ 인써트 교체</button>
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('유산동필터')">+ 유산동필터</button>
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('설비작업')">+ 설비작업(17시)</button>
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('촉매건욕')">+ 촉매건욕</button>
+          </div>
+
+          <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;"></div>
+        </div>
+
+      </div>
+
+      <!-- 우측: 오늘 PM 일정 & 야간 05시 이전 브리핑 공유 텍스트 -->
+      <div class="card">
+        <div class="card-title">
+          <span id="briefingTitle">오늘 PM 브리핑 & 공유 양식</span>
+          <span class="badge badge-blue">익일 08:30 이전 자동 취합</span>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <div>
+            <label style="font-size:11px; color:var(--text-secondary);">기준 날짜:</label><br>
+            <input type="date" id="targetDateInput" onchange="onDateChange()">
+          </div>
+          <div>
+            <label style="font-size:11px; color:var(--text-secondary);">전기동 패스 기준:</label><br>
+            <input type="text" id="passTimeInput" value="7시패스" style="width:90px;" oninput="generateShareText()">
+          </div>
+          <div style="flex:1; text-align:right; align-self:flex-end;">
+            <button class="btn btn-sub" onclick="generateShareText()">새로고침</button>
+            <button class="btn" onclick="copyShareText()">텍스트 복사</button>
+          </div>
+        </div>
+
+        <textarea id="shareTextOutput" class="report-area"></textarea>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- [탭 2] 자동 진척 게이지 & PM 계산기 -->
+  <div id="tab2" class="tab-pane">
+    <div class="grid-2col">
+      
+      <!-- 좌측: 자동 진척 게이지 (1. 화학동 -> 2. 전기동) -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        
+        <!-- [1순위] 일반 화학동 세부 단계별 정밀 타임라인 게이지 -->
+        <div class="card">
+          <div class="card-title">
+            <span>🧪 1. 일반 화학동 정밀 진척 타임라인 (단계별 세부 시간 추적)</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <label style="font-size:11px; color:var(--text-secondary);">모니터링 라인:</label>
+              <select id="activeChemSelect" onchange="updateAllGauges()">
+                <option value="화7">화7 (전처리+촉매+화학동 1,000분)</option>
+                <option value="화8">화8 (전처리+화학동 630분 / 촉매제외)</option>
+                <option value="화9">화9 (전처리+화학동 630분 / 촉매제외)</option>
+                <option value="화13">화13 (전처리+촉매+화학동 1,000분)</option>
+                <option value="화14">화14 (전처리+화학동 630분)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="gauge-box">
+            <div class="progress-track">
+              <div id="chemProgressBar" class="progress-fill" style="width:0%;"></div>
+            </div>
+            <div id="chemTimelineTicks" class="timeline-ticks"></div>
+            <div id="chemStatusBox" class="status-detail-box"></div>
+          </div>
+        </div>
+
+        <!-- [2순위] 전기동 PM 자동 진척 게이지 (복수 라인 개별 카드 & 설비작업 연동) -->
+        <div class="card">
+          <div class="card-title">
+            <span>⚡ 2. 전기동 PM 자동 진척 게이지 (금일 진행 라인 개별 표시)</span>
+            <span class="badge badge-blue" id="elecTodayLinesBadge">진행 라인</span>
+          </div>
+
+          <div id="elecGaugesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+      </div>
+
+      <!-- 우측: 화학동 72H 주기 관리 & 펄스 120일 액퍼내기 -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        
+        <!-- 화학동 72H 주기 & 화8 48H 빌드업 타이머 -->
+        <div class="card">
+          <div class="card-title">
+            <span>화학동 72시간 주기 & 화8 48H 빌드업 관리</span>
+            <button class="btn btn-sub btn-sm" onclick="saveChemData()">데이터 저장</button>
+          </div>
+          <div id="chemListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+
+        <!-- 펄스라인 120일 액퍼내기 계산기 -->
+        <div class="card">
+          <div class="card-title">
+            <span>펄스라인 액퍼내기 계산기 (120일 주기)</span>
+            <button class="btn btn-sub btn-sm" onclick="savePulseData()">펄스 저장</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>라인</th>
+                <th>최근 작업일</th>
+                <th>1차 (+120일)</th>
+                <th>2차 (+240일)</th>
+                <th>D-Day</th>
+              </tr>
+            </thead>
+            <tbody id="pulseTableBody"></tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- [탭 3] 월간 캘린더 -->
+  <div id="tab3" class="tab-pane">
+    <div class="card">
+      <div class="cal-header">
+        <div style="font-size:16px; font-weight:700;" id="calMonthTitle">2026년 9월</div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sub btn-sm" onclick="moveMonth(-1)">◀ 이전달</button>
+          <button class="btn btn-sub btn-sm" onclick="goToday()">오늘</button>
+          <button class="btn btn-sub btn-sm" onclick="moveMonth(1)">다음달 ▶</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid">
+        <div class="cal-day-name" style="color:var(--text-primary);">월</div>
+        <div class="cal-day-name" style="color:var(--text-primary);">화</div>
+        <div class="cal-day-name" style="color:var(--text-primary);">수</div>
+        <div class="cal-day-name" style="color:var(--text-primary);">목</div>
+        <div class="cal-day-name" style="color:var(--text-primary);">금</div>
+        <div class="cal-day-name" style="color:#2563eb;">토</div>
+        <div class="cal-day-name" style="color:#dc2626;">일</div>
+      </div>
+      <div class="calendar-grid" id="calendarDays"></div>
+
+      <div style="display:flex; gap:12px; font-size:11.5px; color:var(--text-secondary); margin-top:6px; flex-wrap:wrap;">
+        <span><span class="badge badge-blue">■</span> 화학동(예정 시간 기재)</span>
+        <span><span class="badge badge-purple">■</span> 블랙홀(7일 고정)</span>
+        <span><span class="badge" style="background:#e2e8f0; color:#334155;">■</span> 주간 고정 PM</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// --- [1. 기초 데이터셋] ---
+const DEFAULT_CHEM = [
+  { id: '화7', lastDone: '2026-09-25T00:00', status: '진행중', note: '0시PM중' },
+  { id: '화8', lastDone: '2026-09-23T18:30', status: '완료', note: '' },
+  { id: '화9', lastDone: '2026-09-24T19:30', status: '완료', note: '' },
+  { id: '화13', lastDone: '2026-09-22T13:00', status: '완료', note: '13시 촉매건욕' },
+  { id: '화14', lastDone: '2026-09-24T15:00', status: '완료', note: '' }
+];
+
+const DEFAULT_PULSE = [
+  { line: '전기동 9라인 (펄스)', lastDate: '2026-09-21' },
+  { line: '전기동 20라인 (펄스)', lastDate: '2026-06-29' },
+  { line: '전기동 21라인 (펄스)', lastDate: '2026-07-28' },
+  { line: 'MSF 전기동', lastDate: '2026-08-10' }
+];
+
+// 요청사항: 기본 인써트교체, 촉매건욕 등 기본 체크 해제 (빈 배열)
+const DEFAULT_MANUAL_NOTES = [];
+
+const ANCHOR_BIWEEK = {
+  des11: new Date('2026-09-14T00:00:00'),
+  elec12: new Date('2026-09-18T00:00:00'),
+  wash1: new Date('2026-09-20T00:00:00')
+};
+
+// --- [화학동 세부 공정 단계 정의 (사용자 제공 규격 반영)] ---
+// 화7 (전처리 150분 + 촉매 370분 + 화학동 480분 = 총 1,000분 / 약 16시간 40분)
+const CHEM_STEPS_HWA7 = [
+  // 전처리 (150분)
+  { section: '전처리', step: '물세척', min: 30 },
+  { section: '전처리', step: '박리세척', min: 30 },
+  { section: '전처리', step: '박리후세척', min: 30 },
+  { section: '전처리', step: '물세척', min: 30 },
+  { section: '전처리', step: '물세척', min: 30 },
+  // 촉매 (370분)
+  { section: '촉매', step: '액이송', min: 30 },
+  { section: '촉매', step: '물세척', min: 40 },
+  { section: '촉매', step: '박리세척', min: 120 },
+  { section: '촉매', step: '박리 후 물세척', min: 40 },
+  { section: '촉매', step: '물세척', min: 40 },
+  { section: '촉매', step: '물세척', min: 40 },
+  { section: '촉매', step: '액이송', min: 30 },
+  // 화학동 (480분)
+  { section: '화학동', step: '액이송', min: 30 },
+  { section: '화학동', step: '물세척', min: 30 },
+  { section: '화학동', step: '박리세척', min: 300 },
+  { section: '화학동', step: '박리후세척', min: 30 },
+  { section: '화학동', step: '알카리세척', min: 30 },
+  { section: '화학동', step: '알카리 후 세척', min: 30 },
+  { section: '화학동', step: '액이송', min: 30 }
+];
+
+// 화8, 화9 (촉매 제외, 전처리 150분 + 화학동 480분 = 총 630분 / 약 10시간 30분)
+const CHEM_STEPS_HWA8_9 = [
+  // 전처리 (150분)
+  { section: '전처리', step: '물세척', min: 30 },
+  { section: '전처리', step: '박리세척', min: 30 },
+  { section: '전처리', step: '박리후세척', min: 30 },
+  { section: '전처리', step: '물세척', min: 30 },
+  { section: '전처리', step: '물세척', min: 30 },
+  // 화학동 (480분)
+  { section: '화학동', step: '액이송', min: 30 },
+  { section: '화학동', step: '물세척', min: 30 },
+  { section: '화학동', step: '박리세척', min: 300 },
+  { section: '화학동', step: '박리후세척', min: 30 },
+  { section: '화학동', step: '알카리세척', min: 30 },
+  { section: '화학동', step: '알카리 후 세척', min: 30 },
+  { section: '화학동', step: '액이송', min: 30 }
+];
+
+let chemList = JSON.parse(localStorage.getItem('chem_data_v5')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v5')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v5')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v5')) || {};
+
+let currentCalDate = new Date();
+let selectedDateStr = '';
+
+// --- [2. 초기화] ---
+window.onload = function() {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  selectedDateStr = `${y}-${m}-${d}`;
+  document.getElementById('targetDateInput').value = selectedDateStr;
+  document.getElementById('manualDateInput').value = selectedDateStr;
+
+  renderWeeklyMatrix();
+  renderManualNotesList();
+  renderCalendar();
+  renderChemList();
+  renderPulseTable();
+  updateAllGauges();
+  generateShareText();
+
+  setInterval(tick, 1000);
+};
+
+function tick() {
+  const now = new Date();
+  document.getElementById('liveClock').innerText = formatDateTime(now, true);
+  updateAllGauges();
+  updateChemRealtimeStatuses();
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+  if (t === 'tab1') {
+    document.getElementById('tabBtn1').classList.add('active');
+    document.getElementById('tab1').classList.add('active');
+    renderWeeklyMatrix();
+  } else if (t === 'tab2') {
+    document.getElementById('tabBtn2').classList.add('active');
+    document.getElementById('tab2').classList.add('active');
+    updateAllGauges();
+  } else if (t === 'tab3') {
+    document.getElementById('tabBtn3').classList.add('active');
+    document.getElementById('tab3').classList.add('active');
+    renderCalendar();
+  }
+}
+
+// --- [3. 주간 매트릭스 렌더링 (월~일 7일 전체 표시 & 화학동/블랙홀 행 주말 포함)] ---
+function renderWeeklyMatrix() {
+  const targetDate = new Date(selectedDateStr + 'T00:00:00');
+  const currentDay = targetDate.getDay(); // 0:일, 1:월, ..., 6:토
+
+  const diffToMon = (currentDay === 0 ? -6 : 1 - currentDay);
+  const monday = new Date(targetDate.getTime() + diffToMon * 86400000);
+
+  const weekDates = [];
+  const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday.getTime() + i * 86400000);
+    const dateStr = formatDateOnly(d);
+    weekDates.push({ date: d, dateStr: dateStr });
+
+    const th = document.getElementById(`th_${i+1}`);
+    if (th) {
+      th.innerHTML = `${dayNames[i]} <span style="font-size:11px; font-weight:normal; opacity:0.8;">(${d.getMonth()+1}/${d.getDate()})</span>`;
+      th.className = (dateStr === selectedDateStr) ? 'today-col' : (i === 5 ? 'weekend-sat-th' : (i === 6 ? 'weekend-th' : ''));
+    }
+  }
+
+  document.getElementById('weekRangeBadge').innerText = `${monday.getMonth()+1}/${monday.getDate()} ~ ${weekDates[6].date.getMonth()+1}/${weekDates[6].date.getDate()}`;
+
+  setTag('tag_w_des11', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
+  setTag('tag_w_des15', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
+  setTag('tag_w_elec12', checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate));
+  setTag('tag_w_wash1', checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate));
+
+  // 화학동 주말 포함 요일별 시간 매핑
+  for (let i = 0; i < 7; i++) {
+    const dObj = weekDates[i].date;
+    const cell = document.getElementById(`chem_cell_${i+1}`);
+    cell.innerHTML = '';
+    let matches = [];
+
+    chemList.forEach(c => {
+      const base = new Date(c.lastDone);
+      if (!isNaN(base.getTime())) {
+        const diffMs = dObj.getTime() - new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
+        const diffDays = Math.round(diffMs / 86400000);
+        if (diffDays >= 0 && diffDays % 3 === 0) {
+          const hh = String(base.getHours()).padStart(2, '0');
+          const mm = String(base.getMinutes()).padStart(2, '0');
+          matches.push(`<strong>${c.id}</strong> <span style="color:var(--accent);">(${hh}:${mm})</span>`);
+        }
+      }
+    });
+
+    cell.innerHTML = matches.length > 0 ? matches.join('<br>') : '<span style="color:#94a3b8;">-</span>';
+  }
+
+  renderManualNotesInMatrix(weekDates);
+}
+
+function renderManualNotesInMatrix(weekDates) {
+  document.querySelectorAll('[id^="custom_"]').forEach(el => el.innerHTML = '');
+
+  manualNotes.forEach(item => {
+    const isInWeek = weekDates.some(w => w.dateStr === item.date);
+    if (!isInWeek) return;
+
+    let targetId = '';
+    if (item.line === '디스미어 8') targetId = 'custom_des8';
+    else if (item.line === '디스미어 10') targetId = 'custom_des10';
+    else if (item.line === '디스미어 11') targetId = 'custom_des11';
+    else if (item.line === '디스미어 15') targetId = 'custom_des15';
+    else if (item.line === '디스미어 9') targetId = 'custom_des9';
+    else if (item.line === '디스미어 6') targetId = 'custom_des6';
+    else if (item.line === '디스미어 12') targetId = 'custom_des12';
+    else if (item.line === '디스미어 7') targetId = 'custom_des7';
+    else if (item.line.includes('전기동 9') || item.line === '전9') targetId = 'custom_전9';
+    else if (item.line.includes('전기동 13') || item.line === '전13') targetId = 'custom_전13';
+    else if (item.line.includes('전기동 14') || item.line === '전14') targetId = 'custom_전14';
+    else if (item.line.includes('전기동 16') || item.line === '전16') targetId = 'custom_전16';
+    else if (item.line.includes('전기동 17') || item.line === '전17') targetId = 'custom_전17';
+    else if (item.line.includes('전기동 20') || item.line === '전20') targetId = 'custom_전20';
+    else if (item.line.includes('전기동 21') || item.line === '전21') targetId = 'custom_전21';
+    else if (item.line.includes('화12')) targetId = 'custom_화12';
+    else if (item.line.includes('화11')) targetId = 'custom_화11';
+    else if (item.line.includes('화10')) targetId = 'custom_화10';
+
+    if (targetId) {
+      const el = document.getElementById(targetId);
+      if (el) el.innerHTML += `<span class="badge badge-custom">${item.text}</span>`;
+    }
+  });
+}
+
+function setTag(id, active) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerText = active ? '이번 주' : '격주제외';
+  el.className = active ? 'badge badge-green' : 'badge badge-sub';
+}
+
+// --- [4. 수동기입 엔진] ---
+function addManualNote() {
+  const date = document.getElementById('manualDateInput').value;
+  const line = document.getElementById('manualLineSelect').value;
+  const text = document.getElementById('manualContentInput').value.trim();
+
+  if (!date || !text) {
+    alert('날짜와 특이사항 내용을 모두 입력해주세요.');
+    return;
+  }
+
+  manualNotes.push({ date, line, text });
+  saveManualNotes();
+  document.getElementById('manualContentInput').value = '';
+  renderManualNotesList();
+  renderWeeklyMatrix();
+  generateShareText();
+  updateAllGauges();
+}
+
+function setQuickTag(tag) { document.getElementById('manualContentInput').value = tag; }
+function removeManualNote(index) {
+  manualNotes.splice(index, 1);
+  saveManualNotes();
+  renderManualNotesList();
+  renderWeeklyMatrix();
+  generateShareText();
+  updateAllGauges();
+}
+function renderManualNotesList() {
+  const container = document.getElementById('manualNoteList');
+  container.innerHTML = '';
+  manualNotes.forEach((n, idx) => {
+    const chip = document.createElement('span');
+    chip.className = 'note-chip';
+    chip.innerHTML = `<strong>${n.date.slice(5)} [${n.line}]</strong>: ${n.text} <button onclick="removeManualNote(${idx})">&times;</button>`;
+    container.appendChild(chip);
+  });
+}
+function saveManualNotes() { localStorage.setItem('manual_notes_v5', JSON.stringify(manualNotes)); }
+
+// --- [5. 화학동 실시간 진척 계산 엔진 (화7 1,000분 / 화8·9 630분 규격 적용)] ---
+function updateAllGauges() {
+  const now = new Date();
+
+  const lineId = document.getElementById('activeChemSelect').value;
+  const line = chemList.find(c => c.id === lineId) || chemList[0];
+  const chemBar = document.getElementById('chemProgressBar');
+  const chemBox = document.getElementById('chemStatusBox');
+  const ticksContainer = document.getElementById('chemTimelineTicks');
+
+  // 라인 규격 선택: 화8, 화9, 화14는 촉매 제외 630분, 화7, 화13은 촉매 포함 1,000분
+  const isExcludedCatalyst = (line.id === '화8' || line.id === '화9' || line.id === '화14');
+  const stepList = isExcludedCatalyst ? CHEM_STEPS_HWA8_9 : CHEM_STEPS_HWA7;
+  const totalDurationMin = stepList.reduce((acc, cur) => acc + cur.min, 0); // 630분 또는 1000분
+
+  // 눈금 렌더링
+  if (isExcludedCatalyst) {
+    ticksContainer.innerHTML = `
+      <span>0H (PM시작)</span>
+      <span style="color:var(--accent); font-weight:700;">2.5H (전처리완료 150분)</span>
+      <span style="color:var(--warning); font-weight:700;">화학동 박리세척 (300분)</span>
+      <span style="color:var(--danger); font-weight:700;">10H (액이송)</span>
+      <span style="color:var(--success); font-weight:700;">10.5H (양산준비)</span>
+    `;
+  } else {
+    ticksContainer.innerHTML = `
+      <span>0H (시작)</span>
+      <span style="color:var(--accent);">2.5H (전처리 150m)</span>
+      <span style="color:var(--purple);">8.7H (촉매 370m)</span>
+      <span style="color:var(--warning);">화학동 박리(300m)</span>
+      <span style="color:var(--danger); font-weight:700;">16.2H (액이송)</span>
+      <span style="color:var(--success); font-weight:700;">16.7H (완료)</span>
+    `;
+  }
+
+  if (line.status === '진행중') {
+    const startTime = new Date(line.lastDone);
+    const elapsedMin = Math.max(0, (now - startTime) / 60000);
+    const pct = Math.min(100, (elapsedMin / totalDurationMin) * 100);
+    chemBar.style.width = pct.toFixed(1) + '%';
+
+    // 세부 단계 위치 판별
+    let accumulated = 0;
+    let currentStepObj = null;
+    let stepElapsed = 0;
+    let stepRemain = 0;
+
+    for (let i = 0; i < stepList.length; i++) {
+      const s = stepList[i];
+      if (elapsedMin >= accumulated && elapsedMin < accumulated + s.min) {
+        currentStepObj = s;
+        stepElapsed = Math.floor(elapsedMin - accumulated);
+        stepRemain = s.min - stepElapsed;
+        break;
+      }
+      accumulated += s.min;
+    }
+
+    const totalRemainMin = Math.max(0, Math.ceil(totalDurationMin - elapsedMin));
+    const rH = Math.floor(totalRemainMin / 60);
+    const rM = totalRemainMin % 60;
+
+    if (currentStepObj) {
+      const isStripStep = currentStepObj.step.includes('박리세척');
+      const isTransferStep = currentStepObj.step.includes('액이송');
+
+      chemBar.className = isTransferStep ? 'progress-fill alert' : (isStripStep ? 'progress-fill warn' : 'progress-fill');
+      chemBox.className = isTransferStep ? 'status-detail-box alert' : (isStripStep ? 'status-detail-box warn' : 'status-detail-box');
+
+      chemBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between;">
+          <span>진행 단계: <strong style="color:var(--accent);">[${currentStepObj.section}] ${currentStepObj.step}</strong> (${stepElapsed}분 / ${currentStepObj.min}분 진행 중)</span>
+          <span>전체 진척: <strong>${(elapsedMin/60).toFixed(1)}H</strong> (${pct.toFixed(0)}%)</span>
+        </div>
+        <div>
+          ⏱️ 현재 단계 잔여: <strong>${stepRemain}분</strong> 남음 | 세척·액이송 전체 완료까지 <strong>${rH}시간 ${rM}분</strong> 남음
+        </div>
+      `;
+    } else {
+      // 지정된 모든 단계 시간 초과 (1,000분 or 630분 경과)
+      chemBar.className = 'progress-fill done';
+      chemBox.className = 'status-detail-box';
+      chemBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--success); font-weight:700;">✅ 세척 및 액이송 전체 완료 구간 도달</span>
+          <span>진척: <strong>${(elapsedMin/60).toFixed(1)}시간</strong> (100%)</span>
+        </div>
+        <div>
+          작업: <strong>더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 백라이트/에치레이트 시편 확인 후 양산 진행</strong>
+        </div>
+      `;
+    }
+  } else {
+    chemBar.style.width = '0%';
+    chemBar.className = 'progress-fill';
+    chemBox.className = 'status-detail-box';
+    const nextDue = new Date(new Date(line.lastDone).getTime() + 72 * 3600000);
+    const rH = ((nextDue - now) / 3600000).toFixed(1);
+    chemBox.innerHTML = `
+      <div>${line.id} 라인은 현재 <strong>${line.status}</strong> 상태입니다.</div>
+      <div>차기 72H PM 예정: <strong>${formatDateTime(nextDue, false)}</strong> (${rH > 0 ? rH + '시간 남음' : '주기 도래'})</div>
+    `;
+  }
+
+  // 2. 전기동 개별 라인 진척 게이지 렌더링
+  renderElectroGauges(now);
+}
+
+function renderElectroGauges(now) {
+  const container = document.getElementById('elecGaugesContainer');
+  if (!container) return;
+
+  const targetDate = new Date(selectedDateStr + 'T00:00:00');
+  const day = targetDate.getDay();
+  let todayElecLines = [];
+
+  if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
+  else if (day === 2) todayElecLines = [{ name: '전기동 18라인', isPulse: false }, { name: '전기동 22라인', isPulse: false }];
+  else if (day === 3) todayElecLines = [{ name: '전기동 15라인', isPulse: false }, { name: '전기동 20라인', isPulse: true }];
+  else if (day === 4) todayElecLines = [{ name: '전기동 11라인', isPulse: false }, { name: '전기동 14라인', isPulse: false }, { name: '전기동 17라인', isPulse: false }];
+  else if (day === 5) {
+    todayElecLines = [
+      { name: '전기동 13라인', isPulse: false },
+      { name: '전기동 21라인', isPulse: true }
+    ];
+  } else {
+    todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
+  }
+
+  document.getElementById('elecTodayLinesBadge').innerText = todayElecLines.map(l => l.name.split(' ')[0]).join(', ') + ' 대상';
+
+  const start0830 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 30, 0);
+  const end1400 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0, 0);
+  const end1700 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0);
+
+  let html = '';
+
+  todayElecLines.forEach(line => {
+    const hasManualEquipNote = manualNotes.some(n => n.date === selectedDateStr && n.line.includes(line.name.split('라인')[0]) && n.text.includes('설비작업'));
+    const isEquipWorkActive = (equipWorkFlags[line.name] !== undefined) ? equipWorkFlags[line.name] : hasManualEquipNote;
+
+    if (line.isPulse) {
+      // 펄스 라인 (전9, 전20, 전21)
+      let progressPct = 0;
+      let stepName = '';
+      let barClass = 'progress-fill';
+      let boxClass = 'status-detail-box';
+      let alertMsg = '';
+
+      if (isEquipWorkActive) {
+        const t_dc05 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 30, 0);
+        const t_dc15 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+        const t_pass = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 21, 30, 0);
+        const t_dummy = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0);
+
+        if (now < start0830) {
+          stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
+        } else if (now >= start0830 && now < end1400) {
+          progressPct = ((now - start0830) / 330 / 60000) * 35;
+          const rMin = Math.ceil((end1400 - now) / 60000);
+          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
+          alertMsg = '14:00 건욕 완료 후 PM팀 설비작업(17:00 마감) 예정';
+        } else if (now >= end1400 && now < end1700) {
+          progressPct = 35 + ((now - end1400) / 180 / 60000) * 20;
+          stepName = '🛠️ PM팀 설비작업 진행 중 (17:00 마무리 예정 / 더미 대기)';
+          barClass = 'progress-fill alert'; boxClass = 'status-detail-box alert';
+          alertMsg = `설비작업 완료까지 약 ${Math.ceil((end1700 - now)/60000)}분 남음 (완료 후 DC 0.5 투입)`;
+        } else if (now >= end1700 && now < t_dc05) {
+          progressPct = 55 + ((now - end1700) / 90 / 60000) * 12;
+          stepName = '2단계: [DC 0.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+        } else if (now >= t_dc05 && now < t_dc15) {
+          progressPct = 67 + ((now - t_dc05) / 90 / 60000) * 12;
+          stepName = '3단계: [DC 1.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+        } else if (now >= t_dc15 && now < t_pass) {
+          progressPct = 79 + ((now - t_dc15) / 90 / 60000) * 10;
+          stepName = '4단계: [패스 후 다 나옴] 1시간 30분 진행 중';
+        } else if (now >= t_pass && now < t_dummy) {
+          progressPct = 89 + ((now - t_pass) / 90 / 60000) * 10;
+          stepName = '5단계: [펄스 더미] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+        } else {
+          progressPct = 100; stepName = '6단계: [광 상태 확인 진행] 후 양산 투입'; barClass = 'progress-fill done';
+        }
+      } else {
+        const t_dc05 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 30, 0);
+        const t_dc15 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0);
+        const t_pass = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 30, 0);
+        const t_dummy = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+
+        if (now < start0830) {
+          stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
+        } else if (now >= start0830 && now < end1400) {
+          progressPct = ((now - start0830) / 330 / 60000) * 40;
+          const rMin = Math.ceil((end1400 - now) / 60000);
+          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
+        } else if (now >= end1400 && now < t_dc05) {
+          progressPct = 40 + ((now - end1400) / 90 / 60000) * 15;
+          stepName = '2단계: [DC 0.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+        } else if (now >= t_dc05 && now < t_dc15) {
+          progressPct = 55 + ((now - t_dc05) / 90 / 60000) * 15;
+          stepName = '3단계: [DC 1.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+        } else if (now >= t_dc15 && now < t_pass) {
+          progressPct = 70 + ((now - t_dc15) / 90 / 60000) * 15;
+          stepName = '4단계: [패스 후 다 나옴] 1시간 30분 소요 진행 중';
+        } else if (now >= t_pass && now < t_dummy) {
+          progressPct = 85 + ((now - t_pass) / 90 / 60000) * 15;
+          stepName = '5단계: [펄스 더미] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+        } else {
+          progressPct = 100; stepName = '6단계: [광 상태 확인 진행] 후 정상 양산 투입'; barClass = 'progress-fill done';
+        }
+      }
+
+      html += `
+        <div class="gauge-box">
+          <div class="gauge-top">
+            <div>
+              <strong>${line.name} <span class="badge badge-purple">펄스 라인</span></strong>
+              <label style="margin-left:10px; font-size:11.5px; font-weight:normal; cursor:pointer;">
+                <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
+                🛠️ PM팀 설비작업(17시마무리) 적용
+              </label>
+            </div>
+            <span class="badge badge-blue">${progressPct.toFixed(0)}%</span>
+          </div>
+          <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
+          <div class="timeline-ticks">
+            <span>08:30 시작</span>
+            <span>14:00 건욕완료</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
+            <span>DC 0.5(1.5H)</span>
+            <span>DC 1.5(1.5H)</span>
+            <span>패스(1.5H)</span>
+            <span>펄스더미(1.5H)</span>
+            <span style="color:var(--success); font-weight:700;">광확인/양산</span>
+          </div>
+          <div class="${boxClass}">
+            <div style="font-weight:700;">${stepName}</div>
+            <div>${alertMsg}</div>
+          </div>
+        </div>
+      `;
+
+    } else {
+      // 일반 전기동 (비-펄스 라인: 더미 1싸이클 1.5H 투입 후 양산)
+      let progressPct = 0;
+      let stepName = '';
+      let barClass = 'progress-fill';
+      let boxClass = 'status-detail-box';
+      let alertMsg = '';
+
+      if (isEquipWorkActive) {
+        const t_dummyEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 30, 0);
+
+        if (now < start0830) {
+          stepName = '07:00 제품 패스 / 08:30 PM 시작 대기'; progressPct = 5;
+        } else if (now >= start0830 && now < end1400) {
+          progressPct = ((now - start0830) / 330 / 60000) * 45;
+          const rMin = Math.ceil((end1400 - now) / 60000);
+          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
+          alertMsg = '14:00 건욕 완료 후 PM팀 설비작업(17:00 마감) 진행 예정';
+        } else if (now >= end1400 && now < end1700) {
+          progressPct = 45 + ((now - end1400) / 180 / 60000) * 30;
+          stepName = '🛠️ PM팀 설비작업 진행 중 (17:00 마무리 예정 / 더미 대기)';
+          barClass = 'progress-fill alert'; boxClass = 'status-detail-box alert';
+          alertMsg = `설비작업 완료까지 약 ${Math.ceil((end1700 - now)/60000)}분 남음 (완료 후 더미 1싸이클 투입)`;
+        } else if (now >= end1700 && now < t_dummyEnd) {
+          progressPct = 75 + ((now - end1700) / 90 / 60000) * 25;
+          stepName = '🔄 더미 1싸이클 투입 진행 중 (1시간 30분 소요)';
+          barClass = 'progress-fill warn'; boxClass = 'status-detail-box warn';
+          alertMsg = `더미 완료 및 양산 전환까지 약 ${Math.ceil((t_dummyEnd - now)/60000)}분 남음`;
+        } else {
+          progressPct = 100;
+          stepName = '✅ 더미 1싸이클 완료 ➔ 정상 양산 가동';
+          barClass = 'progress-fill done';
+        }
+      } else {
+        const t_dummyEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 30, 0);
+
+        if (now < start0830) {
+          stepName = '07:00 제품 패스 / 08:30 PM 시작 대기'; progressPct = 5;
+        } else if (now >= start0830 && now < end1400) {
+          progressPct = ((now - start0830) / 330 / 60000) * 60;
+          const rMin = Math.ceil((end1400 - now) / 60000);
+          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
+        } else if (now >= end1400 && now < t_dummyEnd) {
+          progressPct = 60 + ((now - end1400) / 90 / 60000) * 40;
+          stepName = '🔄 더미 1싸이클 투입 진행 중 (1시간 30분 소요)';
+          barClass = 'progress-fill warn'; boxClass = 'status-detail-box warn';
+          alertMsg = `더미 완료 및 양산 전환까지 약 ${Math.ceil((t_dummyEnd - now)/60000)}분 남음`;
+        } else {
+          progressPct = 100;
+          stepName = '✅ 더미 1싸이클 완료 ➔ 정상 양산 가동';
+          barClass = 'progress-fill done';
+        }
+      }
+
+      html += `
+        <div class="gauge-box">
+          <div class="gauge-top">
+            <div>
+              <strong>${line.name} <span class="badge badge-blue">일반 건욕 라인</span></strong>
+              <label style="margin-left:10px; font-size:11.5px; font-weight:normal; cursor:pointer;">
+                <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
+                🛠️ PM팀 설비작업(17시마무리) 적용
+              </label>
+            </div>
+            <span class="badge badge-blue">${progressPct.toFixed(0)}%</span>
+          </div>
+          <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
+          <div class="timeline-ticks">
+            <span>07:00 패스</span>
+            <span>08:30 PM시작</span>
+            <span style="color:var(--danger); font-weight:700;">14:00 건욕완료</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
+            <span>더미 1싸이클(1.5H)</span>
+            <span style="color:var(--success); font-weight:700;">양산 진행</span>
+          </div>
+          <div class="${boxClass}">
+            <div style="font-weight:700;">${stepName}</div>
+            <div>${alertMsg}</div>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  container.innerHTML = html;
+}
+
+function toggleEquipWork(lineName, isChecked) {
+  equipWorkFlags[lineName] = isChecked;
+  localStorage.setItem('equip_work_flags_v5', JSON.stringify(equipWorkFlags));
+
+  const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
+  if (isChecked && existingIdx === -1) {
+    manualNotes.push({ date: selectedDateStr, line: lineName.split(' ')[0], text: '설비작업' });
+  } else if (!isChecked && existingIdx !== -1) {
+    manualNotes.splice(existingIdx, 1);
+  }
+  saveManualNotes();
+  renderManualNotesList();
+  renderWeeklyMatrix();
+  generateShareText();
+  updateAllGauges();
+}
+
+// --- [6. 화학동 72H 주기 관리 & 화8 48H 빌드업] ---
+function renderChemList() {
+  const container = document.getElementById('chemListContainer');
+  container.innerHTML = '';
+
+  chemList.forEach((c, idx) => {
+    const isHwa8 = c.id === '화8';
+    const card = document.createElement('div');
+    card.style.background = '#f8fafc';
+    card.style.border = '1px solid var(--border-light)';
+    card.style.borderRadius = '8px';
+    card.style.padding = '10px';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.gap = '6px';
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48H 빌드업 금지 규정</span>' : ''}</strong>
+        <div>
+          <select id="stat_${idx}" onchange="changeChemStatus(${idx}, this.value)">
+            <option value="대기" ${c.status === '대기' ? 'selected' : ''}>대기</option>
+            <option value="진행중" ${c.status === '진행중' ? 'selected' : ''}>진행중</option>
+            <option value="완료" ${c.status === '완료' ? 'selected' : ''}>완료</option>
+          </select>
+          <button class="btn btn-sub btn-sm" onclick="setChemNow(${idx})">현재</button>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px;">
+        <input type="datetime-local" id="time_${idx}" value="${c.lastDone}" onchange="updateChemTime(${idx}, this.value)">
+        <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고(촉매건욕 등)" oninput="updateChemNote(${idx}, this.value)">
+      </div>
+      <div id="chem_box_${idx}" style="font-size:11.5px; padding:6px; background:#ffffff; border:1px solid #e2e8f0; border-radius:4px;"></div>
+    `;
+    container.appendChild(card);
+  });
+  updateChemRealtimeStatuses();
+}
+
+function updateChemRealtimeStatuses() {
+  const now = new Date();
+  chemList.forEach((c, idx) => {
+    const box = document.getElementById(`chem_box_${idx}`);
+    if (!box) return;
+    const t = new Date(c.lastDone);
+    if (isNaN(t.getTime())) { box.innerText = '일시 확인 필요'; return; }
+
+    const isExcluded = (c.id === '화8' || c.id === '화9' || c.id === '화14');
+    const totalH = isExcluded ? 10.5 : 16.7;
+
+    if (c.status === '진행중') {
+      const elapsedH = (now - t) / 3600000;
+      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 (${elapsedH.toFixed(1)}H 경과)</span> | 예상 완료: <strong>${formatDateTime(new Date(t.getTime() + totalH * 3600000), false).slice(5)}</strong> (${totalH}H 규격)`;
+    } else {
+      const nextDue = new Date(t.getTime() + 72 * 3600000);
+      const remainH = (nextDue - now) / 3600000;
+      let html = `다음 PM(72H): <strong>${formatDateTime(nextDue, false).slice(5)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '도래'})`;
+
+      if (c.id === '화8') {
+        const buildupLimit = new Date(t.getTime() + 48 * 3600000);
+        const bRemain = (buildupLimit - now) / 3600000;
+        if (bRemain <= 0) {
+          html += `<br><span style="color:var(--danger); font-weight:700;">⛔ 빌드업 금지 적용 중 (${formatDateTime(buildupLimit, false).slice(5)} 경과)</span>`;
+        } else {
+          html += `<br><span style="color:var(--success); font-weight:700;">✅ 빌드업 가능 (${bRemain.toFixed(1)}H 후 금지)</span>`;
+        }
+      }
+      box.innerHTML = html;
+    }
+  });
+}
+
+function changeChemStatus(idx, val) { chemList[idx].status = val; saveChemData(); renderChemList(); updateAllGauges(); generateShareText(); }
+function updateChemTime(idx, val) { chemList[idx].lastDone = val; saveChemData(); updateAllGauges(); generateShareText(); }
+function updateChemNote(idx, val) { chemList[idx].note = val; saveChemData(); generateShareText(); }
+function setChemNow(idx) {
+  const now = new Date();
+  chemList[idx].lastDone = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  document.getElementById(`time_${idx}`).value = chemList[idx].lastDone;
+  saveChemData(); updateAllGauges(); generateShareText();
+}
+function saveChemData() { localStorage.setItem('chem_data_v5', JSON.stringify(chemList)); }
+
+// --- [7. 펄스라인 120일 액퍼내기] ---
+function renderPulseTable() {
+  const tbody = document.getElementById('pulseTableBody');
+  tbody.innerHTML = '';
+  const now = new Date();
+
+  pulseList.forEach((p, idx) => {
+    const base = new Date(p.lastDate + 'T00:00:00');
+    const d1 = new Date(base.getTime() + 120 * 86400000);
+    const d2 = new Date(base.getTime() + 240 * 86400000);
+    const diff = Math.ceil((d1 - now) / 86400000);
+
+    let badge = diff < 0 ? `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`
+              : (diff <= 7 ? `<span class="badge badge-yellow">D-${diff} 임박</span>`
+              : `<span class="badge badge-green">D-${diff}</span>`);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${p.line}</strong></td>
+      <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)"></td>
+      <td><strong>${formatDateOnly(d1)}</strong></td>
+      <td>${formatDateOnly(d2)}</td>
+      <td>${badge}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+function updatePulseDate(idx, val) { pulseList[idx].lastDate = val; savePulseData(); renderPulseTable(); }
+function savePulseData() { localStorage.setItem('pulse_data_v5', JSON.stringify(pulseList)); }
+
+// --- [8. 월간 캘린더] ---
+function renderCalendar() {
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+  document.getElementById('calMonthTitle').innerText = `${year}년 ${month + 1}월`;
+
+  const container = document.getElementById('calendarDays');
+  container.innerHTML = '';
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  let startDay = firstDay.getDay() - 1;
+  if (startDay === -1) startDay = 6;
+
+  const totalDays = lastDay.getDate();
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+  for (let i = startDay - 1; i >= 0; i--) {
+    container.appendChild(createCalCell(prevMonthLastDay - i, true, null));
+  }
+
+  const today = new Date();
+  for (let d = 1; d <= totalDays; d++) {
+    const iterDate = new Date(year, month, d);
+    const dateStr = formatDateOnly(iterDate);
+    const isToday = (today.getFullYear() === year && today.getMonth() === month && today.getDate() === d);
+    const isSelected = (dateStr === selectedDateStr);
+    container.appendChild(createCalCell(d, false, iterDate, isToday, isSelected));
+  }
+
+  const totalCells = container.children.length;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    container.appendChild(createCalCell(i, true, null));
+  }
+}
+
+function createCalCell(dayNum, isOther, dateObj, isToday = false, isSelected = false) {
+  const div = document.createElement('div');
+  div.className = `cal-cell ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`;
+
+  if (!isOther && dateObj) {
+    const dateStr = formatDateOnly(dateObj);
+    div.onclick = () => {
+      selectedDateStr = dateStr;
+      document.getElementById('targetDateInput').value = dateStr;
+      document.getElementById('manualDateInput').value = dateStr;
+      renderWeeklyMatrix();
+      renderCalendar();
+      generateShareText();
+      updateAllGauges();
+    };
+
+    div.innerHTML = `<div class="date-num">${dayNum}</div>`;
+    const dayOfWeek = dateObj.getDay();
+
+    chemList.forEach(c => {
+      const base = new Date(c.lastDone);
+      if (!isNaN(base.getTime())) {
+        const diffMs = dateObj.getTime() - new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
+        const diffDays = Math.round(diffMs / 86400000);
+        if (diffDays >= 0 && diffDays % 3 === 0) {
+          const hh = String(base.getHours()).padStart(2, '0');
+          const mm = String(base.getMinutes()).padStart(2, '0');
+          div.innerHTML += `<div class="cal-pill pill-chem">${c.id} (${hh}:${mm})</div>`;
+        }
+      }
+    });
+
+    if (dayOfWeek === 1) div.innerHTML += `<div class="cal-pill pill-black">화12(블랙홀)</div>`;
+    if (dayOfWeek === 3) div.innerHTML += `<div class="cal-pill pill-black">화11(블랙홀)</div>`;
+    if (dayOfWeek === 5) div.innerHTML += `<div class="cal-pill pill-black">화10(블랙홀)</div>`;
+
+    if (dayOfWeek === 1) div.innerHTML += `<div class="cal-pill pill-fixed">고압수세1/디8·11·15/전9·16</div>`;
+    if (dayOfWeek === 2) div.innerHTML += `<div class="cal-pill pill-fixed">디9·6/전18·22</div>`;
+    if (dayOfWeek === 3) div.innerHTML += `<div class="cal-pill pill-fixed">데3/디12/전15·20</div>`;
+    if (dayOfWeek === 4) div.innerHTML += `<div class="cal-pill pill-fixed">디7/전11·14·17</div>`;
+    if (dayOfWeek === 5) div.innerHTML += `<div class="cal-pill pill-fixed">데2/디10/전12·13·21</div>`;
+  } else {
+    div.innerHTML = `<div class="date-num">${dayNum}</div>`;
+  }
+  return div;
+}
+
+function onDateChange() {
+  selectedDateStr = document.getElementById('targetDateInput').value;
+  if (selectedDateStr) {
+    document.getElementById('manualDateInput').value = selectedDateStr;
+    currentCalDate = new Date(selectedDateStr + 'T00:00:00');
+    renderWeeklyMatrix();
+    renderCalendar();
+    generateShareText();
+    updateAllGauges();
+  }
+}
+function moveMonth(dir) { currentCalDate.setMonth(currentCalDate.getMonth() + dir); renderCalendar(); }
+function goToday() {
+  currentCalDate = new Date();
+  selectedDateStr = formatDateOnly(currentCalDate);
+  document.getElementById('targetDateInput').value = selectedDateStr;
+  document.getElementById('manualDateInput').value = selectedDateStr;
+  renderWeeklyMatrix();
+  renderCalendar();
+  generateShareText();
+  updateAllGauges();
+}
+
+// --- [9. 야간 05시 이전 브리핑 공유 텍스트 자동 완성] ---
+function generateShareText() {
+  if (!selectedDateStr) return;
+  const targetDate = new Date(selectedDateStr + 'T00:00:00');
+  const day = targetDate.getDay();
+  const m = targetDate.getMonth() + 1;
+  const d = targetDate.getDate();
+  const pass = document.getElementById('passTimeInput').value || '7시패스';
+
+  document.getElementById('briefingTitle').innerText = `동도금 ${m}월 ${d}일 PM일정`;
+
+  const windowStart = new Date(targetDate.getTime() + 8.5 * 3600000);
+  const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
+
+  const getNote = (lineKeyword) => {
+    const found = manualNotes.filter(n => n.date === selectedDateStr && n.line.includes(lineKeyword));
+    return found.length > 0 ? ` ${found.map(f => f.text).join(' ')}` : '';
+  };
+
+  let debarr = '';
+  let etching = '에3.4';
+  let desmear = [];
+  let blackhole = '';
+  let electro = [];
+  let chems = [];
+  let ongoing = [];
+
+  if (day === 1) {
+    if (checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) desmear.push('고압수세 1라인');
+    desmear.push(`디8 기본PM${getNote('디스미어 8')}`);
+    if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디11${getNote('디스미어 11')}`);
+    if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디15${getNote('디스미어 15')}`);
+    blackhole = `화12 정기PM${getNote('화12')}`;
+    electro.push(`전9 탈지 산세 박리건욕 (${pass})${getNote('전기동 9')}`);
+    electro.push(`전16 유산동 (${pass})${getNote('전기동 16')}`);
+  } else if (day === 2) {
+    desmear.push(`디9${getNote('디스미어 9')}`, `디6${getNote('디스미어 6')}`);
+    electro.push(`전18 (${pass})${getNote('전기동 18')}`, `전22 (${pass})${getNote('전기동 22')}`);
+  } else if (day === 3) {
+    debarr = '데3';
+    desmear.push(`디12${getNote('디스미어 12')}`);
+    blackhole = `화11 정기PM${getNote('화11')}`;
+    electro.push(`전15 (${pass})${getNote('전기동 15')}`, `전20 (${pass})${getNote('전기동 20')}`);
+  } else if (day === 4) {
+    desmear.push(`디7${getNote('디스미어 7')}`);
+    electro.push(`전11 (${pass})${getNote('전기동 11')}`, `전14 유산동 (${pass})${getNote('전기동 14')}`, `전17 유산동 (${pass})${getNote('전기동 17')}`);
+  } else if (day === 5) {
+    debarr = '데2';
+    desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
+    blackhole = `화10 정기PM${getNote('화10')}`;
+    if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 유산동 (${pass})${getNote('전기동 12')}`);
+    electro.push(`전13 탈지 산세 박리건욕 (${pass})${getNote('전기동 13')}`);
+    electro.push(`전21 탈지 산세 박리건욕 (7시30분패스)${getNote('전기동 21')}`);
+  }
+
+  // 화학동 진행 및 도래 건 취합
+  chemList.forEach(c => {
+    const t = new Date(c.lastDone);
+    if (c.status === '진행중') {
+      ongoing.push(`-${c.id} ${t.getHours()}시PM중`);
+    } else {
+      const nextDue = new Date(t.getTime() + 72 * 3600000);
+      const manualChemNote = getNote(c.id);
+      if (nextDue >= windowStart && nextDue <= windowEnd) {
+        const h = nextDue.getHours();
+        const prefix = (nextDue.getDate() !== targetDate.getDate()) ? `익일(${nextDue.getDate()}일) ` : '';
+        const noteText = manualChemNote || (c.note ? ` ${c.note}` : ' 정기PM');
+        chems.push(`${c.id} ${prefix}${h}시${noteText}`);
+      } else if (manualChemNote) {
+        chems.push(`${c.id} ${manualChemNote}`);
+      } else if (c.note && c.note.includes(`${d}일`)) {
+        chems.push(`${c.id} ${c.note}`);
+      }
+    }
+  });
+
+  let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
+  if (debarr) out += `${debarr}\n\n`;
+  if (etching) out += `${etching}\n\n`;
+  if (desmear.length > 0) out += `${desmear.join('\n')}\n\n`;
+
+  if (blackhole || chems.length > 0) {
+    if (blackhole) out += `${blackhole}\n`;
+    chems.forEach(ch => out += `${ch}\n`);
+    out += `\n`;
+  }
+
+  if (electro.length > 0) {
+    out += `${electro.join('\n')}\n\n`;
+  }
+
+  if (ongoing.length > 0) {
+    out += `${ongoing.join('\n')}\n\n`;
+  }
+
+  out += `이상입니다.`;
+  document.getElementById('shareTextOutput').value = out;
+}
+
+function copyShareText() {
+  const el = document.getElementById('shareTextOutput');
+  el.select();
+  navigator.clipboard.writeText(el.value).then(() => {
+    alert('PM 공유 텍스트가 클립보드에 복사되었습니다.');
+  });
+}
+
+function checkBiWeek(anchor, target) {
+  const diffDays = Math.floor((target - anchor) / 86400000);
+  return (Math.floor(diffDays / 7) % 2 === 0);
+}
+function formatDateTime(d, sec) {
+  if (isNaN(d.getTime())) return '-';
+  const Y = d.getFullYear();
+  const M = String(d.getMonth() + 1).padStart(2, '0');
+  const D = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  if (sec) return `${Y}-${M}-${D} ${h}:${m}:${String(d.getSeconds()).padStart(2, '0')}`;
+  return `${Y}-${M}-${D} ${h}:${m}`;
+}
+function formatDateOnly(d) {
+  if (isNaN(d.getTime())) return '-';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+</script>
+</body>
+</html>
