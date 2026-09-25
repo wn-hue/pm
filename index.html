@@ -42,6 +42,30 @@
 
   .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
+  /* 4주 전 펄스 리마인드 배너 */
+  .remind-banner {
+    background: #fdf4ff;
+    border: 1px solid #f0abfc;
+    border-left: 4px solid var(--purple);
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
+    color: #86198f;
+  }
+  .remind-banner strong { font-weight: 800; }
+  .remind-close-btn {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    color: #86198f;
+    font-weight: bold;
+    padding: 0 4px;
+  }
+
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -83,6 +107,7 @@
   }
   .live-clock-box span { font-size: 14px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
+  /* 5개 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -119,13 +144,14 @@
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
 
+  /* 1번 수정: 브리핑 창 폭을 340px로 콤팩트하게 제한하고 매트릭스에 1fr 배정 */
   .grid-2col {
     display: grid;
     grid-template-columns: 1fr;
     gap: 12px;
   }
   @media(min-width: 1024px) {
-    .grid-2col { grid-template-columns: 1.35fr 1fr; }
+    .grid-2col { grid-template-columns: 1fr 340px; }
   }
 
   .card {
@@ -200,11 +226,11 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 4px 8px; font-size: 11px; }
 
-  /* 1번 수정: 텍스트칸 높이 최적화 (250px) */
+  /* 1번 수정: 텍스트칸 폭 100%(340px 카드 내), 적절한 높이 설정 */
   .report-area {
     width: 100%;
-    min-height: 250px;
-    height: 260px;
+    min-height: 270px;
+    height: 290px;
     background: #f8fafc;
     color: #0f172a;
     font-family: Consolas, "Courier New", monospace;
@@ -271,6 +297,31 @@
     border-radius: 6px;
   }
 
+  /* 4번 수정: 화학동 상태 세분화 탭 버튼 스타일 */
+  .status-step-group {
+    display: inline-flex;
+    background: #e2e8f0;
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .status-step-btn {
+    border: none;
+    background: transparent;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .status-step-btn.active-대기 { background: #94a3b8; color: #fff; }
+  .status-step-btn.active-시작 { background: var(--accent); color: #fff; }
+  .status-step-btn.active-메이크업 { background: var(--warning); color: #fff; }
+  .status-step-btn.active-분석 { background: var(--purple); color: #fff; }
+  .status-step-btn.active-완료 { background: var(--success); color: #fff; }
+
   @media (max-width: 768px) {
     body { padding: 8px; }
     header { padding: 10px 12px; flex-direction: column; align-items: flex-start; }
@@ -281,13 +332,19 @@
     .briefing-control-row { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
     .briefing-control-row > div { width: 100%; }
     .briefing-btn-group { text-align: right; width: 100%; }
-    .report-area { min-height: 240px; height: 250px; font-size: 12px; }
+    .report-area { min-height: 240px; height: 260px; font-size: 12px; }
   }
 </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- 3번 수정: 펄스 건욕 4주 전 리마인드 알림 배너 -->
+  <div id="remindBanner" class="remind-banner">
+    <div id="remindBannerText">🔔 <strong>[펄스 건욕 4주 전 알림]</strong> 건욕 리마인드 일정이 도래했습니다.</div>
+    <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
+  </div>
+
   <!-- 상단 헤더 -->
   <header>
     <div class="header-left">
@@ -388,7 +445,7 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
-              <!-- 3. 일반 화학동 (분리) -->
+              <!-- 2번 수정: 일반 화학동 행 -->
               <tr style="background:#f0fdf4;">
                 <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:10px; color:var(--text-secondary);">(72H 주기)</span></td>
                 <td id="chem_cell_1">-</td>
@@ -399,7 +456,7 @@
                 <td id="chem_cell_6">-</td>
                 <td id="chem_cell_7">-</td>
               </tr>
-              <!-- 4. 블랙홀 (분리) -->
+              <!-- 2번 수정: 블랙홀 행 분리 -->
               <tr style="background:#faf5ff;">
                 <td><strong style="color:var(--purple);">블랙홀</strong><br><span style="font-size:10px; color:var(--text-secondary);">(7일 고정)</span></td>
                 <td><div><span class="badge badge-purple">화12 정기PM</span> <span id="custom_화12"></span></div></td>
@@ -443,11 +500,11 @@
         </div>
       </div>
 
-      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 -->
+      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 (1번 수정: 340px 슬림폭) -->
       <div class="card">
         <div class="card-title">
           <span id="briefingTitle">오늘 PM 브리핑</span>
-          <span class="badge badge-blue">익일 08시 30분 이전 자동 취합</span>
+          <span class="badge badge-blue">익일 08:30 이전 취합</span>
         </div>
 
         <div class="briefing-control-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -462,11 +519,9 @@
           <div class="briefing-btn-group" style="flex:1; text-align:right; align-self:flex-end;">
             <button class="btn btn-sub" onclick="generateShareText()">새로고침</button>
             <button class="btn" onclick="copyShareText()">텍스트 복사</button>
-            <button class="btn btn-sub" style="background:#059669;" onclick="sendEmailDirect()">✉️ 메일 발송</button>
           </div>
         </div>
 
-        <!-- 1번 반영: 텍스트 상자 크기 축소 -->
         <textarea id="shareTextOutput" class="report-area"></textarea>
       </div>
     </div>
@@ -531,7 +586,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 -->
+  <!-- [탭 3] 화학동 주기 관리 (2번 & 4번 수정 반영) -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -539,7 +594,7 @@
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
       <div style="font-size:11.5px; color:var(--text-secondary);">
-        💡 비고란의 <strong>[+ 촉매건욕]</strong>, <strong>[+ 화학동 건욕]</strong> 버튼을 누르면 즉시 실시간 동기화됩니다.
+        💡 상태 탭을 누르면 <strong>[시작 / 메이크업 / 분석 / 완료]</strong>가 즉시 동기화되며, 브리핑 양식에 현재 공정이 자동 표기됩니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -601,7 +656,7 @@
     </div>
   </div>
 
-  <!-- [탭 5] 펄스 액퍼내기 예정일 -->
+  <!-- [탭 5] 펄스 액퍼내기 예정일 (3번 수정: 4주 전 알림 연동) -->
   <div id="tab5" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -609,7 +664,7 @@
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
       <div style="font-size:11.5px; color:var(--text-secondary);">
-        액퍼내기 날짜 입력 시 1차(+120일), 2차(+240일), 3차(+360일) 일정과 D-Day가 자동 계산됩니다.
+        액퍼내기 날짜 입력 시 1차(+120일), 2차(+240일), 3차(+360일) 일정과 D-Day가 산출되며, <strong>건욕 4주(28일) 전 진입 시 리마인드 알림</strong>이 점등됩니다.
       </div>
       <div class="table-responsive">
         <table>
@@ -647,8 +702,9 @@ const firebaseConfig = {
 let db = null;
 let isFirebaseConnected = false;
 
+// 4번 반영: 기본 상태를 [대기, 시작, 메이크업, 분석, 완료] 체계로 구성
 const DEFAULT_CHEM = [
-  { id: '화7', lastDone: '2026-09-25T00:00', status: '진행중', note: '0시PM중' },
+  { id: '화7', lastDone: '2026-09-25T00:00', status: '시작', note: '0시PM' },
   { id: '화8', lastDone: '2026-09-23T18:30', status: '완료', note: '' },
   { id: '화9', lastDone: '2026-09-24T19:30', status: '완료', note: '' },
   { id: '화13', lastDone: '2026-09-22T13:00', status: '완료', note: '13시 촉매건욕' },
@@ -664,16 +720,17 @@ const DEFAULT_PULSE = [
 
 const DEFAULT_MANUAL_NOTES = [];
 
+// 고압수세 PM일정 9월 28일 기준 (2주 주기)
 const ANCHOR_BIWEEK = {
   des11: new Date('2026-09-14T00:00:00'),
   elec12: new Date('2026-09-18T00:00:00'),
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v13')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v13')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v13')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v13')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v14')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v14')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v14')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v14')) || {};
 
 let selectedDateStr = '2026-09-25';
 
@@ -717,10 +774,10 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v13', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v13', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v13', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v13', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('chem_data_v14', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v14', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v14', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v14', JSON.stringify(equipWorkFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -741,6 +798,7 @@ function formatTimeKr(hour, min) {
   return `${h}시 ${String(m).padStart(2, '0')}분`;
 }
 
+// 2번 수정: 연도 제거하고 월 일 시 분만 표기
 function formatDateTimeKr(d) {
   if (isNaN(d.getTime())) return '-';
   const M = d.getMonth() + 1;
@@ -773,7 +831,6 @@ window.onload = function() {
   setInterval(tick, 1000);
 };
 
-// 4번 반영: 04시 30분에 자동 업데이트 실행
 let hasAutoTriggered0430 = false;
 
 function tick() {
@@ -782,7 +839,7 @@ function tick() {
   updateAllGauges();
   updateChemRealtimeStatuses();
 
-  // 매일 04시 30분 정각 도래 시 당일 PM 일정으로 자동 갱신 트리거
+  // 매일 04시 30분 자동 정리 트리거
   if (now.getHours() === 4 && now.getMinutes() === 30) {
     if (!hasAutoTriggered0430) {
       hasAutoTriggered0430 = true;
@@ -857,7 +914,7 @@ function renderWeeklyMatrix() {
   setTag('tag_w_elec12', checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate));
   setTag('tag_w_wash1', checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate));
 
-  // 3번 수정: 화학동 72시간 1회차 도래 예정일만 표기 (144시간 등 중복 제외)
+  // 화학동 72시간 1회차 도래 예정일만 표기 (144시간 등 이후 주기 제외)
   for (let i = 0; i < 7; i++) {
     const dStr = weekDates[i].dateStr;
     const cell = document.getElementById(`chem_cell_${i+1}`);
@@ -999,12 +1056,13 @@ function renderChem12hGauge(now) {
   const headerElem = document.getElementById('chemGaugeHeader');
   const badgeElem = document.getElementById('chemGaugePercentBadge');
 
-  headerElem.innerText = `${line.id} PM 시작 후 12시간 액이송 마일스톤 추적`;
+  headerElem.innerText = `${line.id} [${line.status}] 12시간 액이송 추적`;
 
-  if (line.status !== '진행중') {
+  // 완료 또는 대기 상태
+  if (line.status === '완료' || line.status === '대기') {
     chemBar.style.width = '0%';
     chemBar.className = 'progress-fill';
-    badgeElem.innerText = '대기/완료';
+    badgeElem.innerText = line.status;
     badgeElem.className = 'badge badge-sub';
     const nextDue = new Date(new Date(line.lastDone).getTime() + 72 * 3600000);
     const rH = ((nextDue - now) / 3600000).toFixed(1);
@@ -1016,13 +1074,14 @@ function renderChem12hGauge(now) {
     return;
   }
 
+  // 시작, 메이크업, 분석 진행 중
   const startTime = new Date(line.lastDone);
   const elapsedMin = Math.max(0, (now - startTime) / 60000);
   const target12hMin = 720;
 
   const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
   chemBar.style.width = pct.toFixed(1) + '%';
-  badgeElem.innerText = `${pct.toFixed(0)}%`;
+  badgeElem.innerText = `${line.status} (${pct.toFixed(0)}%)`;
 
   const elapsedH = (elapsedMin / 60).toFixed(1);
 
@@ -1043,7 +1102,7 @@ function renderChem12hGauge(now) {
 
     chemBox.innerHTML = `
       <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-        <span>진척 상태: <strong>C/S 세척 및 준비 구간</strong> (경과: <strong>${elapsedH}시간</strong>)</span>
+        <span>현재 상태: <strong style="color:var(--accent);">[${line.status}]</strong> (경과: <strong>${elapsedH}시간</strong>)</span>
         <strong style="color:var(--danger);">액이송(12H)까지 ${rH > 0 ? rH + '시간 ' : ''}${rM}분 남음</strong>
       </div>
       <div>
@@ -1054,13 +1113,12 @@ function renderChem12hGauge(now) {
     chemBar.className = 'progress-fill alert';
     chemBox.className = 'status-detail-box alert';
     badgeElem.className = 'badge badge-red';
-    badgeElem.innerText = '12H 도달!';
 
     const to14hMin = Math.max(0, Math.ceil(840 - elapsedMin));
 
     chemBox.innerHTML = `
       <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-        <strong style="color:var(--danger);">🚨 [12시간 경과] 액이송 시작 시점!</strong>
+        <strong style="color:var(--danger);">🚨 [12시간 경과] 액이송 시작 시점! (현재: ${line.status})</strong>
         <span>경과: <strong>${elapsedH}시간</strong></span>
       </div>
       <div>
@@ -1071,11 +1129,10 @@ function renderChem12hGauge(now) {
     chemBar.className = 'progress-fill done';
     chemBox.className = 'status-detail-box';
     badgeElem.className = 'badge badge-green';
-    badgeElem.innerText = '14H 완료';
 
     chemBox.innerHTML = `
       <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-        <span style="color:var(--success); font-weight:700;">✅ 14시간 경과 - PM 완료 및 양산 가동 가능</span>
+        <span style="color:var(--success); font-weight:700;">✅ 14시간 경과 - 양산 가동 가능 구간 (현재: ${line.status})</span>
         <span>경과: <strong>${elapsedH}시간</strong></span>
       </div>
       <div>
@@ -1323,10 +1380,13 @@ function toggleEquipWork(lineName, isChecked) {
   updateAllGauges();
 }
 
+// --- [탭 3 화학동 주기 관리: 4번 수정 상태 세분화 탭 반영] ---
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
   container.innerHTML = '';
+
+  const statusList = ['대기', '시작', '메이크업', '분석', '완료'];
 
   chemList.forEach((c, idx) => {
     const isHwa8 = c.id === '화8';
@@ -1334,21 +1394,25 @@ function renderChemList() {
     card.style.background = '#f8fafc';
     card.style.border = '1px solid var(--border-light)';
     card.style.borderRadius = '8px';
-    card.style.padding = '10px';
+    card.style.padding = '12px';
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
-    card.style.gap = '6px';
+    card.style.gap = '8px';
+
+    // 4번 수정: 시작/메이크업/분석/완료 세분화 버튼 그룹
+    let statusBtnsHtml = `<div class="status-step-group">`;
+    statusList.forEach(st => {
+      const activeClass = (c.status === st) ? `active-${st}` : '';
+      statusBtnsHtml += `<button class="status-step-btn ${activeClass}" onclick="setChemStepStatus(${idx}, '${st}')">${st}</button>`;
+    });
+    statusBtnsHtml += `</div>`;
 
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지</span>' : ''}</strong>
         <div>
-          <select id="stat_${idx}" onchange="changeChemStatus(${idx}, this.value)" style="font-size:11.5px; padding:3px 5px;">
-            <option value="대기" ${c.status === '대기' ? 'selected' : ''}>대기</option>
-            <option value="진행중" ${c.status === '진행중' ? 'selected' : ''}>진행중</option>
-            <option value="완료" ${c.status === '완료' ? 'selected' : ''}>완료</option>
-          </select>
-          <button class="btn btn-sub btn-sm" onclick="setChemNow(${idx})">현재시각</button>
+          ${statusBtnsHtml}
+          <button class="btn btn-sub btn-sm" style="margin-left:4px;" onclick="setChemNow(${idx})">현재시각</button>
         </div>
       </div>
       <div class="chem-input-grid" style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px;">
@@ -1368,6 +1432,14 @@ function renderChemList() {
   updateChemRealtimeStatuses();
 }
 
+function setChemStepStatus(idx, st) {
+  chemList[idx].status = st;
+  syncDataToFirebase();
+  renderChemList();
+  updateAllGauges();
+  generateShareText();
+}
+
 function setChemNoteTag(idx, tag) {
   chemList[idx].note = tag;
   const noteInput = document.getElementById(`note_${idx}`);
@@ -1377,6 +1449,7 @@ function setChemNoteTag(idx, tag) {
   generateShareText();
 }
 
+// 2번 수정: 연도 제거하고 월 일 시 분만 표기
 function updateChemRealtimeStatuses() {
   const now = new Date();
   chemList.forEach((c, idx) => {
@@ -1385,10 +1458,12 @@ function updateChemRealtimeStatuses() {
     const t = new Date(c.lastDone);
     if (isNaN(t.getTime())) { box.innerText = '일시 확인 필요'; return; }
 
-    if (c.status === '진행중') {
+    const isRunning = (c.status !== '완료' && c.status !== '대기');
+
+    if (isRunning) {
       const elapsedH = (now - t) / 3600000;
       const transferTime = new Date(t.getTime() + 12 * 3600000);
-      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 (${elapsedH.toFixed(1)}H 경과)</span> | 12시간 액이송: <strong>${formatDateTimeKr(transferTime)}</strong>`;
+      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 [${c.status}] (${elapsedH.toFixed(1)}H 경과)</span> | 12시간 액이송: <strong>${formatDateTimeKr(transferTime)}</strong>`;
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const remainH = (nextDue - now) / 3600000;
@@ -1408,7 +1483,6 @@ function updateChemRealtimeStatuses() {
   });
 }
 
-function changeChemStatus(idx, val) { chemList[idx].status = val; syncDataToFirebase(); renderChemList(); updateAllGauges(); generateShareText(); }
 function updateChemTime(idx, val) { chemList[idx].lastDone = val; syncDataToFirebase(); updateAllGauges(); generateShareText(); }
 function updateChemNote(idx, val) { chemList[idx].note = val; syncDataToFirebase(); generateShareText(); }
 function setChemNow(idx) {
@@ -1419,11 +1493,15 @@ function setChemNow(idx) {
   syncDataToFirebase(); updateAllGauges(); generateShareText();
 }
 
+// 3번 수정: 펄스 건욕 4주 전(D-28일) 알림 및 뱃지 연동
+let activePulseReminds = [];
+
 function renderPulseTable() {
   const tbody = document.getElementById('pulseTableBody');
   if (!tbody) return;
   tbody.innerHTML = '';
   const now = new Date();
+  activePulseReminds = [];
 
   pulseList.forEach((p, idx) => {
     const base = new Date(p.lastDate + 'T00:00:00');
@@ -1432,22 +1510,50 @@ function renderPulseTable() {
     const d3 = new Date(base.getTime() + 360 * 86400000);
     const diff = Math.ceil((d1 - now) / 86400000);
 
-    let badge = diff < 0 ? `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`
-              : (diff <= 7 ? `<span class="badge badge-yellow">D-${diff} 임박</span>`
-              : `<span class="badge badge-green">D-${diff}</span>`);
+    let badge = '';
+    // 4주 전(D-28 ~ D-0) 알림 체크
+    if (diff <= 28 && diff > 0) {
+      badge = `<span class="badge badge-purple">🔔 D-${diff} (4주 전 리마인드)</span>`;
+      activePulseReminds.push(`${p.line} 4주 전 (${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]} 예정)`);
+    } else if (diff < 0) {
+      badge = `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`;
+    } else {
+      badge = `<span class="badge badge-green">D-${diff}</span>`;
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${p.line}</strong></td>
       <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)" style="width:120px;"></td>
-      <td><strong>${formatDateOnly(d1)}</strong></td>
-      <td>${formatDateOnly(d2)}</td>
-      <td>${formatDateOnly(d3)}</td>
+      <td><strong>${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]}</strong></td>
+      <td>${formatDateTimeKr(d2).split(' ')[0]} ${formatDateTimeKr(d2).split(' ')[1]}</td>
+      <td>${formatDateTimeKr(d3).split(' ')[0]} ${formatDateTimeKr(d3).split(' ')[1]}</td>
       <td>${badge}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  checkPulseBannerTrigger();
 }
+
+function checkPulseBannerTrigger() {
+  const banner = document.getElementById('remindBanner');
+  const bannerText = document.getElementById('remindBannerText');
+  const dismissedKey = 'pulse_banner_dismissed_' + selectedDateStr;
+
+  if (activePulseReminds.length > 0 && !sessionStorage.getItem(dismissedKey)) {
+    bannerText.innerHTML = `🔔 <strong>[펄스 건욕 4주 전 알림]</strong> ${activePulseReminds.join(' / ')}`;
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function dismissRemindBanner() {
+  document.getElementById('remindBanner').style.display = 'none';
+  sessionStorage.setItem('pulse_banner_dismissed_' + selectedDateStr, 'true');
+}
+
 function updatePulseDate(idx, val) {
   pulseList[idx].lastDate = val;
   syncDataToFirebase();
@@ -1465,14 +1571,7 @@ function onDateChange() {
   }
 }
 
-// 5번 수동 메일 발송 기능
-function sendEmailDirect() {
-  const text = document.getElementById('shareTextOutput').value;
-  const subject = encodeURIComponent(document.getElementById('briefingTitle').innerText);
-  const body = encodeURIComponent(text);
-  window.location.href = `mailto:wlamutan@gmail.com?subject=${subject}&body=${body}`;
-}
-
+// 4번 수정: 브리핑 양식에 세분화된 상태 [시작/메이크업/분석] 자동 반영
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1532,11 +1631,15 @@ function generateShareText() {
     electro.push(`전21 탈지 산세 박리건욕 (7시 30분패스)${getNote('전기동 21')}`);
   }
 
+  // 화학동 진행 상태 [시작/메이크업/분석] 반영
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
-    if (c.status === '진행중') {
+    const isRunning = (c.status !== '완료' && c.status !== '대기');
+
+    if (isRunning) {
       const timeKr = formatTimeKr(t.getHours(), t.getMinutes());
-      ongoing.push(`-${c.id} ${timeKr}PM중`);
+      const statusLabel = (c.status === '시작') ? 'PM중' : `${c.status}중`;
+      ongoing.push(`-${c.id} ${timeKr}${statusLabel}`);
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const manualChemNote = getNote(c.id);
