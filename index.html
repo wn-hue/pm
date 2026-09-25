@@ -163,7 +163,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.03);
   }
   .card-title {
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 700;
     display: flex;
     justify-content: space-between;
@@ -171,6 +171,7 @@
     border-bottom: 1px solid var(--border-light);
     padding-bottom: 8px;
     gap: 6px;
+    flex-wrap: wrap;
   }
 
   .table-responsive {
@@ -282,18 +283,6 @@
     background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 11px;
   }
 
-  .etching-bar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    padding: 5px 10px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-  }
-
   .status-step-group {
     display: inline-flex;
     background: #e2e8f0;
@@ -316,7 +305,6 @@
   .status-step-btn.active-분석 { background: var(--purple); color: #fff; }
   .status-step-btn.active-완료 { background: var(--success); color: #fff; }
 
-  /* 펄스 자동 단계 스텝 인디케이터 스타일 */
   .pulse-step-container {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -355,7 +343,6 @@
     .header-right { width: 100%; justify-content: space-between; }
     .card { padding: 10px; }
     .timeline-ticks { font-size: 8.5px; }
-    .etching-bar { justify-content: space-between; }
     .briefing-control-row { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
     .briefing-control-row > div { width: 100%; }
     .briefing-btn-group { text-align: right; width: 100%; }
@@ -411,14 +398,16 @@
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
       <div class="card">
+        <!-- 2번 수정: 에칭 PM을 우측 상단 타이틀에 빈틈없이 배치 -->
         <div class="card-title">
           <span>금주 정기 PM 매트릭스 (월~일)</span>
-          <span class="badge badge-blue" id="weekRangeBadge">금주</span>
-        </div>
-
-        <div class="etching-bar">
-          <span>⚡ <strong>금일 에칭 PM:</strong></span>
-          <input type="text" id="todayEtchingInput" value="에3.4" style="width:75px; padding:3px 6px; font-weight:700; color:var(--accent);" oninput="onEtchingChange(this.value)">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="display:flex; align-items:center; gap:4px; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 6px; border-radius:6px; font-size:11.5px;">
+              <span>⚡ <strong>금일 에칭 PM:</strong></span>
+              <input type="text" id="todayEtchingInput" value="에3.4" style="width:65px; padding:2px 4px; font-weight:700; color:var(--accent); font-size:11.5px;" oninput="onEtchingChange(this.value)">
+            </div>
+            <span class="badge badge-blue" id="weekRangeBadge">금주</span>
+          </div>
         </div>
 
         <div class="table-responsive">
@@ -689,6 +678,7 @@
 </div>
 
 <script>
+// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
   authDomain: "pm1234-3069b.firebaseapp.com",
@@ -702,6 +692,17 @@ const firebaseConfig = {
 
 let db = null;
 let isFirebaseConnected = false;
+
+// 1번 디버그: 데이터 구조를 안전한 배열로 강제 보정하는 헬퍼 함수
+function ensureArray(data, defaultVal) {
+  if (!data) return defaultVal;
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'object') return Object.values(data);
+  return defaultVal;
+}
+function ensureObject(data) {
+  return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+}
 
 const DEFAULT_CHEM = [
   { id: '화7', lastDone: '2026-09-25T00:00', status: '시작', note: '0시PM' },
@@ -726,16 +727,14 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v21')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v21')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v21')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v21')) || {};
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v22')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v22')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v22')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v22')));
 
-let elecDummyFlags = JSON.parse(localStorage.getItem('elec_dummy_flags_v21')) || {};
-let pulseProcessFlags = JSON.parse(localStorage.getItem('pulse_process_flags_v21')) || {};
-
-// 2번 수정: 전기동 완료 처리 플래그 (완료 시 진척창에서 제외)
-let elecCompletedFlags = JSON.parse(localStorage.getItem('elec_completed_flags_v21')) || {};
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v22')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v22')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v22')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -743,54 +742,56 @@ let lastCheckedDate = '';
 function initFirebase() {
   const statusEl = document.getElementById('syncStatus');
   try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-
-    db.ref('.info/connected').on('value', (snap) => {
-      if (snap.val() === true) {
-        isFirebaseConnected = true;
-        statusEl.innerHTML = `<span style="color:#16a34a;">🟢 실시간 서버 연결됨</span>`;
-      } else {
-        isFirebaseConnected = false;
-        statusEl.innerHTML = `<span style="color:#dc2626;">🔴 오프라인 (재연결 시도)</span>`;
+    if (typeof firebase !== 'undefined') {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
       }
-    });
+      db = firebase.database();
 
-    db.ref('pm_system_data').on('value', (snapshot) => {
-      const remoteData = snapshot.val();
-      if (remoteData) {
-        if (remoteData.chemList) chemList = remoteData.chemList;
-        if (remoteData.pulseList) pulseList = remoteData.pulseList;
-        if (remoteData.manualNotes) manualNotes = remoteData.manualNotes;
-        if (remoteData.equipWorkFlags) equipWorkFlags = remoteData.equipWorkFlags;
-        if (remoteData.elecDummyFlags) elecDummyFlags = remoteData.elecDummyFlags;
-        if (remoteData.pulseProcessFlags) pulseProcessFlags = remoteData.pulseProcessFlags;
-        if (remoteData.elecCompletedFlags) elecCompletedFlags = remoteData.elecCompletedFlags;
+      db.ref('.info/connected').on('value', (snap) => {
+        if (snap.val() === true) {
+          isFirebaseConnected = true;
+          if (statusEl) statusEl.innerHTML = `<span style="color:#16a34a;">🟢 실시간 서버 연결됨</span>`;
+        } else {
+          isFirebaseConnected = false;
+          if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626;">🔴 오프라인 (재연결 시도)</span>`;
+        }
+      });
 
-        renderWeeklyMatrix();
-        renderManualNotesList();
-        renderChemList();
-        renderPulseTable();
-        renderActiveChemGauges(new Date());
-        renderElectroGauges(new Date());
-        generateShareText();
-      } else {
-        syncDataToFirebase();
-      }
-    });
+      // 1번 디버그: Firebase에서 Object로 들어오는 현상 원천 차단
+      db.ref('pm_system_data').on('value', (snapshot) => {
+        const remoteData = snapshot.val();
+        if (remoteData) {
+          if (remoteData.chemList) chemList = ensureArray(remoteData.chemList, DEFAULT_CHEM);
+          if (remoteData.pulseList) pulseList = ensureArray(remoteData.pulseList, DEFAULT_PULSE);
+          if (remoteData.manualNotes) manualNotes = ensureArray(remoteData.manualNotes, DEFAULT_MANUAL_NOTES);
+          if (remoteData.equipWorkFlags) equipWorkFlags = ensureObject(remoteData.equipWorkFlags);
+          if (remoteData.elecDummyFlags) elecDummyFlags = ensureObject(remoteData.elecDummyFlags);
+          if (remoteData.pulseProcessFlags) pulseProcessFlags = ensureObject(remoteData.pulseProcessFlags);
+          if (remoteData.elecCompletedFlags) elecCompletedFlags = ensureObject(remoteData.elecCompletedFlags);
+
+          safeRenderAll();
+        } else {
+          syncDataToFirebase();
+        }
+      });
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 저장 모드</span>`;
+    }
   } catch (e) {
-    statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 모드</span>`;
+    console.error("Firebase Init Error:", e);
+    if (statusEl) statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 저장 모드</span>`;
   }
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v21', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v21', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v21', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v21', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v21', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v21', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v21', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v22', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v22', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v22', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v22', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v22', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v22', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v22', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -828,49 +829,75 @@ function formatDateOnly(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 1번 디버그: 전체 렌더링을 안전하게 감싸서 특정 모듈 오류 시에도 전체 시스템 보호
+function safeRenderAll() {
+  try { renderWeeklyMatrix(); } catch(e){ console.error("Matrix error", e); }
+  try { renderManualNotesList(); } catch(e){ console.error("Manual error", e); }
+  try { renderChemList(); } catch(e){ console.error("ChemList error", e); }
+  try { renderPulseTable(); } catch(e){ console.error("Pulse error", e); }
+  try { renderActiveChemGauges(new Date()); } catch(e){ console.error("ChemGauges error", e); }
+  try { renderElectroGauges(new Date()); } catch(e){ console.error("ElecGauges error", e); }
+  try { generateShareText(); } catch(e){ console.error("ShareText error", e); }
+}
+
 window.onload = function() {
   const today = new Date();
   selectedDateStr = formatDateOnly(today);
   lastCheckedDate = selectedDateStr;
   
-  document.getElementById('targetMonthInput').value = today.getMonth() + 1;
-  document.getElementById('targetDayInput').value = today.getDate();
-  document.getElementById('manualMonthInput').value = today.getMonth() + 1;
-  document.getElementById('manualDayInput').value = today.getDate();
+  const tM = document.getElementById('targetMonthInput');
+  const tD = document.getElementById('targetDayInput');
+  const mM = document.getElementById('manualMonthInput');
+  const mD = document.getElementById('manualDayInput');
+  if (tM) tM.value = today.getMonth() + 1;
+  if (tD) tD.value = today.getDate();
+  if (mM) mM.value = today.getMonth() + 1;
+  if (mD) mD.value = today.getDate();
 
   initFirebase();
+  safeRenderAll();
 
-  renderWeeklyMatrix();
-  renderManualNotesList();
-  renderChemList();
-  renderPulseTable();
-  renderActiveChemGauges(today);
-  renderElectroGauges(today);
-  generateShareText();
-
+  // 최초 1회 즉시 시계 가동
+  tick();
   setInterval(tick, 1000);
 };
 
-// 3번 수정: 00시(자정)에 날짜가 바뀌면 자동으로 당일 PM 일정으로 갱신
+// 1번 디버그: tick() 최상단에서 시계를 우선 갱신하고 내부를 예외 처리
 function tick() {
   const now = new Date();
-  document.getElementById('liveClock').innerText = formatClock(now);
   
-  updateLiveTimesOnly(now);
-  updateChemRealtimeStatuses();
+  // 시계 표시 최우선 실행 (절대 멈추지 않음)
+  const clockEl = document.getElementById('liveClock');
+  if (clockEl) {
+    clockEl.innerText = formatClock(now);
+  }
 
+  try {
+    updateLiveTimesOnly(now);
+  } catch(e) {
+    console.error("updateLiveTimes error", e);
+  }
+
+  try {
+    updateChemRealtimeStatuses();
+  } catch(e) {
+    console.error("updateChemStatuses error", e);
+  }
+
+  // 00시(자정) 날짜 자동 갱신
   const currentTodayStr = formatDateOnly(now);
-  // 자정이 지나 날짜가 변경되었을 때 자동 갱신
   if (lastCheckedDate !== currentTodayStr) {
     lastCheckedDate = currentTodayStr;
     selectedDateStr = currentTodayStr;
-    document.getElementById('targetMonthInput').value = now.getMonth() + 1;
-    document.getElementById('targetDayInput').value = now.getDate();
-    document.getElementById('manualMonthInput').value = now.getMonth() + 1;
-    document.getElementById('manualDayInput').value = now.getDate();
-    renderWeeklyMatrix();
-    generateShareText();
-    renderElectroGauges(now);
+    const tM = document.getElementById('targetMonthInput');
+    const tD = document.getElementById('targetDayInput');
+    const mM = document.getElementById('manualMonthInput');
+    const mD = document.getElementById('manualDayInput');
+    if (tM) tM.value = now.getMonth() + 1;
+    if (tD) tD.value = now.getDate();
+    if (mM) mM.value = now.getMonth() + 1;
+    if (mD) mD.value = now.getDate();
+    safeRenderAll();
   }
 }
 
@@ -934,7 +961,10 @@ function renderWeeklyMatrix() {
     }
   }
 
-  document.getElementById('weekRangeBadge').innerText = `${monday.getMonth()+1}/${monday.getDate()} ~ ${weekDates[6].date.getMonth()+1}/${weekDates[6].date.getDate()}`;
+  const badge = document.getElementById('weekRangeBadge');
+  if (badge) {
+    badge.innerText = `${monday.getMonth()+1}/${monday.getDate()} ~ ${weekDates[6].date.getMonth()+1}/${weekDates[6].date.getDate()}`;
+  }
 
   setTag('tag_w_des11', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
   setTag('tag_w_des15', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
@@ -944,6 +974,7 @@ function renderWeeklyMatrix() {
   for (let i = 0; i < 7; i++) {
     const dStr = weekDates[i].dateStr;
     const cell = document.getElementById(`chem_cell_${i+1}`);
+    if (!cell) continue;
     cell.innerHTML = '';
     let matches = [];
 
@@ -967,10 +998,14 @@ function renderWeeklyMatrix() {
 function selectDayFromMatrix(dateStr) {
   selectedDateStr = dateStr;
   const d = new Date(dateStr + 'T00:00:00');
-  document.getElementById('targetMonthInput').value = d.getMonth() + 1;
-  document.getElementById('targetDayInput').value = d.getDate();
-  document.getElementById('manualMonthInput').value = d.getMonth() + 1;
-  document.getElementById('manualDayInput').value = d.getDate();
+  const tM = document.getElementById('targetMonthInput');
+  const tD = document.getElementById('targetDayInput');
+  const mM = document.getElementById('manualMonthInput');
+  const mD = document.getElementById('manualDayInput');
+  if (tM) tM.value = d.getMonth() + 1;
+  if (tD) tD.value = d.getDate();
+  if (mM) mM.value = d.getMonth() + 1;
+  if (mD) mD.value = d.getDate();
   renderWeeklyMatrix();
   generateShareText();
   renderElectroGauges(new Date());
@@ -1041,10 +1076,14 @@ function moveTargetDay(delta) {
   cur.setDate(cur.getDate() + delta);
   selectedDateStr = formatDateOnly(cur);
   
-  document.getElementById('targetMonthInput').value = cur.getMonth() + 1;
-  document.getElementById('targetDayInput').value = cur.getDate();
-  document.getElementById('manualMonthInput').value = cur.getMonth() + 1;
-  document.getElementById('manualDayInput').value = cur.getDate();
+  const tM = document.getElementById('targetMonthInput');
+  const tD = document.getElementById('targetDayInput');
+  const mM = document.getElementById('manualMonthInput');
+  const mD = document.getElementById('manualDayInput');
+  if (tM) tM.value = cur.getMonth() + 1;
+  if (tD) tD.value = cur.getDate();
+  if (mM) mM.value = cur.getMonth() + 1;
+  if (mD) mD.value = cur.getDate();
 
   renderWeeklyMatrix();
   generateShareText();
@@ -1058,8 +1097,10 @@ function onTargetDatePartChange() {
   const d = document.getElementById('targetDayInput').value;
   selectedDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   
-  document.getElementById('manualMonthInput').value = m;
-  document.getElementById('manualDayInput').value = d;
+  const mM = document.getElementById('manualMonthInput');
+  const mD = document.getElementById('manualDayInput');
+  if (mM) mM.value = m;
+  if (mD) mD.value = d;
   
   renderWeeklyMatrix();
   generateShareText();
@@ -1069,10 +1110,14 @@ function onTargetDatePartChange() {
 function setTargetToday() {
   const now = new Date();
   selectedDateStr = formatDateOnly(now);
-  document.getElementById('targetMonthInput').value = now.getMonth() + 1;
-  document.getElementById('targetDayInput').value = now.getDate();
-  document.getElementById('manualMonthInput').value = now.getMonth() + 1;
-  document.getElementById('manualDayInput').value = now.getDate();
+  const tM = document.getElementById('targetMonthInput');
+  const tD = document.getElementById('targetDayInput');
+  const mM = document.getElementById('manualMonthInput');
+  const mD = document.getElementById('manualDayInput');
+  if (tM) tM.value = now.getMonth() + 1;
+  if (tD) tD.value = now.getDate();
+  if (mM) mM.value = now.getMonth() + 1;
+  if (mD) mD.value = now.getDate();
   renderWeeklyMatrix();
   generateShareText();
   renderElectroGauges(new Date());
@@ -1126,9 +1171,9 @@ function renderManualNotesList() {
   });
 }
 
-// 1초 단위 실시간 자동 갱신 (1번 펄스 자동 단계 계산 포함)
+// 1초 단위 실시간 자동 갱신
 function updateLiveTimesOnly(now) {
-  // 화학동
+  // 화학동 진행 갱신
   const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
   activeChems.forEach(line => {
     const bar = document.getElementById(`chem_bar_${line.id}`);
@@ -1186,7 +1231,7 @@ function updateLiveTimesOnly(now) {
     }
   });
 
-  // 전기동
+  // 전기동 진행 갱신
   const day = new Date(selectedDateStr + 'T00:00:00').getDay();
   let todayElecLines = [];
   if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
@@ -1197,12 +1242,10 @@ function updateLiveTimesOnly(now) {
   else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
 
   todayElecLines.forEach(line => {
-    // 완료된 라인은 업데이트 스킵
     const isCompleted = !!elecCompletedFlags[selectedDateStr + '_' + line.name];
     if (isCompleted) return;
 
     if (line.isPulse) {
-      // 1번 수정: 펄스 라인 4단계 자동 시간 계산 및 스텝 자동 체크 갱신
       const pData = pulseProcessFlags[line.name];
       const box = document.getElementById(`pulse_status_detail_${line.name}`);
       const bar = document.getElementById(`pulse_bar_${line.name}`);
@@ -1213,10 +1256,10 @@ function updateLiveTimesOnly(now) {
       const curM = pData.m !== undefined ? pData.m : 0;
       const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), curH, curM, 0);
 
-      const t1 = new Date(t0.getTime() + 90 * 60000);  // 0.5 DC 더미 완료 (1.5H)
-      const t2 = new Date(t1.getTime() + 90 * 60000);  // 1.5 DC 더미 완료 (3.0H)
-      const t3 = new Date(t2.getTime() + 90 * 60000);  // 펄스대비 패스 완료 (4.5H)
-      const t4 = new Date(t3.getTime() + 90 * 60000);  // 펄스 더미 완료/양산 (6.0H)
+      const t1 = new Date(t0.getTime() + 90 * 60000);
+      const t2 = new Date(t1.getTime() + 90 * 60000);
+      const t3 = new Date(t2.getTime() + 90 * 60000);
+      const t4 = new Date(t3.getTime() + 90 * 60000);
 
       const totalElapsedMin = Math.max(0, (now - t0) / 60000);
       const totalPct = Math.min(100, Math.max(0, (totalElapsedMin / 360) * 100));
@@ -1227,13 +1270,11 @@ function updateLiveTimesOnly(now) {
       let remainMinStep = 0;
       let currentStepName = '';
 
-      // 4단계 스텝 박스 요소
       const s1 = document.getElementById(`pulse_step_${line.name}_1`);
       const s2 = document.getElementById(`pulse_step_${line.name}_2`);
       const s3 = document.getElementById(`pulse_step_${line.name}_3`);
       const s4 = document.getElementById(`pulse_step_${line.name}_4`);
 
-      // 1번 수정: 시간 경과에 따라 자동으로 다음 단계 체크 및 전환
       if (now < t1) {
         activeStepIdx = 1;
         currentStepName = '0.5 DC 더미';
@@ -1311,7 +1352,105 @@ function updateLiveTimesOnly(now) {
   });
 }
 
-// 1번 수정: 펄스라인 0.5 DC 더미 시작 토글
+// 1번 디버그: 화학동 시작된 라인이 없더라도 빠른 시작 버튼 제공
+function renderActiveChemGauges(now) {
+  const container = document.getElementById('activeChemGaugesContainer');
+  if (!container) return;
+
+  const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
+
+  if (activeChems.length === 0) {
+    let quickStartBtns = chemList.map(c => `
+      <button class="btn btn-sub btn-sm" onclick="setChemStepStatusById('${c.id}', '시작')">+ ${c.id} 시작</button>
+    `).join(' ');
+
+    container.innerHTML = `
+      <div class="status-detail-box" style="padding:14px; text-align:center; color:var(--text-secondary);">
+        현재 PM 진행 중(시작/분석)인 화학동 라인이 없습니다.<br>
+        <div style="margin-top:8px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
+          ${quickStartBtns}
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+
+  activeChems.forEach(line => {
+    const startTime = new Date(line.lastDone);
+    const elapsedMin = Math.max(0, (now - startTime) / 60000);
+    const target12hMin = 720;
+    const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
+
+    const isStart = (line.status === '시작');
+    const isAnal = (line.status === '분석');
+
+    html += `
+      <div class="gauge-box" id="gauge_card_${line.id}">
+        <div class="gauge-top">
+          <div>
+            <strong style="font-size:14px; color:#0f172a;">${line.id} PM</strong>
+            <span class="badge ${isAnal ? 'badge-purple' : 'badge-blue'}" style="margin-left:4px;">${line.status}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div class="status-step-group">
+              <button class="status-step-btn ${isStart ? 'active-시작' : ''}" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
+              <button class="status-step-btn ${isAnal ? 'active-분석' : ''}" onclick="setChemStepStatusById('${line.id}', '분석')">분석</button>
+              <button class="status-step-btn" onclick="completeChemPM('${line.id}')">완료</button>
+            </div>
+            <span class="badge badge-blue" id="chem_pct_${line.id}">${pct.toFixed(0)}%</span>
+          </div>
+        </div>
+        <div class="progress-track"><div id="chem_bar_${line.id}" class="progress-fill ${pct>=100?'done':(pct>=90?'alert':'warn')}" style="width:${pct}%;"></div></div>
+        <div class="timeline-ticks">
+          <span>0H (PM시작)</span>
+          <span>4H (C/S진행)</span>
+          <span>8H (세척)</span>
+          <span style="color:var(--danger); font-weight:700;">★12H (액이송)</span>
+          <span style="color:var(--success); font-weight:700;">14H (양산)</span>
+        </div>
+        <div class="status-detail-box" id="chem_status_${line.id}"></div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  updateLiveTimesOnly(now);
+}
+
+function setChemStepStatusById(lineId, st) {
+  const line = chemList.find(c => c.id === lineId);
+  if (!line) return;
+  line.status = st;
+  if (st === '시작') {
+    line.lastDone = new Date().toISOString();
+    delete line.analyzingStartTime;
+  } else if (st === '분석' && !line.analyzingStartTime) {
+    line.analyzingStartTime = new Date().toISOString();
+  }
+  syncDataToFirebase();
+  renderChemList();
+  renderActiveChemGauges(new Date());
+  generateShareText();
+}
+
+function completeChemPM(lineId) {
+  if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
+  const line = chemList.find(c => c.id === lineId);
+  if (!line) return;
+  
+  line.status = '완료';
+  line.lastDone = new Date().toISOString();
+  delete line.analyzingStartTime;
+
+  syncDataToFirebase();
+  renderChemList();
+  renderWeeklyMatrix();
+  renderActiveChemGauges(new Date());
+  generateShareText();
+}
+
 function togglePulseProcess(lineName, isChecked) {
   if (isChecked) {
     const now = new Date();
@@ -1335,14 +1474,12 @@ function updatePulseProcessTime(lineName, part, val) {
   updateLiveTimesOnly(new Date());
 }
 
-// 2번 수정: 전기동 PM 완료 처리 (진척 게이지에서 제외)
 function completeElecPM(lineName) {
   if (!confirm(`[${lineName}] PM을 완료하시겠습니까?\n진척 게이지 목록에서 제외됩니다.`)) return;
 
   const key = selectedDateStr + '_' + lineName;
   elecCompletedFlags[key] = true;
 
-  // 더미 플래그 정리
   delete elecDummyFlags[lineName];
   delete pulseProcessFlags[lineName];
 
@@ -1350,7 +1487,6 @@ function completeElecPM(lineName) {
   renderElectroGauges(new Date());
 }
 
-// 완료된 전기동 복구 함수
 function restoreCompletedElec() {
   const day = new Date(selectedDateStr + 'T00:00:00').getDay();
   let todayElecLines = [];
@@ -1369,7 +1505,6 @@ function restoreCompletedElec() {
   renderElectroGauges(new Date());
 }
 
-// 일반 전기동 더미 투입 토글
 function toggleElecDummy(lineName, isChecked) {
   if (isChecked) {
     const now = new Date();
@@ -1393,7 +1528,6 @@ function updateElecDummyTimeSelect(lineName, part, val) {
   updateLiveTimesOnly(new Date());
 }
 
-// 전기동 진척 게이지 렌더링 (완료된 라인 제외 & 펄스 4단계 스텝 박스 적용)
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   const restoreBtn = document.getElementById('btnRestoreElec');
@@ -1410,7 +1544,6 @@ function renderElectroGauges(now) {
   else if (day === 5) todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
   else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
 
-  // 2번 수정: 완료 처리된 라인 필터링
   const pendingElecLines = todayElecLines.filter(l => !elecCompletedFlags[selectedDateStr + '_' + l.name]);
   const hasCompletedAny = todayElecLines.some(l => !!elecCompletedFlags[selectedDateStr + '_' + l.name]);
 
@@ -1438,7 +1571,6 @@ function renderElectroGauges(now) {
     const isEquipWorkActive = (equipWorkFlags[line.name] !== undefined) ? equipWorkFlags[line.name] : hasManualEquipNote;
 
     if (line.isPulse) {
-      // ===== [펄스 라인: 0.5 DC 시작 시간 입력 시 1.5H마다 4단계 자동 체크] =====
       const pData = pulseProcessFlags[line.name] || {};
       const isPulseStarted = !!pData.isStarted;
       const curH = isPulseStarted ? (pData.h !== undefined ? pData.h : 14) : 14;
@@ -1474,7 +1606,6 @@ function renderElectroGauges(now) {
               </label>
             </div>
             <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-              <!-- 2번 수정: 전기동 완료 버튼 -->
               <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
               <label style="font-size:11px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
                 <input type="checkbox" ${isPulseStarted ? 'checked' : ''} onchange="togglePulseProcess('${line.name}', this.checked)">
@@ -1485,7 +1616,6 @@ function renderElectroGauges(now) {
             </div>
           </div>
 
-          <!-- 1번 수정: 1.5H마다 자동으로 체크(✔)되는 4단계 스텝 박스 -->
           <div class="pulse-step-container">
             <div class="pulse-step-item" id="pulse_step_${line.name}_1">
               <span>1단계 (1.5H)</span>
@@ -1522,7 +1652,6 @@ function renderElectroGauges(now) {
       `;
 
     } else {
-      // ===== [일반 전기동 라인] =====
       const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
       const curH = isDummyChecked ? (elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14) : 14;
       const curM = isDummyChecked ? (elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0) : 0;
@@ -1574,7 +1703,6 @@ function renderElectroGauges(now) {
               </label>
             </div>
             <div style="display:flex; align-items:center; gap:2px; flex-wrap:wrap;">
-              <!-- 2번 수정: 전기동 완료 버튼 -->
               <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
               <label style="font-size:11px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
                 <input type="checkbox" ${isDummyChecked ? 'checked' : ''} onchange="toggleElecDummy('${line.name}', this.checked)">
@@ -1606,7 +1734,22 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-// 탭 3 화학동 주기 관리
+function toggleEquipWork(lineName, isChecked) {
+  equipWorkFlags[lineName] = isChecked;
+
+  const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
+  if (isChecked && existingIdx === -1) {
+    manualNotes.push({ date: selectedDateStr, line: lineName.split(' ')[0], text: '설비작업' });
+  } else if (!isChecked && existingIdx !== -1) {
+    manualNotes.splice(existingIdx, 1);
+  }
+  syncDataToFirebase();
+  renderManualNotesList();
+  renderWeeklyMatrix();
+  generateShareText();
+  renderElectroGauges(new Date());
+}
+
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1697,7 +1840,10 @@ function updateChemFromParts(idx) {
 
 function setChemStepStatus(idx, st) {
   chemList[idx].status = st;
-  if (st === '분석' && !chemList[idx].analyzingStartTime) {
+  if (st === '시작') {
+    chemList[idx].lastDone = new Date().toISOString();
+    delete chemList[idx].analyzingStartTime;
+  } else if (st === '분석' && !chemList[idx].analyzingStartTime) {
     chemList[idx].analyzingStartTime = new Date().toISOString();
   }
   syncDataToFirebase();
