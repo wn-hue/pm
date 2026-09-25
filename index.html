@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>동도금 PM 일정 & 실시간 통합 모니터링 시스템</title>
 
 <!-- Firebase SDK -->
@@ -34,79 +34,73 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
     background-color: var(--bg-base);
     color: var(--text-primary);
-    padding: 14px;
-    font-size: 13px;
+    padding: 16px 20px;
+    font-size: 13.5px;
     line-height: 1.5;
-    -webkit-text-size-adjust: 100%;
   }
 
-  .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .container { max-width: 1560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 
   .remind-banner {
     background: #fdf4ff;
     border: 1px solid #f0abfc;
-    border-left: 4px solid var(--purple);
-    padding: 10px 14px;
+    border-left: 5px solid var(--purple);
+    padding: 11px 16px;
     border-radius: 8px;
     display: none;
     justify-content: space-between;
     align-items: center;
-    font-size: 12.5px;
+    font-size: 13px;
     color: #86198f;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
   }
   .remind-banner strong { font-weight: 800; }
   .remind-close-btn {
-    background: none;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    color: #86198f;
-    font-weight: bold;
-    padding: 0 4px;
+    background: none; border: none; font-size: 15px; cursor: pointer; color: #86198f; font-weight: bold; padding: 0 6px;
   }
 
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 18px;
+    border-radius: 12px;
+    padding: 16px 22px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   }
-  .header-left h1 { font-size: 18px; font-weight: 800; color: var(--accent); }
-  .header-left p { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+  .header-left h1 { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .header-left p { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
   
   .header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
   }
   .sync-status-badge {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     border: 1px solid var(--border);
     background: #fff;
   }
   .live-clock-box {
     background: #f8fafc;
     border: 1px solid var(--border);
-    padding: 5px 12px;
+    padding: 6px 14px;
     border-radius: 6px;
     text-align: right;
   }
-  .live-clock-box span { font-size: 14px; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .live-clock-box span { font-size: 15px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
-  /* 5개 탭 네비게이션 */
+  /* 메인 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -114,7 +108,6 @@
     padding-bottom: 2px;
     overflow-x: auto;
     white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
   .main-nav::-webkit-scrollbar { display: none; }
@@ -124,11 +117,11 @@
     border: 1px solid var(--border);
     border-bottom: none;
     color: var(--text-secondary);
-    padding: 8px 14px;
-    font-size: 13px;
+    padding: 10px 18px;
+    font-size: 13.5px;
     font-weight: 700;
     cursor: pointer;
-    border-radius: 7px 7px 0 0;
+    border-radius: 8px 8px 0 0;
     transition: 0.15s;
     flex-shrink: 0;
   }
@@ -143,79 +136,98 @@
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
 
-  .grid-2col {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  @media(min-width: 1024px) {
-    .grid-2col { grid-template-columns: 1fr 280px; }
-  }
-
   .card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px;
+    border-radius: 12px;
+    padding: 18px 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
   }
   .card-title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-light);
-    padding-bottom: 8px;
-    gap: 6px;
+    padding-bottom: 10px;
+    gap: 10px;
     flex-wrap: wrap;
   }
 
+  /* 테이블 스타일 (확장 및 가독성 극대화) */
   .table-responsive {
     width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin-top: 4px;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
+    border-radius: 8px;
   }
-  table { width: 100%; min-width: 580px; border-collapse: collapse; font-size: 12px; background: #fff; }
-  th, td { padding: 7px 8px; border: 1px solid var(--border-light); text-align: left; vertical-align: top; }
-  th { background: #f8fafc; color: var(--text-secondary); font-weight: 700; }
-  .today-col { background: #f0f9ff !important; border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: #fff;
+    table-layout: auto;
+  }
+  th, td {
+    padding: 11px 12px;
+    border: 1px solid var(--border-light);
+    text-align: left;
+    vertical-align: top;
+    word-break: keep-all;
+  }
+  th {
+    background: #f8fafc;
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .today-col {
+    background: #f0f9ff !important;
+    border-left: 2px solid var(--accent) !important;
+    border-right: 2px solid var(--accent) !important;
+  }
   .weekend-th { background: #fef2f2; color: #b91c1c; }
   .weekend-sat-th { background: #eff6ff; color: #1d4ed8; }
 
-  .badge { font-size: 10.5px; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; white-space: nowrap; }
+  .badge {
+    font-size: 11px;
+    padding: 2.5px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
   .badge-blue { background: var(--accent-light); color: var(--accent); }
   .badge-yellow { background: var(--warning-light); color: var(--warning); }
   .badge-red { background: var(--danger-light); color: var(--danger); }
   .badge-green { background: var(--success-light); color: var(--success); }
   .badge-purple { background: var(--purple-light); color: var(--purple); }
   .badge-sub { background: #e2e8f0; color: #475569; }
-  .badge-custom { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+  .badge-custom { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; margin: 1px 0; }
 
   input, select, textarea {
     background: #ffffff;
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: 5px 8px;
+    padding: 6px 10px;
     border-radius: 6px;
-    font-size: 12px;
-    max-width: 100%;
+    font-size: 12.5px;
   }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  
   .btn {
     background: var(--accent);
     color: #fff;
     border: none;
-    padding: 6px 12px;
+    padding: 7px 14px;
     border-radius: 6px;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 12.5px;
     cursor: pointer;
     transition: 0.15s;
     white-space: nowrap;
@@ -223,45 +235,64 @@
   .btn:hover { background: #0369a1; }
   .btn-sub { background: #64748b; color: #fff; }
   .btn-sub:hover { background: #475569; }
-  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .btn-sm { padding: 4px 9px; font-size: 11.5px; }
 
+  /* 4번째 탭 브리핑 영역 */
+  .briefing-box {
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
   .report-area {
     width: 100%;
-    min-height: 260px;
-    height: 275px;
+    min-height: 380px;
+    height: 440px;
     background: #f8fafc;
     color: #0f172a;
     font-family: Consolas, "Courier New", monospace;
-    font-size: 12.5px;
-    line-height: 1.55;
-    padding: 10px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    padding: 14px;
     border-radius: 8px;
     border: 1px solid var(--border);
     resize: vertical;
+  }
+
+  /* 2단 그리드 (게이지 탭 전용) */
+  .grid-2col-even {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media(min-width: 1080px) {
+    .grid-2col-even { grid-template-columns: 1fr 1fr; }
   }
 
   .gauge-box {
     background: #f8fafc;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 12px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 9px;
   }
   .gauge-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
   .progress-track {
-    width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden;
+    width: 100%; height: 18px; background: #e2e8f0; border-radius: 9px; overflow: hidden;
   }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #0284c7); transition: width 0.4s ease; }
   .progress-fill.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
   .progress-fill.alert { background: linear-gradient(90deg, #ef4444, #b91c1c); }
   .progress-fill.done { background: linear-gradient(90deg, #22c55e, #16a34a); }
 
-  .timeline-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-secondary); gap: 2px; }
+  .timeline-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); gap: 2px; }
   .status-detail-box {
     background: #ffffff; border: 1px solid var(--border-light); border-left: 4px solid var(--accent);
-    padding: 8px 10px; border-radius: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 3px;
+    padding: 10px 12px; border-radius: 6px; font-size: 12.5px; display: flex; flex-direction: column; gap: 4px;
   }
   .status-detail-box.warn { border-left-color: var(--warning); background: #fffbeb; }
   .status-detail-box.alert { border-left-color: var(--danger); background: #fef2f2; }
@@ -270,17 +301,17 @@
     background: #f8fafc;
     border: 1px dashed var(--border);
     border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 11.5px;
+    padding: 12px 14px;
+    font-size: 12px;
   }
-  .ref-box ul { margin-left: 16px; margin-top: 4px; color: var(--text-secondary); line-height: 1.5; }
+  .ref-box ul { margin-left: 18px; margin-top: 5px; color: var(--text-secondary); line-height: 1.6; }
 
   .note-chip {
-    display: inline-flex; align-items: center; gap: 4px; background: #ffedd5;
-    color: #9a3412; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 2px;
+    display: inline-flex; align-items: center; gap: 5px; background: #ffedd5;
+    color: #9a3412; font-size: 11.5px; padding: 3px 8px; border-radius: 4px; margin: 2px;
   }
   .note-chip button {
-    background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 11px;
+    background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 12px;
   }
 
   .status-step-group {
@@ -294,7 +325,7 @@
     border: none;
     background: transparent;
     padding: 4px 10px;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
     color: var(--text-secondary);
     border-radius: 4px;
@@ -308,22 +339,21 @@
   .pulse-step-container {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
+    gap: 6px;
     margin-top: 2px;
   }
   .pulse-step-item {
     background: #ffffff;
     border: 1px solid var(--border-light);
-    border-radius: 5px;
-    padding: 4px 6px;
-    font-size: 10.5px;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 11px;
     text-align: center;
     font-weight: 700;
     color: var(--text-secondary);
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    transition: 0.2s;
+    gap: 2px;
   }
   .pulse-step-item.done {
     background: #ecfdf5;
@@ -334,19 +364,13 @@
     background: #f3e8ff;
     border-color: #c084fc;
     color: var(--purple);
-    box-shadow: 0 0 0 1px var(--purple);
+    box-shadow: 0 0 0 1.5px var(--purple);
   }
 
-  @media (max-width: 768px) {
-    body { padding: 8px; }
-    header { padding: 10px 12px; flex-direction: column; align-items: flex-start; }
-    .header-right { width: 100%; justify-content: space-between; }
-    .card { padding: 10px; }
-    .timeline-ticks { font-size: 8.5px; }
-    .briefing-control-row { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
-    .briefing-control-row > div { width: 100%; }
-    .briefing-btn-group { text-align: right; width: 100%; }
-    .report-area { min-height: 250px; height: 260px; font-size: 12px; }
+  @media (max-width: 820px) {
+    body { padding: 10px; }
+    header { padding: 12px 14px; }
+    .card { padding: 12px; }
     .pulse-step-container { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
@@ -354,11 +378,13 @@
 <body>
 
 <div class="container">
+  <!-- 펄스 건욕 4주 전 리마인드 배너 -->
   <div id="remindBanner" class="remind-banner">
     <div id="remindBannerText">🔔 <strong>[펄스 건욕 4주 전 알림]</strong> 건욕 리마인드 일정이 도래했습니다.</div>
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
   </div>
 
+  <!-- 상단 공통 헤더 -->
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 실시간 통합 모니터링</h1>
@@ -369,16 +395,16 @@
         <span>⚪</span> 연결 확인 중...
       </div>
       <div class="live-clock-box">
-        <div style="font-size:10.5px; color:var(--text-secondary);">현재 시각</div>
+        <div style="font-size:11px; color:var(--text-secondary);">현재 시각</div>
         <span id="liveClock">로딩 중...</span>
       </div>
     </div>
   </header>
 
-  <!-- 5개 탭 -->
+  <!-- 메인 탭 네비게이션 (6개 탭 구조) -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
-      🗓️ 일주일 / 오늘 PM 브리핑
+      🗓️ 주간 PM 매트릭스
     </button>
     <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
       ⚡ 자동 진척 게이지
@@ -387,168 +413,152 @@
       🧪 화학동 주기 관리
     </button>
     <button class="nav-btn" id="tabBtn4" onclick="switchTab('tab4')">
-      ✏️ 라인별 특이사항 수동 입력
+      📋 오늘 PM 브리핑 & 공유
     </button>
     <button class="nav-btn" id="tabBtn5" onclick="switchTab('tab5')">
+      ✏️ 라인별 특이사항 수동 입력
+    </button>
+    <button class="nav-btn" id="tabBtn6" onclick="switchTab('tab6')">
       💧 펄스 액퍼내기 예정일
     </button>
   </div>
 
-  <!-- [탭 1] 일주일 주간 PM 매트릭스 & 오늘 브리핑 공유 -->
+  <!-- [탭 1] 주간 PM 매트릭스 (100% Full-Width 대형 뷰 / 잘림 현상 원천 해결) -->
   <div id="tab1" class="tab-pane active">
-    <div class="grid-2col">
-      <div class="card">
-        <div class="card-title">
-          <span>금주 정기 PM 매트릭스 (월~일)</span>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <div style="display:flex; align-items:center; gap:4px; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 6px; border-radius:6px; font-size:11.5px;">
-              <span>⚡ <strong>금일 에칭 PM:</strong></span>
-              <input type="text" id="todayEtchingInput" value="에3.4" style="width:65px; padding:2px 4px; font-weight:700; color:var(--accent); font-size:11.5px;" oninput="onEtchingChange(this.value)">
-            </div>
-            <span class="badge badge-blue" id="weekRangeBadge">금주</span>
-          </div>
+    <div class="card">
+      <div class="card-title">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:16px;">🗓️ 금주 정기 PM 매트릭스 (월~일)</span>
+          <span class="badge badge-blue" id="weekRangeBadge">금주</span>
         </div>
-
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:85px;">공정</th>
-                <th id="th_1">월</th>
-                <th id="th_2">화</th>
-                <th id="th_3">수</th>
-                <th id="th_4">목</th>
-                <th id="th_5">금</th>
-                <th id="th_6" class="weekend-sat-th">토</th>
-                <th id="th_7" class="weekend-th">일</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>데버링 /<br>고압수세</strong></td>
-                <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
-                <td>-</td>
-                <td><strong>데버링 3</strong></td>
-                <td>-</td>
-                <td><strong>데버링 2</strong></td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td><strong>디스미어</strong></td>
-                <td>
-                  <div>디스미어 8 <span id="custom_des8"></span></div>
-                  <div>디스미어 11 <span id="tag_w_des11" class="badge"></span> <span id="custom_des11"></span></div>
-                  <div>디스미어 15 <span id="tag_w_des15" class="badge"></span> <span id="custom_des15"></span></div>
-                </td>
-                <td>
-                  <div>디스미어 9 <span id="custom_des9"></span></div>
-                  <div>디스미어 6 <span id="custom_des6"></span></div>
-                </td>
-                <td>
-                  <div>디스미어 12 <span id="custom_des12"></span></div>
-                </td>
-                <td>
-                  <div>디스미어 7 <span id="custom_des7"></span></div>
-                </td>
-                <td>
-                  <div>디스미어 10 <span id="custom_des10"></span></div>
-                </td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr style="background:#f0fdf4;">
-                <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:10px; color:var(--text-secondary);">(72H 주기)</span></td>
-                <td id="chem_cell_1">-</td>
-                <td id="chem_cell_2">-</td>
-                <td id="chem_cell_3">-</td>
-                <td id="chem_cell_4">-</td>
-                <td id="chem_cell_5">-</td>
-                <td id="chem_cell_6">-</td>
-                <td id="chem_cell_7">-</td>
-              </tr>
-              <tr style="background:#faf5ff;">
-                <td><strong style="color:var(--purple);">블랙홀</strong><br><span style="font-size:10px; color:var(--text-secondary);">(7일 고정)</span></td>
-                <td><div><span class="badge badge-purple">화12 정기PM</span> <span id="custom_화12"></span></div></td>
-                <td>-</td>
-                <td><div><span class="badge badge-purple">화11 정기PM</span> <span id="custom_화11"></span></div></td>
-                <td>-</td>
-                <td><div><span class="badge badge-purple">화10 정기PM</span> <span id="custom_화10"></span></div></td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td><strong>전기동</strong></td>
-                <td>
-                  <div>전기동 9 <span id="custom_전9"></span></div>
-                  <div>전기동 16 <span id="custom_전16"></span></div>
-                </td>
-                <td>
-                  <div>전기동 18 <span id="custom_전18"></span></div>
-                  <div>전기동 22 <span id="custom_전22"></span></div>
-                </td>
-                <td>
-                  <div>전기동 15 <span id="custom_전15"></span></div>
-                  <div>전기동 20 <span id="custom_전20"></span></div>
-                </td>
-                <td>
-                  <div>전기동 11 <span id="custom_전11"></span></div>
-                  <div>전기동 14 <span id="custom_전14"></span></div>
-                  <div>전기동 17 <span id="custom_전17"></span></div>
-                </td>
-                <td>
-                  <div>전기동 12 <span id="tag_w_elec12" class="badge"></span> <span id="custom_전12"></span></div>
-                  <div>전기동 13 <span id="custom_전13"></span></div>
-                  <div>전기동 21 <span id="custom_전21"></span></div>
-                </td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-            </tbody>
-          </table>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="display:flex; align-items:center; gap:5px; background:#f8fafc; border:1px solid #e2e8f0; padding:4px 8px; border-radius:6px; font-size:12.5px;">
+            <span>⚡ <strong>금일 에칭 PM:</strong></span>
+            <input type="text" id="todayEtchingInput" value="에3.4" style="width:70px; padding:3px 6px; font-weight:700; color:var(--accent); font-size:12.5px;" oninput="onEtchingChange(this.value)">
+          </div>
+          <button class="btn btn-sub btn-sm" onclick="switchTab('tab4')">📋 오늘 브리핑 보기</button>
         </div>
       </div>
 
-      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 -->
-      <div class="card">
-        <div class="card-title">
-          <span id="briefingTitle">오늘 PM 브리핑</span>
-          <span class="badge badge-blue">익일 08:30 이전</span>
-        </div>
-
-        <div class="briefing-control-row" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-          <div style="display:flex; align-items:center; gap:2px;">
-            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(-1)" style="padding:4px 6px; font-weight:bold;" title="이전 날">◀</button>
-            <input type="number" id="targetMonthInput" min="1" max="12" style="width:36px; text-align:center; padding:4px;" onchange="onTargetDatePartChange()">월
-            <input type="number" id="targetDayInput" min="1" max="31" style="width:36px; text-align:center; padding:4px;" onchange="onTargetDatePartChange()">일
-            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(1)" style="padding:4px 6px; font-weight:bold;" title="다음 날">▶</button>
-            <button class="btn btn-sub btn-sm" onclick="setTargetToday()" style="padding:4px 6px; font-size:11px;">오늘</button>
-          </div>
-          <div style="flex:1; min-width:70px;">
-            <input type="text" id="passTimeInput" value="7시패스" style="width:100%; padding:4px 6px;" oninput="generateShareText()">
-          </div>
-          <div class="briefing-btn-group" style="width:100%; display:flex; gap:4px; margin-top:2px;">
-            <button class="btn btn-sub btn-sm" style="flex:1;" onclick="generateShareText()">새로고침</button>
-            <button class="btn btn-sm" style="flex:1;" onclick="copyShareText()">복사</button>
-          </div>
-        </div>
-
-        <textarea id="shareTextOutput" class="report-area"></textarea>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">공정</th>
+              <th id="th_1" style="width:12.5%;">월</th>
+              <th id="th_2" style="width:12.5%;">화</th>
+              <th id="th_3" style="width:12.5%;">수</th>
+              <th id="th_4" style="width:12.5%;">목</th>
+              <th id="th_5" style="width:12.5%;">금</th>
+              <th id="th_6" style="width:12.5%;" class="weekend-sat-th">토</th>
+              <th id="th_7" style="width:12.5%;" class="weekend-th">일</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 1. 데버링 / 고압수세 -->
+            <tr>
+              <td style="background:#fafafa;"><strong>데버링 /<br>고압수세</strong></td>
+              <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
+              <td>-</td>
+              <td><strong>데버링 3</strong></td>
+              <td>-</td>
+              <td><strong>데버링 2</strong></td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+            <!-- 2. 디스미어 -->
+            <tr>
+              <td style="background:#fafafa;"><strong>디스미어</strong></td>
+              <td>
+                <div>디스미어 8 <span id="custom_des8"></span></div>
+                <div>디스미어 11 <span id="tag_w_des11" class="badge"></span> <span id="custom_des11"></span></div>
+                <div>디스미어 15 <span id="tag_w_des15" class="badge"></span> <span id="custom_des15"></span></div>
+              </td>
+              <td>
+                <div>디스미어 9 <span id="custom_des9"></span></div>
+                <div>디스미어 6 <span id="custom_des6"></span></div>
+              </td>
+              <td>
+                <div>디스미어 12 <span id="custom_des12"></span></div>
+              </td>
+              <td>
+                <div>디스미어 7 <span id="custom_des7"></span></div>
+              </td>
+              <td>
+                <div>디스미어 10 <span id="custom_des10"></span></div>
+              </td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+            <!-- 3. 일반 화학동 -->
+            <tr style="background:#f0fdf4;">
+              <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:11px; color:var(--text-secondary);">(72H 주기)</span></td>
+              <td id="chem_cell_1">-</td>
+              <td id="chem_cell_2">-</td>
+              <td id="chem_cell_3">-</td>
+              <td id="chem_cell_4">-</td>
+              <td id="chem_cell_5">-</td>
+              <td id="chem_cell_6">-</td>
+              <td id="chem_cell_7">-</td>
+            </tr>
+            <!-- 4. 블랙홀 -->
+            <tr style="background:#faf5ff;">
+              <td><strong style="color:var(--purple);">블랙홀</strong><br><span style="font-size:11px; color:var(--text-secondary);">(7일 고정)</span></td>
+              <td><div><span class="badge badge-purple">화12 정기PM</span> <span id="custom_화12"></span></div></td>
+              <td>-</td>
+              <td><div><span class="badge badge-purple">화11 정기PM</span> <span id="custom_화11"></span></div></td>
+              <td>-</td>
+              <td><div><span class="badge badge-purple">화10 정기PM</span> <span id="custom_화10"></span></div></td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+            <!-- 5. 전기동 -->
+            <tr>
+              <td style="background:#fafafa;"><strong>전기동</strong></td>
+              <td>
+                <div>전기동 9 <span id="custom_전9"></span></div>
+                <div>전기동 16 <span id="custom_전16"></span></div>
+              </td>
+              <td>
+                <div>전기동 18 <span id="custom_전18"></span></div>
+                <div>전기동 22 <span id="custom_전22"></span></div>
+              </td>
+              <td>
+                <div>전기동 15 <span id="custom_전15"></span></div>
+                <div>전기동 20 <span id="custom_전20"></span></div>
+              </td>
+              <td>
+                <div>전기동 11 <span id="custom_전11"></span></div>
+                <div>전기동 14 <span id="custom_전14"></span></div>
+                <div>전기동 17 <span id="custom_전17"></span></div>
+              </td>
+              <td>
+                <div>전기동 12 <span id="tag_w_elec12" class="badge"></span> <span id="custom_전12"></span></div>
+                <div>전기동 13 <span id="custom_전13"></span></div>
+                <div>전기동 21 <span id="custom_전21"></span></div>
+              </td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:12px; color:var(--text-secondary); text-align:right;">
+        💡 요일 헤더(월~일)를 클릭하면 해당 날짜로 바로 선택되며 세부 일정이 동기화됩니다.
       </div>
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 (화학동 예정 시간 도래 시 자동 생성 & 양방향 시작 연동) -->
+  <!-- [탭 2] 자동 진척 게이지 -->
   <div id="tab2" class="tab-pane">
-    <div class="grid-2col">
+    <div class="grid-2col-even">
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
             <span>🧪 1. 일반 화학동 진행 진척 (12시간 액이송 기준)</span>
-            <span class="badge badge-blue">예정 도래 & 진행 라인 자동 연동</span>
+            <span class="badge badge-blue">진행 라인 자동 연동</span>
           </div>
 
-          <!-- 화학동 게이지 동적 컨테이너 -->
           <div id="activeChemGaugesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
 
           <div class="ref-box">
@@ -569,7 +579,7 @@
             <span>⚡ 2. 전기동 PM 자동 진척 게이지</span>
             <div style="display:flex; align-items:center; gap:6px;">
               <span class="badge badge-blue" id="elecTodayLinesBadge">전기동</span>
-              <button class="btn btn-sub btn-sm" id="btnRestoreElec" style="display:none; padding:2px 6px; font-size:10.5px;" onclick="restoreCompletedElec()">복구</button>
+              <button class="btn btn-sub btn-sm" id="btnRestoreElec" style="display:none; padding:3px 7px; font-size:11px;" onclick="restoreCompletedElec()">복구</button>
             </div>
           </div>
 
@@ -586,15 +596,47 @@
         <span>🧪 화학동 72시간 주기 & 화8 48시간 빌드업 설정</span>
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
-      <div style="font-size:11.5px; color:var(--text-secondary);">
-        💡 <strong>[시작]</strong>을 누르면 현재 일시로 자동 갱신되며, 탭 2 진척 게이지에서 12시간 액이송 카운트다운이 시작됩니다.
+      <div style="font-size:12px; color:var(--text-secondary);">
+        💡 상태는 <strong>[시작 / 분석 / 완료]</strong>로 관리되며, 시간은 <strong>0분 / 30분</strong>으로 선택됩니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
   </div>
 
-  <!-- [탭 4] 라인별 특이사항 수동 입력 -->
+  <!-- [탭 4] 오늘 PM 브리핑 & 공유 (독립 탭 / DOM 충돌 완전 제거) -->
   <div id="tab4" class="tab-pane">
+    <div class="briefing-box">
+      <div class="card">
+        <div class="card-title">
+          <span id="briefingTitle" style="font-size:16px;">오늘 PM 브리핑</span>
+          <span class="badge badge-blue">익일 08:30 이전 취합</span>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:3px;">
+            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(-1)" title="이전 날">◀</button>
+            <input type="number" id="targetMonthInput" min="1" max="12" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">월
+            <input type="number" id="targetDayInput" min="1" max="31" style="width:42px; text-align:center; padding:5px;" onchange="onTargetDatePartChange()">일
+            <button class="btn btn-sub btn-sm" onclick="moveTargetDay(1)" title="다음 날">▶</button>
+            <button class="btn btn-sub btn-sm" onclick="setTargetToday()">오늘</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px;">
+            <span style="font-size:12px; color:var(--text-secondary);">패스 기준:</span>
+            <input type="text" id="passTimeInput" value="7시패스" style="width:85px; padding:5px 8px;" oninput="generateShareText()">
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sub btn-sm" onclick="generateShareText()">새로고침</button>
+            <button class="btn btn-sm" onclick="copyShareText()">텍스트 복사</button>
+          </div>
+        </div>
+
+        <textarea id="shareTextOutput" class="report-area" placeholder="PM 브리핑 텍스트가 자동 생성됩니다..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- [탭 5] 라인별 특이사항 수동 입력 -->
+  <div id="tab5" class="tab-pane">
     <div class="card">
       <div class="card-title">
         <span>✏️ 라인 / 날짜별 특이사항 수동 입력 관리</span>
@@ -603,11 +645,11 @@
       
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <div style="display:flex; align-items:center; gap:2px;">
-          <input type="number" id="manualMonthInput" min="1" max="12" style="width:38px; text-align:center; padding:4px;">월
-          <input type="number" id="manualDayInput" min="1" max="31" style="width:38px; text-align:center; padding:4px;">일
+          <input type="number" id="manualMonthInput" min="1" max="12" style="width:42px; text-align:center; padding:5px;">월
+          <input type="number" id="manualDayInput" min="1" max="31" style="width:42px; text-align:center; padding:5px;">일
         </div>
         <div>
-          <select id="manualLineSelect" style="width:110px;">
+          <select id="manualLineSelect" style="width:120px;">
             <option value="디스미어 8">디스미어 8</option>
             <option value="디스미어 10">디스미어 10</option>
             <option value="디스미어 11">디스미어 11</option>
@@ -626,10 +668,10 @@
             <option value="화14">화14</option>
           </select>
         </div>
-        <div style="flex:1; min-width:160px;">
-          <input type="text" id="manualContentInput" placeholder="직접 입력 또는 아래 버튼" style="width:100%;">
+        <div style="flex:1; min-width:180px;">
+          <input type="text" id="manualContentInput" placeholder="직접 입력 또는 아래 빠른 태그 클릭" style="width:100%;">
         </div>
-        <div style="align-self:flex-end;">
+        <div>
           <button class="btn" onclick="addManualNote()">등록</button>
         </div>
       </div>
@@ -647,14 +689,14 @@
     </div>
   </div>
 
-  <!-- [탭 5] 펄스 액퍼내기 예정일 -->
-  <div id="tab5" class="tab-pane">
+  <!-- [탭 6] 펄스 액퍼내기 예정일 -->
+  <div id="tab6" class="tab-pane">
     <div class="card">
       <div class="card-title">
         <span>💧 펄스라인 액퍼내기 예정일 관리 (120일 주기)</span>
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
-      <div style="font-size:11.5px; color:var(--text-secondary);">
+      <div style="font-size:12px; color:var(--text-secondary);">
         액퍼내기 날짜 입력 시 1차(+120일), 2차(+240일), 3차(+360일) 일정과 D-Day가 산출되며, <strong>건욕 4주(28일) 전 진입 시 리마인드 알림</strong>이 점등됩니다.
       </div>
       <div class="table-responsive">
@@ -726,14 +768,15 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v23')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v23')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v23')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v23')));
+// 일관된 v25 키로 일괄 통합 (불일치 버그 해결)
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v25')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v25')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v25')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v25')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v23')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v23')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v23')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v25')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v25')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v25')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -783,13 +826,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v23', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v23', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v23', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v23', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v23', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v23', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v23', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v25', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v25', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v25', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v25', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v25', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v25', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v25', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -866,17 +909,8 @@ function tick() {
     clockEl.innerText = formatClock(now);
   }
 
-  try {
-    updateLiveTimesOnly(now);
-  } catch(e) {
-    console.error("updateLiveTimes error", e);
-  }
-
-  try {
-    updateChemRealtimeStatuses();
-  } catch(e) {
-    console.error("updateChemStatuses error", e);
-  }
+  try { updateLiveTimesOnly(now); } catch(e) {}
+  try { updateChemRealtimeStatuses(); } catch(e) {}
 
   // 00시(자정) 날짜 자동 갱신
   const currentTodayStr = formatDateOnly(now);
@@ -914,7 +948,8 @@ function switchTab(t) {
     'tab2': 'tabBtn2',
     'tab3': 'tabBtn3',
     'tab4': 'tabBtn4',
-    'tab5': 'tabBtn5'
+    'tab5': 'tabBtn5',
+    'tab6': 'tabBtn6'
   };
 
   if (document.getElementById(btnMap[t])) document.getElementById(btnMap[t]).classList.add('active');
@@ -927,8 +962,9 @@ function switchTab(t) {
     renderElectroGauges(now);
   }
   else if (t === 'tab3') renderChemList();
-  else if (t === 'tab4') renderManualNotesList();
-  else if (t === 'tab5') renderPulseTable();
+  else if (t === 'tab4') generateShareText();
+  else if (t === 'tab5') renderManualNotesList();
+  else if (t === 'tab6') renderPulseTable();
 }
 
 function renderWeeklyMatrix() {
@@ -948,7 +984,7 @@ function renderWeeklyMatrix() {
 
     const th = document.getElementById(`th_${i+1}`);
     if (th) {
-      th.innerHTML = `${dayNames[i]} <span style="font-size:10.5px; font-weight:normal; opacity:0.85;">(${d.getMonth()+1}/${d.getDate()})</span>`;
+      th.innerHTML = `${dayNames[i]} <span style="font-size:11px; font-weight:normal; opacity:0.85;">(${d.getMonth()+1}/${d.getDate()})</span>`;
       th.className = (dateStr === selectedDateStr) ? 'today-col' : (i === 5 ? 'weekend-sat-th' : (i === 6 ? 'weekend-th' : ''));
       th.style.cursor = 'pointer';
       th.onclick = () => selectDayFromMatrix(dateStr);
@@ -1085,8 +1121,8 @@ function moveTargetDay(delta) {
 }
 
 function onTargetDatePartChange() {
-  const now = new Date();
-  const y = now.getFullYear();
+  const cur = new Date(selectedDateStr + 'T00:00:00');
+  const y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
   const m = document.getElementById('targetMonthInput').value;
   const d = document.getElementById('targetDayInput').value;
   selectedDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -1118,8 +1154,8 @@ function setTargetToday() {
 }
 
 function addManualNote() {
-  const now = new Date();
-  const y = now.getFullYear();
+  const cur = new Date(selectedDateStr + 'T00:00:00');
+  const y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
   const m = document.getElementById('manualMonthInput').value;
   const d = document.getElementById('manualDayInput').value;
   const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -1165,6 +1201,7 @@ function renderManualNotesList() {
   });
 }
 
+// 1초 단위 실시간 자동 갱신
 function updateLiveTimesOnly(now) {
   // 화학동 진행 갱신
   chemList.forEach(line => {
@@ -1189,7 +1226,7 @@ function updateLiveTimesOnly(now) {
     if (line.status === '분석') {
       const analStart = line.analyzingStartTime ? new Date(line.analyzingStartTime) : now;
       const estProdTime = new Date(analStart.getTime() + 90 * 60000);
-      prodEstHtml = `<div style="color:var(--purple); font-weight:800; font-size:12.5px; margin-top:2px;">🎯 [분석중] 양산 예정 시각: <strong>${formatTimeKr(estProdTime.getHours(), estProdTime.getMinutes())}</strong> (분석/시편 확인 후)</div>`;
+      prodEstHtml = `<div style="color:var(--purple); font-weight:800; font-size:13px; margin-top:3px;">🎯 [분석중] 양산 예정 시각: <strong>${formatTimeKr(estProdTime.getHours(), estProdTime.getMinutes())}</strong> (분석/시편 확인 후)</div>`;
     }
 
     if (elapsedMin < target12hMin) {
@@ -1241,6 +1278,7 @@ function updateLiveTimesOnly(now) {
     if (isCompleted) return;
 
     if (line.isPulse) {
+      // 펄스 라인 4단계 자동 시간 계산 및 스텝 자동 체크 갱신
       const pData = pulseProcessFlags[line.name];
       const box = document.getElementById(`pulse_status_detail_${line.name}`);
       const bar = document.getElementById(`pulse_bar_${line.name}`);
@@ -1249,7 +1287,10 @@ function updateLiveTimesOnly(now) {
 
       const curH = pData.h !== undefined ? pData.h : 14;
       const curM = pData.m !== undefined ? pData.m : 0;
-      const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), curH, curM, 0);
+      
+      // selectedDateStr 기준으로 앵커링하여 날짜 경과 시에도 안정적 계산
+      const baseD = new Date(selectedDateStr + 'T00:00:00');
+      const t0 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), curH, curM, 0);
 
       const t1 = new Date(t0.getTime() + 90 * 60000);
       const t2 = new Date(t1.getTime() + 90 * 60000);
@@ -1270,7 +1311,14 @@ function updateLiveTimesOnly(now) {
       const s3 = document.getElementById(`pulse_step_${line.name}_3`);
       const s4 = document.getElementById(`pulse_step_${line.name}_4`);
 
-      if (now < t1) {
+      if (now < t0) {
+        currentStepName = '0.5 DC 더미 대기 중';
+        remainMinStep = Math.ceil((t0 - now) / 60000);
+        if (s1) s1.className = 'pulse-step-item';
+        if (s2) s2.className = 'pulse-step-item';
+        if (s3) s3.className = 'pulse-step-item';
+        if (s4) s4.className = 'pulse-step-item';
+      } else if (now >= t0 && now < t1) {
         activeStepIdx = 1;
         currentStepName = '0.5 DC 더미';
         remainMinStep = Math.ceil((t1 - now) / 60000);
@@ -1317,10 +1365,10 @@ function updateLiveTimesOnly(now) {
           <span>현재 진행: <strong style="color:var(--purple);">[${currentStepName}]</strong></span>
           <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '전체 4단계 완료'}</strong>
         </div>
-        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
+        <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">
           ⏱️ <strong>단계별 자동 일정:</strong> 0.5 DC(${formatTimeKr(t1.getHours(), t1.getMinutes())}) ➔ 1.5 DC(${formatTimeKr(t2.getHours(), t2.getMinutes())}) ➔ 펄스패스(${formatTimeKr(t3.getHours(), t3.getMinutes())}) ➔ 펄스더미(${formatTimeKr(t4.getHours(), t4.getMinutes())})
         </div>
-        <div style="color:var(--success); font-weight:800; font-size:12.5px; margin-top:4px;">
+        <div style="color:var(--success); font-weight:800; font-size:13px; margin-top:4px;">
           🎯 [펄스 4단계 완료] 최종 양산 예정: <strong>${formatTimeKr(t4.getHours(), t4.getMinutes())}</strong> (광 상태 확인 후 양산)
         </div>
       `;
@@ -1330,13 +1378,27 @@ function updateLiveTimesOnly(now) {
       if (dummyBox && isDummyChecked) {
         const h = elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14;
         const m = elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0;
-        const dStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+        const baseD = new Date(selectedDateStr + 'T00:00:00');
+        const dStart = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), h, m, 0);
         const targetProd = new Date(dStart.getTime() + 90 * 60000);
+        
+        let dummyStatusText = '';
+        if (now < dStart) {
+          dummyStatusText = `더미 투입 대기 중 (${h}시 ${m}분 시작 예정)`;
+        } else if (now >= dStart && now < targetProd) {
+          const rMin = Math.ceil((targetProd - now) / 60000);
+          dummyStatusText = `더미 1싸이클 진행 중 (완료까지 약 ${rMin}분 남음)`;
+        } else {
+          dummyStatusText = `✅ 더미 1싸이클 1.5시간 완료 ➔ 양산 가능`;
+        }
+
         dummyBox.innerHTML = `
-          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 8px; margin-top:4px;">
-            <div style="color:var(--success); font-weight:800; font-size:12px;">
-              🎯 [더미 투입] 양산 예정 시각: <strong>${formatTimeKr(targetProd.getHours(), targetProd.getMinutes())}</strong>
-              <span style="font-weight:normal; font-size:11px; color:#475569;">(${h}시 ${m}분 + 1시간 30분 소요)</span>
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:7px 10px; margin-top:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+              <span style="font-size:12px; color:var(--text-secondary);">${dummyStatusText}</span>
+              <div style="color:var(--success); font-weight:800; font-size:12.5px;">
+                🎯 양산 예정 시각: <strong>${formatTimeKr(targetProd.getHours(), targetProd.getMinutes())}</strong>
+              </div>
             </div>
           </div>
         `;
@@ -1347,20 +1409,17 @@ function updateLiveTimesOnly(now) {
   });
 }
 
-// 요구사항 1 & 2: PM 예정 시간 도래 시 자동 게이지 생성 + [시작] 시 25일 현재 n시 자동 갱신
 function renderActiveChemGauges(now) {
   const container = document.getElementById('activeChemGaugesContainer');
   if (!container) return;
 
-  // 1) 현재 시작/분석 진행 중인 라인
-  // 2) 완료 상태이지만 72시간 주기(nextDue)에 도달했거나 초과한 라인 (자동 생성)
   const activeOrDueChems = chemList.filter(c => {
     if (c.status === '시작' || c.status === '분석') return true;
     if (c.status === '완료') {
       const base = new Date(c.lastDone);
       if (!isNaN(base.getTime())) {
         const nextDue = new Date(base.getTime() + 72 * 3600000);
-        return (now >= nextDue); // 예정 시간 도래/초과 시 자동 포함
+        return (now >= nextDue || formatDateOnly(nextDue) <= selectedDateStr);
       }
     }
     return false;
@@ -1372,9 +1431,9 @@ function renderActiveChemGauges(now) {
     `).join(' ');
 
     container.innerHTML = `
-      <div class="status-detail-box" style="padding:14px; text-align:center; color:var(--text-secondary);">
+      <div class="status-detail-box" style="padding:16px; text-align:center; color:var(--text-secondary);">
         현재 진행 중이거나 PM 예정 주기가 도래한 화학동 라인이 없습니다.<br>
-        <div style="margin-top:8px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
+        <div style="margin-top:10px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
           ${quickStartBtns}
         </div>
       </div>
@@ -1385,23 +1444,21 @@ function renderActiveChemGauges(now) {
   let html = '';
 
   activeOrDueChems.forEach(line => {
-    const isDuePending = (line.status === '완료'); // 72시간 도래했지만 아직 '시작' 안 누른 상태
+    const isDuePending = (line.status === '완료');
     const startTime = new Date(line.lastDone);
     const nextDue = new Date(startTime.getTime() + 72 * 3600000);
 
     if (isDuePending) {
-      // 1번 수정: 예정 시간 도래 시 탭 2에 자동 생성되는 대기/착수 카드
       html += `
         <div class="gauge-box" style="border-left: 4px solid var(--warning); background:#fffbeb;">
           <div class="gauge-top">
             <div>
-              <strong style="font-size:14px; color:#b45309;">🔔 ${line.id} PM 예정 시간 도래!</strong>
+              <strong style="font-size:14.5px; color:#b45309;">🔔 ${line.id} PM 예정 시간 도래!</strong>
               <span class="badge badge-yellow" style="margin-left:4px;">주기 도래</span>
             </div>
-            <!-- 2번 수정: 클릭 시 25일 현재 n시로 자동 시작 -->
-            <button class="btn btn-sm" style="background:var(--accent); padding:4px 10px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${line.id} PM 시작</button>
+            <button class="btn btn-sm" style="background:var(--accent); padding:5px 12px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${line.id} PM 시작</button>
           </div>
-          <div style="font-size:12px; color:#78350f;">
+          <div style="font-size:12.5px; color:#78350f;">
             직전 완료: <strong>${formatDateTimeKr(startTime)}</strong> ➔ PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong><br>
             💡 위 <strong>[PM 시작]</strong> 버튼을 누르면 시작 일시가 <strong>현재 시각</strong>으로 자동 갱신되며 탭3과 연동됩니다.
           </div>
@@ -1410,7 +1467,6 @@ function renderActiveChemGauges(now) {
       return;
     }
 
-    // 이미 시작/분석 진행 중인 라인의 게이지
     const elapsedMin = Math.max(0, (now - startTime) / 60000);
     const target12hMin = 720;
     const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
@@ -1422,7 +1478,7 @@ function renderActiveChemGauges(now) {
       <div class="gauge-box" id="gauge_card_${line.id}">
         <div class="gauge-top">
           <div>
-            <strong style="font-size:14px; color:#0f172a;">${line.id} PM</strong>
+            <strong style="font-size:15px; color:#0f172a;">${line.id} PM</strong>
             <span class="badge ${isAnal ? 'badge-purple' : 'badge-blue'}" style="margin-left:4px;">${line.status}</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
@@ -1451,7 +1507,6 @@ function renderActiveChemGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-// 2번 수정 핵심: '시작' 클릭 시 현재 일시(오늘 날짜 & 현재 n시)로 lastDone을 자동 갱신하고 탭3과 연동
 function setChemStepStatusById(lineId, st) {
   const line = chemList.find(c => c.id === lineId);
   if (!line) return;
@@ -1464,8 +1519,7 @@ function setChemStepStatusById(lineId, st) {
     const m = now.getMonth() + 1;
     const d = now.getDate();
     const h = now.getHours();
-    const min = now.getMinutes() >= 30 ? 30 : 0; // 0분 or 30분 정렬
-    // 25일 현재 n시로 시작 시간 자동 변경!
+    const min = now.getMinutes() >= 30 ? 30 : 0;
     line.lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
     delete line.analyzingStartTime;
   } else if (st === '분석' && !line.analyzingStartTime) {
@@ -1473,9 +1527,9 @@ function setChemStepStatusById(lineId, st) {
   }
 
   syncDataToFirebase();
-  renderChemList(); // 탭 3 연동 반영
+  renderChemList();
   renderWeeklyMatrix();
-  renderActiveChemGauges(new Date()); // 탭 2 연동 반영
+  renderActiveChemGauges(new Date());
   generateShareText();
 }
 
@@ -1597,9 +1651,9 @@ function renderElectroGauges(now) {
 
   if (pendingElecLines.length === 0) {
     container.innerHTML = `
-      <div class="status-detail-box" style="padding:14px; text-align:center; color:var(--text-secondary);">
+      <div class="status-detail-box" style="padding:16px; text-align:center; color:var(--text-secondary);">
         금일 예정된 모든 전기동 PM이 <strong>완료</strong>되었습니다. ✅<br>
-        <button class="btn btn-sub btn-sm" style="margin-top:6px;" onclick="restoreCompletedElec()">완료 라인 다시 표시하기</button>
+        <button class="btn btn-sub btn-sm" style="margin-top:8px;" onclick="restoreCompletedElec()">완료 라인 다시 표시하기</button>
       </div>
     `;
     return;
@@ -1644,14 +1698,14 @@ function renderElectroGauges(now) {
           <div class="gauge-top">
             <div>
               <strong>${line.name} <span class="badge badge-purple">펄스 4단계 공정</span></strong>
-              <label style="margin-left:6px; font-size:11px; cursor:pointer;">
+              <label style="margin-left:6px; font-size:11.5px; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
                 🛠️ 설비(17시)
               </label>
             </div>
             <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
               <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
-              <label style="font-size:11px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
+              <label style="font-size:11.5px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
                 <input type="checkbox" ${isPulseStarted ? 'checked' : ''} onchange="togglePulseProcess('${line.name}', this.checked)">
                 ⚡ 0.5 DC 시작
               </label>
@@ -1741,14 +1795,14 @@ function renderElectroGauges(now) {
           <div class="gauge-top">
             <div>
               <strong>${line.name} <span class="badge badge-blue">일반 건욕</span></strong>
-              <label style="margin-left:6px; font-size:11px; cursor:pointer;">
+              <label style="margin-left:6px; font-size:11.5px; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
                 🛠️ 설비(17시)
               </label>
             </div>
             <div style="display:flex; align-items:center; gap:2px; flex-wrap:wrap;">
               <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
-              <label style="font-size:11px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
+              <label style="font-size:11.5px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
                 <input type="checkbox" ${isDummyChecked ? 'checked' : ''} onchange="toggleElecDummy('${line.name}', this.checked)">
                 🔄 더미투입
               </label>
@@ -1778,23 +1832,6 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-function toggleEquipWork(lineName, isChecked) {
-  equipWorkFlags[lineName] = isChecked;
-
-  const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
-  if (isChecked && existingIdx === -1) {
-    manualNotes.push({ date: selectedDateStr, line: lineName.split(' ')[0], text: '설비작업' });
-  } else if (!isChecked && existingIdx !== -1) {
-    manualNotes.splice(existingIdx, 1);
-  }
-  syncDataToFirebase();
-  renderManualNotesList();
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
-}
-
-// 탭 3 화학동 주기 관리
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1811,7 +1848,7 @@ function renderChemList() {
     card.style.background = '#f8fafc';
     card.style.border = '1px solid var(--border-light)';
     card.style.borderRadius = '8px';
-    card.style.padding = '12px';
+    card.style.padding = '14px';
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
     card.style.gap = '8px';
@@ -1845,25 +1882,25 @@ function renderChemList() {
       </div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:3px;">
-          <input type="number" id="m_${idx}" value="${curM}" min="1" max="12" style="width:42px; text-align:center; padding:4px;" onchange="updateChemFromParts(${idx})">월
-          <input type="number" id="d_${idx}" value="${curD}" min="1" max="31" style="width:42px; text-align:center; padding:4px;" onchange="updateChemFromParts(${idx})">일
-          <select id="h_${idx}" style="padding:4px;" onchange="updateChemFromParts(${idx})">${hourOptions}</select>
-          <select id="min_${idx}" style="padding:4px;" onchange="updateChemFromParts(${idx})">
+          <input type="number" id="m_${idx}" value="${curM}" min="1" max="12" style="width:45px; text-align:center; padding:5px;" onchange="updateChemFromParts(${idx})">월
+          <input type="number" id="d_${idx}" value="${curD}" min="1" max="31" style="width:45px; text-align:center; padding:5px;" onchange="updateChemFromParts(${idx})">일
+          <select id="h_${idx}" style="padding:5px;" onchange="updateChemFromParts(${idx})">${hourOptions}</select>
+          <select id="min_${idx}" style="padding:5px;" onchange="updateChemFromParts(${idx})">
             <option value="0" ${curMin === 0 ? 'selected' : ''}>00분</option>
             <option value="30" ${curMin === 30 ? 'selected' : ''}>30분</option>
           </select>
         </div>
-        <div style="flex:1; min-width:110px;">
+        <div style="flex:1; min-width:120px;">
           <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고 입력" style="width:100%;" oninput="updateChemNote(${idx}, this.value)">
         </div>
       </div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-        <span style="font-size:11px; color:var(--text-secondary);">태그 즉시입력:</span>
+        <span style="font-size:11.5px; color:var(--text-secondary);">태그 즉시입력:</span>
         <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '촉매건욕')">+ 촉매건욕</button>
         <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '화학동 건욕')">+ 화학동 건욕</button>
         <button class="btn btn-sub btn-sm" style="background:#94a3b8;" onclick="setChemNoteTag(${idx}, '')">초기화</button>
       </div>
-      <div id="chem_box_${idx}" style="font-size:11.5px; padding:6px; background:#ffffff; border:1px solid #e2e8f0; border-radius:4px;"></div>
+      <div id="chem_box_${idx}" style="font-size:12px; padding:7px 10px; background:#ffffff; border:1px solid #e2e8f0; border-radius:4px;"></div>
     `;
     container.appendChild(card);
   });
@@ -1883,7 +1920,6 @@ function updateChemFromParts(idx) {
   generateShareText();
 }
 
-// 2번 수정: 탭 3에서 [시작]을 누를 때도 현재 일시(오늘 날짜 & 현재 n시)로 시작 시간 자동 갱신!
 function setChemStepStatus(idx, st) {
   chemList[idx].status = st;
 
@@ -2003,7 +2039,7 @@ function renderPulseTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${p.line}</strong></td>
-      <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)" style="width:120px;"></td>
+      <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)" style="width:130px;"></td>
       <td><strong>${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]}</strong></td>
       <td>${formatDateTimeKr(d2).split(' ')[0]} ${formatDateTimeKr(d2).split(' ')[1]}</td>
       <td>${formatDateTimeKr(d3).split(' ')[0]} ${formatDateTimeKr(d3).split(' ')[1]}</td>
@@ -2045,9 +2081,10 @@ function generateShareText() {
   const day = targetDate.getDay();
   const m = targetDate.getMonth() + 1;
   const d = targetDate.getDate();
-  const pass = document.getElementById('passTimeInput').value || '7시패스';
+  const pass = document.getElementById('passTimeInput') ? document.getElementById('passTimeInput').value : '7시패스';
 
-  document.getElementById('briefingTitle').innerText = `동도금 ${m}월 ${d}일 PM일정`;
+  const bTitle = document.getElementById('briefingTitle');
+  if (bTitle) bTitle.innerText = `동도금 ${m}월 ${d}일 PM일정`;
 
   const windowStart = new Date(targetDate.getTime() + 8.5 * 3600000);
   const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
@@ -2143,11 +2180,13 @@ function generateShareText() {
   }
 
   out += `이상입니다.`;
-  document.getElementById('shareTextOutput').value = out;
+  const outEl = document.getElementById('shareTextOutput');
+  if (outEl) outEl.value = out;
 }
 
 function copyShareText() {
   const el = document.getElementById('shareTextOutput');
+  if (!el) return;
   el.select();
   navigator.clipboard.writeText(el.value).then(() => {
     alert('PM 공유 텍스트가 클립보드에 복사되었습니다.');
