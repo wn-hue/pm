@@ -59,6 +59,7 @@
   }
   .live-clock-box span { font-size: 15px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
+  /* 5개 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -209,25 +210,24 @@
     background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 11px;
   }
 
-  /* 소형 에칭 스트립 바 */
-  .etching-strip {
+  /* 금일 에칭 PM 단독 배치 바 (에칭 순차진행 멘트 삭제 후 우측 위치로 이동) */
+  .etching-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 5px 10px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 11.5px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
   }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- 상단 공통 헤더 -->
+  <!-- 상단 헤더 -->
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 진척 모니터링 시스템</h1>
@@ -269,15 +269,10 @@
           <span class="badge badge-blue" id="weekRangeBadge">금주</span>
         </div>
 
-        <!-- 콤팩트 에칭 정보 스트립 (표에서 제외 후 소형 표기 & 1,2 / 3,4 / 6 순차 반영) -->
-        <div class="etching-strip">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span>⚡ <strong>금일 에칭 PM:</strong></span>
-            <input type="text" id="todayEtchingInput" value="에3.4" style="width:75px; padding:3px 6px; font-weight:700; color:var(--accent);" oninput="onEtchingChange(this.value)">
-          </div>
-          <div style="color:var(--text-secondary);">
-            에칭 순차 진행 (소프트 에칭 1,2 / 3,4 / 6 순차진행)
-          </div>
+        <!-- 에칭 순차진행 멘트 삭제 후, 그 텍스트 자리(우측)로 금일 에칭 PM 단독 배치 -->
+        <div class="etching-bar">
+          <span>⚡ <strong>금일 에칭 PM:</strong></span>
+          <input type="text" id="todayEtchingInput" value="에3.4" style="width:75px; padding:3px 6px; font-weight:700; color:var(--accent);" oninput="onEtchingChange(this.value)">
         </div>
 
         <table>
@@ -609,10 +604,10 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v9')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v9')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v9')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v9')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v10')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v10')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v10')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v10')) || {};
 
 let selectedDateStr = '2026-09-25';
 
@@ -861,7 +856,7 @@ function renderManualNotesList() {
   });
 }
 
-function saveManualNotes() { localStorage.setItem('manual_notes_v9', JSON.stringify(manualNotes)); }
+function saveManualNotes() { localStorage.setItem('manual_notes_v10', JSON.stringify(manualNotes)); }
 
 // --- [6. 자동 진척 게이지 엔진 (탭 2: 화학동 12시간 액이송 기준)] ---
 function updateAllGauges() {
@@ -1189,7 +1184,7 @@ function renderElectroGauges(now) {
 
 function toggleEquipWork(lineName, isChecked) {
   equipWorkFlags[lineName] = isChecked;
-  localStorage.setItem('equip_work_flags_v9', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('equip_work_flags_v10', JSON.stringify(equipWorkFlags));
 
   const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
   if (isChecked && existingIdx === -1) {
@@ -1237,7 +1232,6 @@ function renderChemList() {
         <input type="datetime-local" id="time_${idx}" value="${c.lastDone}" onchange="updateChemTime(${idx}, this.value)">
         <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고 입력" oninput="updateChemNote(${idx}, this.value)">
       </div>
-      <!-- 촉매건욕, 화학동건욕 태그 바로입력 버튼 -->
       <div style="display:flex; gap:6px; align-items:center;">
         <span style="font-size:11px; color:var(--text-secondary);">태그 즉시입력:</span>
         <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '촉매건욕')">+ 촉매건욕</button>
@@ -1301,9 +1295,9 @@ function setChemNow(idx) {
   if (timeInput) timeInput.value = chemList[idx].lastDone;
   saveChemData(); updateAllGauges(); generateShareText();
 }
-function saveChemData() { localStorage.setItem('chem_data_v9', JSON.stringify(chemList)); }
+function saveChemData() { localStorage.setItem('chem_data_v10', JSON.stringify(chemList)); }
 
-// --- [9. 펄스라인 120일 액퍼내기 (탭 5: 독립 탭 구성)] ---
+// --- [9. 펄스라인 120일 액퍼내기 (탭 5)] ---
 function renderPulseTable() {
   const tbody = document.getElementById('pulseTableBody');
   if (!tbody) return;
@@ -1334,7 +1328,7 @@ function renderPulseTable() {
   });
 }
 function updatePulseDate(idx, val) { pulseList[idx].lastDate = val; savePulseData(); renderPulseTable(); }
-function savePulseData() { localStorage.setItem('pulse_data_v9', JSON.stringify(pulseList)); }
+function savePulseData() { localStorage.setItem('pulse_data_v10', JSON.stringify(pulseList)); }
 
 // --- [10. 날짜 변경 핸들러] ---
 function onDateChange() {
@@ -1348,7 +1342,7 @@ function onDateChange() {
   }
 }
 
-// --- [11. 브리핑 공유 텍스트 자동 완성 (정기PM은 블랙홀만, 나머지는 기본PM 통일)] ---
+// --- [11. 브리핑 공유 텍스트 자동 완성] ---
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1376,13 +1370,12 @@ function generateShareText() {
   let chems = [];
   let ongoing = [];
 
-  // 정기PM은 블랙홀만, 디스미어/전기동/화학동은 기본PM 통일
   if (day === 1) {
     if (checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) desmear.push('고압수세 1라인 기본PM');
     desmear.push(`디8 기본PM${getNote('디스미어 8')}`);
     if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디11 기본PM${getNote('디스미어 11')}`);
     if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디15 기본PM${getNote('디스미어 15')}`);
-    blackhole = `화12 정기PM${getNote('화12')}`; // 블랙홀만 정기PM
+    blackhole = `화12 정기PM${getNote('화12')}`;
     electro.push(`전9 탈지 산세 박리건욕 (${pass})${getNote('전기동 9')}`);
     electro.push(`전16 유산동 (${pass})${getNote('전기동 16')}`);
   } else if (day === 2) {
@@ -1391,7 +1384,7 @@ function generateShareText() {
   } else if (day === 3) {
     debarr = '데3';
     desmear.push(`디12 기본PM${getNote('디스미어 12')}`);
-    blackhole = `화11 정기PM${getNote('화11')}`; // 블랙홀만 정기PM
+    blackhole = `화11 정기PM${getNote('화11')}`;
     electro.push(`전15 기본PM (${pass})${getNote('전기동 15')}`, `전20 기본PM (${pass})${getNote('전기동 20')}`);
   } else if (day === 4) {
     desmear.push(`디7 기본PM${getNote('디스미어 7')}`);
@@ -1399,13 +1392,12 @@ function generateShareText() {
   } else if (day === 5) {
     debarr = '데2';
     desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
-    blackhole = `화10 정기PM${getNote('화10')}`; // 블랙홀만 정기PM
+    blackhole = `화10 정기PM${getNote('화10')}`;
     if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 유산동 (${pass})${getNote('전기동 12')}`);
     electro.push(`전13 탈지 산세 박리건욕 (${pass})${getNote('전기동 13')}`);
     electro.push(`전21 탈지 산세 박리건욕 (7시 30분패스)${getNote('전기동 21')}`);
   }
 
-  // 화학동: 기본PM 통일 (정기PM 금지)
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
     if (c.status === '진행중') {
