@@ -42,7 +42,6 @@
 
   .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
-  /* 헤더 반응형 */
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -84,7 +83,6 @@
   }
   .live-clock-box span { font-size: 14px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
-  /* 모바일 가로 슬라이딩 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -121,7 +119,6 @@
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
 
-  /* 그리드 시스템 */
   .grid-2col {
     display: grid;
     grid-template-columns: 1fr;
@@ -152,7 +149,6 @@
     gap: 6px;
   }
 
-  /* 테이블 가로 스크롤 래퍼 */
   .table-responsive {
     width: 100%;
     overflow-x: auto;
@@ -274,7 +270,6 @@
     border-radius: 6px;
   }
 
-  /* 모바일 전용 미디어 쿼리 (< 768px) */
   @media (max-width: 768px) {
     body { padding: 8px; }
     header { padding: 10px 12px; flex-direction: column; align-items: flex-start; }
@@ -310,7 +305,7 @@
     </div>
   </header>
 
-  <!-- 메인 탭 네비게이션 (모바일 가로 스크롤 지원) -->
+  <!-- 메인 탭 네비게이션 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       🗓️ 일주일 / 오늘 PM 브리핑
@@ -332,8 +327,6 @@
   <!-- [탭 1] 일주일 단위 주간 PM 일정 & 오늘 브리핑 공유 -->
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
-      
-      <!-- 좌측: 주간 정기 PM 매트릭스 -->
       <div class="card">
         <div class="card-title">
           <span>금주 정기 PM 매트릭스 (월~일)</span>
@@ -345,7 +338,6 @@
           <input type="text" id="todayEtchingInput" value="에3.4" style="width:75px; padding:3px 6px; font-weight:700; color:var(--accent);" oninput="onEtchingChange(this.value)">
         </div>
 
-        <!-- 가로 스크롤 보호 래퍼 -->
         <div class="table-responsive">
           <table>
             <thead>
@@ -361,7 +353,6 @@
               </tr>
             </thead>
             <tbody>
-              <!-- 1순위: 데버링 / 고압수세 -->
               <tr>
                 <td><strong>데버링 /<br>고압수세</strong></td>
                 <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
@@ -372,7 +363,6 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
-              <!-- 2순위: 디스미어 -->
               <tr>
                 <td><strong>디스미어</strong></td>
                 <td>
@@ -396,7 +386,6 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
-              <!-- 3순위: 화학동 / 블랙홀 -->
               <tr style="background:#f0fdf4;">
                 <td><strong style="color:var(--accent);">화학동 /<br>블랙홀</strong></td>
                 <td>
@@ -424,7 +413,6 @@
                   <div id="chem_cell_7">-</div>
                 </td>
               </tr>
-              <!-- 4순위: 전기동 -->
               <tr>
                 <td><strong>전기동</strong></td>
                 <td>
@@ -455,12 +443,8 @@
             </tbody>
           </table>
         </div>
-        <div style="font-size:11px; color:var(--text-secondary); text-align:right;">
-          👈 좌우로 밀어서 7일 전체 일정 확인 가능
-        </div>
       </div>
 
-      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 -->
       <div class="card">
         <div class="card-title">
           <span id="briefingTitle">오늘 PM 브리핑 & 공유 양식</span>
@@ -484,15 +468,12 @@
 
         <textarea id="shareTextOutput" class="report-area"></textarea>
       </div>
-
     </div>
   </div>
 
   <!-- [탭 2] 자동 진척 게이지 (12시간 액이송 기준) -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col">
-      
-      <!-- 화학동 진척 -->
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
@@ -538,7 +519,6 @@
         </div>
       </div>
 
-      <!-- 전기동 진척 -->
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
@@ -549,7 +529,6 @@
           <div id="elecGaugesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -655,16 +634,17 @@
 
 <script>
 // =================================================================
-// ★ Firebase 설정 (필요 시 Config 입력, 미입력 시 브라우저 로컬 자동 동작)
+// ★ Firebase 실제 발급 키 반영 완료
 // =================================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
+  authDomain: "pm1234-3069b.firebaseapp.com",
+  databaseURL: "https://pm1234-3069b-default-rtdb.firebaseio.com",
+  projectId: "pm1234-3069b",
+  storageBucket: "pm1234-3069b.firebasestorage.app",
+  messagingSenderId: "716536956170",
+  appId: "1:716536956170:web:8d6f9e7fa9164f9ee626f3",
+  measurementId: "G-GYQXKQR7P4"
 };
 
 let db = null;
@@ -687,27 +667,21 @@ const DEFAULT_PULSE = [
 
 const DEFAULT_MANUAL_NOTES = [];
 
-// 고압수세 PM일정 9월 28일 기준 (2주 주기)
 const ANCHOR_BIWEEK = {
   des11: new Date('2026-09-14T00:00:00'),
   elec12: new Date('2026-09-18T00:00:00'),
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v12')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v12')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v12')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v12')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_final')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_final')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_final')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_final')) || {};
 
 let selectedDateStr = '2026-09-25';
 
 function initFirebase() {
   const statusEl = document.getElementById('syncStatus');
-  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
-    statusEl.innerHTML = `<span style="color:#d97706;">🟡 로컬 모드</span>`;
-    return;
-  }
-
   try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
@@ -715,10 +689,10 @@ function initFirebase() {
     db.ref('.info/connected').on('value', (snap) => {
       if (snap.val() === true) {
         isFirebaseConnected = true;
-        statusEl.innerHTML = `<span style="color:#16a34a;">🟢 실시간 서버 연결</span>`;
+        statusEl.innerHTML = `<span style="color:#16a34a;">🟢 실시간 서버 연결됨</span>`;
       } else {
         isFirebaseConnected = false;
-        statusEl.innerHTML = `<span style="color:#dc2626;">🔴 오프라인</span>`;
+        statusEl.innerHTML = `<span style="color:#dc2626;">🔴 오프라인 (재연결 시도)</span>`;
       }
     });
 
@@ -736,18 +710,21 @@ function initFirebase() {
         renderPulseTable();
         updateAllGauges();
         generateShareText();
+      } else {
+        // 최초 실행 시 서버가 비어있으면 초기값 저장
+        syncDataToFirebase();
       }
     });
   } catch (e) {
-    statusEl.innerHTML = `<span style="color:#dc2626;">⚠️ 서버 오류</span>`;
+    statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 저장 모드</span>`;
   }
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v12', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v12', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v12', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v12', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('chem_data_final', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_final', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_final', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_final', JSON.stringify(equipWorkFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -1032,7 +1009,7 @@ function renderChem12hGauge(now) {
 
   const startTime = new Date(line.lastDone);
   const elapsedMin = Math.max(0, (now - startTime) / 60000);
-  const target12hMin = 720; // 12시간 = 720분
+  const target12hMin = 720;
 
   const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
   chemBar.style.width = pct.toFixed(1) + '%';
