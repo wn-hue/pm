@@ -105,6 +105,7 @@
   }
   .live-clock-box span { font-size: 14px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
+  /* 5개 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -302,7 +303,7 @@
   .status-step-btn {
     border: none;
     background: transparent;
-    padding: 4px 10px;
+    padding: 3px 8px;
     font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary);
@@ -313,6 +314,23 @@
   .status-step-btn.active-시작 { background: var(--accent); color: #fff; }
   .status-step-btn.active-분석 { background: var(--purple); color: #fff; }
   .status-step-btn.active-완료 { background: var(--success); color: #fff; }
+
+  .pulse-step-btn {
+    border: 1px solid var(--border);
+    background: #fff;
+    padding: 2px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .pulse-step-btn.active {
+    background: var(--purple);
+    color: #fff;
+    border-color: var(--purple);
+  }
 
   @media (max-width: 768px) {
     body { padding: 8px; }
@@ -339,7 +357,7 @@
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 실시간 통합 모니터링</h1>
-      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 · 펄스 6단계 & 일반 더미</p>
+      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 · 펄스 4단계 공정 (총 6H) & 일반 더미</p>
     </div>
     <div class="header-right">
       <div id="syncStatus" class="sync-status-badge">
@@ -687,11 +705,14 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v19')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v19')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v19')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v19')) || {};
-let elecDummyFlags = JSON.parse(localStorage.getItem('elec_dummy_flags_v19')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v20')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v20')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v20')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v20')) || {};
+
+// 전기동 더미/펄스 공정 플래그
+let elecDummyFlags = JSON.parse(localStorage.getItem('elec_dummy_flags_v20')) || {};
+let pulseProcessFlags = JSON.parse(localStorage.getItem('pulse_process_flags_v20')) || {};
 
 let selectedDateStr = '2026-09-25';
 
@@ -719,6 +740,7 @@ function initFirebase() {
         if (remoteData.manualNotes) manualNotes = remoteData.manualNotes;
         if (remoteData.equipWorkFlags) equipWorkFlags = remoteData.equipWorkFlags;
         if (remoteData.elecDummyFlags) elecDummyFlags = remoteData.elecDummyFlags;
+        if (remoteData.pulseProcessFlags) pulseProcessFlags = remoteData.pulseProcessFlags;
 
         renderWeeklyMatrix();
         renderManualNotesList();
@@ -737,11 +759,12 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v19', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v19', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v19', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v19', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v19', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('chem_data_v20', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v20', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v20', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v20', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v20', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v20', JSON.stringify(pulseProcessFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -750,6 +773,7 @@ function syncDataToFirebase() {
       manualNotes: manualNotes,
       equipWorkFlags: equipWorkFlags,
       elecDummyFlags: elecDummyFlags,
+      pulseProcessFlags: pulseProcessFlags,
       lastUpdated: new Date().toISOString()
     }).catch(err => console.error("Firebase sync error:", err));
   }
@@ -805,7 +829,6 @@ function tick() {
   const now = new Date();
   document.getElementById('liveClock').innerText = formatClock(now);
   
-  // 1초 주기로는 HTML을 날리지 않고 진행바와 시간 텍스트만 부드럽게 갱신 (선택창 끊김 방지)
   updateLiveTimesOnly(now);
   updateChemRealtimeStatuses();
 
@@ -1075,9 +1098,9 @@ function renderManualNotesList() {
   });
 }
 
-// 1초 단위 텍스트 & 바 너비만 부드럽게 갱신 (입력창 포커스 유지)
+// 1초 단위 텍스트 & 바 너비만 부드럽게 갱신 (선택창 포커스 끊김 방지)
 function updateLiveTimesOnly(now) {
-  // 화학동 게이지 업데이트
+  // 화학동
   const activeChems = chemList.filter(c => c.status === '시작' || c.status === '분석');
   activeChems.forEach(line => {
     const bar = document.getElementById(`chem_bar_${line.id}`);
@@ -1135,7 +1158,7 @@ function updateLiveTimesOnly(now) {
     }
   });
 
-  // 전기동 게이지 업데이트
+  // 전기동
   const day = new Date(selectedDateStr + 'T00:00:00').getDay();
   let todayElecLines = [];
   if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
@@ -1146,29 +1169,92 @@ function updateLiveTimesOnly(now) {
   else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
 
   todayElecLines.forEach(line => {
-    const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
-    const dummyBox = document.getElementById(`elec_dummy_est_${line.name}`);
-    if (dummyBox && isDummyChecked) {
-      const h = elecDummyFlags[line.name].h || 14;
-      const m = elecDummyFlags[line.name].m || 0;
-      const dStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
-      const targetProd = new Date(dStart.getTime() + 90 * 60000);
-      const dummyLabel = line.isPulse ? 'DC 더미투입' : '더미투입';
-      dummyBox.innerHTML = `
-        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 8px; margin-top:4px;">
-          <div style="color:var(--success); font-weight:800; font-size:12px;">
-            🎯 [${dummyLabel}] 양산 예정 시각: <strong>${formatTimeKr(targetProd.getHours(), targetProd.getMinutes())}</strong>
-            <span style="font-weight:normal; font-size:11px; color:#475569;">(${h}시 ${m}분 + 1시간 30분 소요)</span>
-          </div>
+    if (line.isPulse) {
+      // 펄스 라인 4단계 공정 계산
+      const pData = pulseProcessFlags[line.name];
+      const box = document.getElementById(`pulse_status_detail_${line.name}`);
+      const bar = document.getElementById(`pulse_bar_${line.name}`);
+      const pctBadge = document.getElementById(`pulse_pct_${line.name}`);
+      if (!box || !bar || !pData || !pData.isStarted) return;
+
+      const curH = pData.h !== undefined ? pData.h : 14;
+      const curM = pData.m !== undefined ? pData.m : 0;
+      const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), curH, curM, 0);
+
+      const t1 = new Date(t0.getTime() + 90 * 60000);  // 0.5 DC 완료 (1.5H)
+      const t2 = new Date(t1.getTime() + 90 * 60000);  // 1.5 DC 완료 (3.0H)
+      const t3 = new Date(t2.getTime() + 90 * 60000);  // 펄스패스 완료 (4.5H)
+      const t4 = new Date(t3.getTime() + 90 * 60000);  // 펄스더미 완료/양산 (6.0H)
+
+      // 진행률 계산 (총 360분 = 6시간)
+      const totalElapsedMin = Math.max(0, (now - t0) / 60000);
+      const totalPct = Math.min(100, Math.max(0, (totalElapsedMin / 360) * 100));
+      bar.style.width = totalPct.toFixed(1) + '%';
+      if (pctBadge) pctBadge.innerText = `${totalPct.toFixed(0)}%`;
+
+      let currentStepAuto = '';
+      let remainMinStep = 0;
+      let barColor = 'progress-fill warn';
+
+      if (now < t1) {
+        currentStepAuto = '0.5 DC 더미';
+        remainMinStep = Math.ceil((t1 - now) / 60000);
+      } else if (now >= t1 && now < t2) {
+        currentStepAuto = '1.5 DC 더미';
+        remainMinStep = Math.ceil((t2 - now) / 60000);
+      } else if (now >= t2 && now < t3) {
+        currentStepAuto = '펄스대비 패스';
+        remainMinStep = Math.ceil((t3 - now) / 60000);
+        barColor = 'progress-fill';
+      } else if (now >= t3 && now < t4) {
+        currentStepAuto = '펄스 더미';
+        remainMinStep = Math.ceil((t4 - now) / 60000);
+        barColor = 'progress-fill alert';
+      } else {
+        currentStepAuto = '광 확인 및 양산 가동';
+        remainMinStep = 0;
+        barColor = 'progress-fill done';
+      }
+
+      bar.className = barColor;
+
+      box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+          <span>현재 공정: <strong style="color:var(--purple);">[${pData.manualStep || currentStepAuto}]</strong></span>
+          <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '전체 더미/패스 완료'}</strong>
+        </div>
+        <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">
+          ⏱️ <strong>단계별 일정:</strong> 0.5 DC(${formatTimeKr(t1.getHours(), t1.getMinutes())}) ➔ 1.5 DC(${formatTimeKr(t2.getHours(), t2.getMinutes())}) ➔ 펄스패스(${formatTimeKr(t3.getHours(), t3.getMinutes())}) ➔ 펄스더미(${formatTimeKr(t4.getHours(), t4.getMinutes())})
+        </div>
+        <div style="color:var(--success); font-weight:800; font-size:12.5px; margin-top:4px;">
+          🎯 [펄스 4단계 공정] 최종 양산 예정: <strong>${formatTimeKr(t4.getHours(), t4.getMinutes())}</strong> (광 상태 확인 후 양산)
         </div>
       `;
-    } else if (dummyBox) {
-      dummyBox.innerHTML = '';
+    } else {
+      // 일반 라인 단일 더미 투입
+      const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
+      const dummyBox = document.getElementById(`elec_dummy_est_${line.name}`);
+      if (dummyBox && isDummyChecked) {
+        const h = elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14;
+        const m = elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0;
+        const dStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+        const targetProd = new Date(dStart.getTime() + 90 * 60000);
+        dummyBox.innerHTML = `
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 8px; margin-top:4px;">
+            <div style="color:var(--success); font-weight:800; font-size:12px;">
+              🎯 [더미 투입] 양산 예정 시각: <strong>${formatTimeKr(targetProd.getHours(), targetProd.getMinutes())}</strong>
+              <span style="font-weight:normal; font-size:11px; color:#475569;">(${h}시 ${m}분 + 1시간 30분 소요)</span>
+            </div>
+          </div>
+        `;
+      } else if (dummyBox) {
+        dummyBox.innerHTML = '';
+      }
     }
   });
 }
 
-// 1번 수정: 화학동 게이지에 [시작 / 분석 / 완료] 버튼 추가 및 상호 연동
+// 탭 2 화학동 진척게이지 자동 연동 렌더링
 function renderActiveChemGauges(now) {
   const container = document.getElementById('activeChemGaugesContainer');
   if (!container) return;
@@ -1204,7 +1290,6 @@ function renderActiveChemGauges(now) {
             <span class="badge ${isAnal ? 'badge-purple' : 'badge-blue'}" style="margin-left:4px;">${line.status}</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
-            <!-- 1번 수정: 시작 / 분석 / 완료 탭 버튼 연동 -->
             <div class="status-step-group">
               <button class="status-step-btn ${isStart ? 'active-시작' : ''}" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
               <button class="status-step-btn ${isAnal ? 'active-분석' : ''}" onclick="setChemStepStatusById('${line.id}', '분석')">분석</button>
@@ -1230,7 +1315,6 @@ function renderActiveChemGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-// 게이지에서 분석/시작 즉시 변경
 function setChemStepStatusById(lineId, st) {
   const line = chemList.find(c => c.id === lineId);
   if (!line) return;
@@ -1244,7 +1328,6 @@ function setChemStepStatusById(lineId, st) {
   generateShareText();
 }
 
-// 게이지에서 PM 완료 즉시 처리 (주기 72시간 갱신 & 게이지 종료)
 function completeChemPM(lineId) {
   if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
   const line = chemList.find(c => c.id === lineId);
@@ -1261,11 +1344,50 @@ function completeChemPM(lineId) {
   generateShareText();
 }
 
-// 2번 수정: 전기동 더미 투입 토글
+// 펄스 라인 전용 4단계 공정 토글 & 시간/단계 업데이트
+function togglePulseProcess(lineName, isChecked) {
+  if (isChecked) {
+    const now = new Date();
+    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
+    pulseProcessFlags[lineName] = {
+      isStarted: true,
+      h: now.getHours(),
+      m: roundMin,
+      manualStep: '0.5 DC 더미'
+    };
+  } else {
+    delete pulseProcessFlags[lineName];
+  }
+  syncDataToFirebase();
+  renderElectroGauges(new Date());
+}
+
+function updatePulseProcessTime(lineName, part, val) {
+  if (!pulseProcessFlags[lineName]) return;
+  pulseProcessFlags[lineName][part] = Number(val);
+  syncDataToFirebase();
+  updateLiveTimesOnly(new Date());
+}
+
+function setPulseStepManual(lineName, stepName) {
+  if (!pulseProcessFlags[lineName]) {
+    const now = new Date();
+    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
+    pulseProcessFlags[lineName] = {
+      isStarted: true,
+      h: now.getHours(),
+      m: roundMin
+    };
+  }
+  pulseProcessFlags[lineName].manualStep = stepName;
+  syncDataToFirebase();
+  renderElectroGauges(new Date());
+}
+
+// 일반 전기동 더미 투입 토글
 function toggleElecDummy(lineName, isChecked) {
   if (isChecked) {
     const now = new Date();
-    // 0분 또는 30분 기본값 설정
     const roundMin = now.getMinutes() >= 30 ? 30 : 0;
     elecDummyFlags[lineName] = {
       isDummy: true,
@@ -1279,7 +1401,6 @@ function toggleElecDummy(lineName, isChecked) {
   renderElectroGauges(new Date());
 }
 
-// 2번 수정: 더미 투입 시간 (시/분 0분 30분 드롭다운) 변경
 function updateElecDummyTimeSelect(lineName, part, val) {
   if (!elecDummyFlags[lineName]) return;
   elecDummyFlags[lineName][part] = Number(val);
@@ -1287,7 +1408,7 @@ function updateElecDummyTimeSelect(lineName, part, val) {
   updateLiveTimesOnly(new Date());
 }
 
-// 2번 수정: 전기동 더미 투입 드롭다운(0분/30분) UI 렌더링
+// 전기동 진척 게이지 (펄스 4단계 vs 일반 더미 완전 분리)
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   if (!container) return;
@@ -1314,84 +1435,158 @@ function renderElectroGauges(now) {
     const hasManualEquipNote = manualNotes.some(n => n.date === selectedDateStr && n.line.includes(line.name.split('라인')[0]) && n.text.includes('설비작업'));
     const isEquipWorkActive = (equipWorkFlags[line.name] !== undefined) ? equipWorkFlags[line.name] : hasManualEquipNote;
 
-    const dummyLabel = line.isPulse ? 'DC 더미투입' : '더미투입';
-    const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
-    const curH = isDummyChecked ? (elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14) : 14;
-    const curM = isDummyChecked ? (elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0) : 0;
+    if (line.isPulse) {
+      // ===== [펄스 라인 전용: 0.5 DC(1.5H) -> 1.5 DC(1.5H) -> 펄스패스(1.5H) -> 펄스더미(1.5H)] =====
+      const pData = pulseProcessFlags[line.name] || {};
+      const isPulseStarted = !!pData.isStarted;
+      const curH = isPulseStarted ? (pData.h !== undefined ? pData.h : 14) : 14;
+      const curM = isPulseStarted ? (pData.m !== undefined ? pData.m : 0) : 0;
+      const activeStep = pData.manualStep || '0.5 DC 더미';
 
-    // 시 선택 옵션 (0~23)
-    let hourOptions = '';
-    for (let h = 0; h <= 23; h++) {
-      hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
-    }
+      let hourOptions = '';
+      for (let h = 0; h <= 23; h++) {
+        hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
+      }
+      let minOptions = `
+        <option value="0" ${curM === 0 ? 'selected' : ''}>00분</option>
+        <option value="30" ${curM === 30 ? 'selected' : ''}>30분</option>
+      `;
 
-    // 2번 수정: 분은 00분, 30분 둘 중 하나만 선택
-    let minOptions = `
-      <option value="0" ${curM === 0 ? 'selected' : ''}>00분</option>
-      <option value="30" ${curM === 30 ? 'selected' : ''}>30분</option>
-    `;
+      let pulseTimeControls = '';
+      if (isPulseStarted) {
+        pulseTimeControls = `
+          <div style="display:inline-flex; align-items:center; gap:2px; margin-left:2px;">
+            <select style="padding:2px 4px; font-size:11px;" onchange="updatePulseProcessTime('${line.name}', 'h', this.value)">${hourOptions}</select>
+            <select style="padding:2px 4px; font-size:11px;" onchange="updatePulseProcessTime('${line.name}', 'm', this.value)">${minOptions}</select>
+          </div>
+        `;
+      }
 
-    let timeSelectHtml = '';
-    if (isDummyChecked) {
-      timeSelectHtml = `
-        <div style="display:inline-flex; align-items:center; gap:2px; margin-left:4px;">
-          <select style="padding:2px 4px; font-size:11px;" onchange="updateElecDummyTimeSelect('${line.name}', 'h', this.value)">${hourOptions}</select>
-          <select style="padding:2px 4px; font-size:11px;" onchange="updateElecDummyTimeSelect('${line.name}', 'm', this.value)">${minOptions}</select>
+      const pulseSteps = ['0.5 DC 더미', '1.5 DC 더미', '펄스대비 패스', '펄스 더미'];
+      let stepBtnsHtml = '';
+      pulseSteps.forEach(st => {
+        const isSelected = (activeStep === st);
+        stepBtnsHtml += `<button class="pulse-step-btn ${isSelected?'active':''}" onclick="setPulseStepManual('${line.name}', '${st}')">${st}</button>`;
+      });
+
+      html += `
+        <div class="gauge-box">
+          <div class="gauge-top">
+            <div>
+              <strong>${line.name} <span class="badge badge-purple">펄스 전용 공정</span></strong>
+              <label style="margin-left:6px; font-size:11px; cursor:pointer;">
+                <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
+                🛠️ 설비(17시)
+              </label>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+              <label style="font-size:11px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px;">
+                <input type="checkbox" ${isPulseStarted ? 'checked' : ''} onchange="togglePulseProcess('${line.name}', this.checked)">
+                ⚡ 펄스 공정 시작
+              </label>
+              ${pulseTimeControls}
+              <span class="badge badge-purple" id="pulse_pct_${line.name}">0%</span>
+            </div>
+          </div>
+
+          <!-- 펄스 4단계 수동 전환 탭 -->
+          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:2px;">
+            ${stepBtnsHtml}
+          </div>
+
+          <div class="progress-track"><div id="pulse_bar_${line.name}" class="progress-fill warn" style="width:0%;"></div></div>
+          
+          <div class="timeline-ticks">
+            <span>0.5 DC(1.5H)</span>
+            <span>1.5 DC(1.5H)</span>
+            <span>펄스대비 패스(1.5H)</span>
+            <span>펄스 더미(1.5H)</span>
+            <span style="color:var(--success); font-weight:700;">광확인/양산</span>
+          </div>
+
+          <div class="status-detail-box" id="pulse_status_detail_${line.name}">
+            <div>${isPulseStarted ? '진행 상태 계산 중...' : '08:30 PM 시작 ➔ 14:00 건욕 완료 후 <strong>[펄스 공정 시작]</strong>을 체크하세요.'}</div>
+          </div>
+        </div>
+      `;
+
+    } else {
+      // ===== [일반 전기동 라인: 건욕 후 단일 더미 투입 (1.5H)] =====
+      const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
+      const curH = isDummyChecked ? (elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14) : 14;
+      const curM = isDummyChecked ? (elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0) : 0;
+
+      let hourOptions = '';
+      for (let h = 0; h <= 23; h++) {
+        hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
+      }
+      let minOptions = `
+        <option value="0" ${curM === 0 ? 'selected' : ''}>00분</option>
+        <option value="30" ${curM === 30 ? 'selected' : ''}>30분</option>
+      `;
+
+      let timeSelectHtml = '';
+      if (isDummyChecked) {
+        timeSelectHtml = `
+          <div style="display:inline-flex; align-items:center; gap:2px; margin-left:2px;">
+            <select style="padding:2px 4px; font-size:11px;" onchange="updateElecDummyTimeSelect('${line.name}', 'h', this.value)">${hourOptions}</select>
+            <select style="padding:2px 4px; font-size:11px;" onchange="updateElecDummyTimeSelect('${line.name}', 'm', this.value)">${minOptions}</select>
+          </div>
+        `;
+      }
+
+      let progressPct = 0;
+      let stepName = '';
+      let barClass = 'progress-fill';
+
+      if (now < start0830) {
+        stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
+      } else if (now >= start0830 && now < end1400) {
+        progressPct = ((now - start0830) / 330 / 60000) * 40;
+        const rMin = Math.ceil((end1400 - now) / 60000);
+        stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+        barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
+      } else {
+        progressPct = 100;
+        stepName = '✅ 14시 전처리 건욕 완료 구간 경과';
+        barClass = 'progress-fill done';
+      }
+
+      html += `
+        <div class="gauge-box">
+          <div class="gauge-top">
+            <div>
+              <strong>${line.name} <span class="badge badge-blue">일반 건욕</span></strong>
+              <label style="margin-left:6px; font-size:11px; cursor:pointer;">
+                <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
+                🛠️ 설비(17시)
+              </label>
+            </div>
+            <div style="display:flex; align-items:center; gap:2px; flex-wrap:wrap;">
+              <label style="font-size:11px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px;">
+                <input type="checkbox" ${isDummyChecked ? 'checked' : ''} onchange="toggleElecDummy('${line.name}', this.checked)">
+                🔄 더미투입
+              </label>
+              ${timeSelectHtml}
+              <span class="badge badge-blue" style="margin-left:4px;">${progressPct.toFixed(0)}%</span>
+            </div>
+          </div>
+          <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
+          <div class="timeline-ticks">
+            <span>07:00 패스</span>
+            <span>08:30 PM시작</span>
+            <span style="color:var(--danger); font-weight:700;">14:00 건욕완료</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
+            <span>더미 1싸이클</span>
+            <span style="color:var(--success); font-weight:700;">양산</span>
+          </div>
+          <div class="status-detail-box">
+            <div style="font-weight:700;">${stepName}</div>
+            <div id="elec_dummy_est_${line.name}"></div>
+          </div>
         </div>
       `;
     }
-
-    let progressPct = 0;
-    let stepName = '';
-    let barClass = 'progress-fill';
-
-    if (now < start0830) {
-      stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
-    } else if (now >= start0830 && now < end1400) {
-      progressPct = ((now - start0830) / 330 / 60000) * 40;
-      const rMin = Math.ceil((end1400 - now) / 60000);
-      stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
-      barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
-    } else {
-      progressPct = 100;
-      stepName = '✅ 14시 전처리 건욕 완료 구간 경과';
-      barClass = 'progress-fill done';
-    }
-
-    html += `
-      <div class="gauge-box">
-        <div class="gauge-top">
-          <div>
-            <strong>${line.name} <span class="badge ${line.isPulse?'badge-purple':'badge-blue'}">${line.isPulse?'펄스':'일반'}</span></strong>
-            <label style="margin-left:6px; font-size:11px; cursor:pointer;">
-              <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
-              🛠️ 설비(17시)
-            </label>
-          </div>
-          <!-- 2번 수정: DC 더미투입 / 더미투입 체크박스 & 0/30분 선택 -->
-          <div style="display:flex; align-items:center; gap:2px; flex-wrap:wrap;">
-            <label style="font-size:11px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px;">
-              <input type="checkbox" ${isDummyChecked ? 'checked' : ''} onchange="toggleElecDummy('${line.name}', this.checked)">
-              🔄 ${dummyLabel}
-            </label>
-            ${timeSelectHtml}
-            <span class="badge badge-blue" style="margin-left:4px;">${progressPct.toFixed(0)}%</span>
-          </div>
-        </div>
-        <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
-        <div class="timeline-ticks">
-          <span>08:30 시작</span>
-          <span style="color:var(--danger); font-weight:700;">14:00 건욕완료</span>
-          ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비</span>' : ''}
-          <span>더미 투입</span>
-          <span style="color:var(--success); font-weight:700;">양산</span>
-        </div>
-        <div class="status-detail-box">
-          <div style="font-weight:700;">${stepName}</div>
-          <div id="elec_dummy_est_${line.name}"></div>
-        </div>
-      </div>
-    `;
   });
 
   container.innerHTML = html;
@@ -1414,7 +1609,7 @@ function toggleEquipWork(lineName, isChecked) {
   renderElectroGauges(new Date());
 }
 
-// 1번 & 3번 수정: 탭 3 화학동 주기 관리 (시작/분석/완료 3단계 & 0분/30분 선택)
+// 탭 3 화학동 주기 관리
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1463,7 +1658,6 @@ function renderChemList() {
           <button class="btn btn-sub btn-sm" style="margin-left:4px;" onclick="setChemNow(${idx})">현재시각</button>
         </div>
       </div>
-      <!-- 3번 수정: 0분 또는 30분만 선택 가능한 드롭다운 입력창 -->
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:3px;">
           <input type="number" id="m_${idx}" value="${curM}" min="1" max="12" style="width:42px; text-align:center; padding:4px;" onchange="updateChemFromParts(${idx})">월
