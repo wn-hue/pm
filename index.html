@@ -168,21 +168,20 @@
     background: #f8fafc;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 14px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
   .gauge-top { display: flex; justify-content: space-between; align-items: center; }
   .progress-track {
-    width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden;
+    width: 100%; height: 14px; background: #e2e8f0; border-radius: 8px; overflow: hidden;
   }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #0284c7); transition: width 0.4s ease; }
   .progress-fill.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
   .progress-fill.alert { background: linear-gradient(90deg, #ef4444, #b91c1c); }
   .progress-fill.done { background: linear-gradient(90deg, #22c55e, #16a34a); }
 
-  .timeline-ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-secondary); }
   .status-detail-box {
     background: #ffffff; border: 1px solid var(--border-light); border-left: 4px solid var(--accent);
     padding: 8px 10px; border-radius: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 3px;
@@ -226,11 +225,11 @@
 <body>
 
 <div class="container">
-  <!-- 상단 공통 헤더 -->
+  <!-- 상단 헤더 -->
   <header>
     <div class="header-left">
       <h1>동도금 PM 일정 & 진척 모니터링 시스템</h1>
-      <p>주간 정기 PM (월~일 주말 포함) · 화학동 7라인 정밀 진척 (화7: 1,000분 / 화8·9 전처리통합 630분) · 펄스 6단계 & 일반 더미</p>
+      <p>주간 정기 PM (월~일 주말 포함) · 화학동 전처리/촉매/화학동 개별 소요시간 추적 · 펄스 6단계 & 일반 더미 1싸이클</p>
     </div>
     <div class="live-clock-box">
       <div style="font-size:11px; color:var(--text-secondary);">현재 실시간 시각</div>
@@ -238,7 +237,7 @@
     </div>
   </header>
 
-  <!-- 메인 탭 네비게이션 (1. 주간/오늘 -> 2. 진척게이지 -> 3. 캘린더) -->
+  <!-- 탭 메뉴 (1. 주간/오늘 -> 2. 진척게이지 -> 3. 캘린더) -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       🗓️ 일주일 단위 / 오늘 PM 브리핑
@@ -251,11 +250,11 @@
     </button>
   </div>
 
-  <!-- [탭 1] 일주일 단위 주간 PM 일정 (순서 재배치 및 주말 포함) & 오늘 브리핑 공유 -->
+  <!-- [탭 1] 일주일 단위 주간 PM 일정 & 오늘 브리핑 공유 -->
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
       
-      <!-- 좌측: 이번 주 정기 PM 매트릭스 (데버링/고압수세 -> 에칭 -> 디스미어 -> 화학동/블랙홀 -> 전기동) -->
+      <!-- 좌측: 이번 주 정기 PM 매트릭스 -->
       <div style="display:flex; flex-direction:column; gap:14px;">
         <div class="card">
           <div class="card-title">
@@ -379,7 +378,7 @@
           </table>
         </div>
 
-        <!-- 라인 / 날짜별 특이사항 수동기입 관리 (기본 샘플 없음) -->
+        <!-- 라인 / 날짜별 특이사항 수동기입 관리 (신규 건욕 태그 추가) -->
         <div class="card">
           <div class="card-title">
             <span>✏️ 라인 / 날짜별 특이사항 수동기입 관리</span>
@@ -414,14 +413,19 @@
             </div>
             <div style="flex:1; min-width:180px;">
               <label style="font-size:11px; color:var(--text-secondary);">특이사항 내용:</label><br>
-              <input type="text" id="manualContentInput" placeholder="예: 인써트 교체, 유산동필터, 설비작업, 촉매건욕" style="width:100%;">
+              <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 버튼 클릭" style="width:100%;">
             </div>
             <div style="align-self:flex-end;">
               <button class="btn" onclick="addManualNote()">등록/추가</button>
             </div>
           </div>
 
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
+          <!-- 빠른 태그 버튼 (신규 건욕 태그 포함) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('화학동 건욕')">+ 화학동 건욕</button>
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('스웰러 건욕')">+ 스웰러 건욕</button>
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('망간 건욕')">+ 망간 건욕</button>
+            <button class="btn btn-sub btn-sm" onclick="setQuickTag('전체건욕')">+ 전체건욕</button>
             <button class="btn btn-sub btn-sm" onclick="setQuickTag('인써트 교체')">+ 인써트 교체</button>
             <button class="btn btn-sub btn-sm" onclick="setQuickTag('유산동필터')">+ 유산동필터</button>
             <button class="btn btn-sub btn-sm" onclick="setQuickTag('설비작업')">+ 설비작업(17시)</button>
@@ -437,7 +441,7 @@
       <div class="card">
         <div class="card-title">
           <span id="briefingTitle">오늘 PM 브리핑 & 공유 양식</span>
-          <span class="badge badge-blue">익일 08:30 이전 자동 취합</span>
+          <span class="badge badge-blue">익일 08시 30분 이전 자동 취합</span>
         </div>
 
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -465,35 +469,31 @@
   <div id="tab2" class="tab-pane">
     <div class="grid-2col">
       
-      <!-- 좌측: 자동 진척 게이지 (1. 화학동 -> 2. 전기동) -->
+      <!-- 좌측: 자동 진척 게이지 -->
       <div style="display:flex; flex-direction:column; gap:14px;">
         
-        <!-- [1순위] 일반 화학동 세부 단계별 정밀 타임라인 게이지 -->
+        <!-- [1순위] 화학동 개별 소요시간(전처리 / 촉매 / 화학동) 병렬 진척 게이지 -->
         <div class="card">
           <div class="card-title">
-            <span>🧪 1. 일반 화학동 정밀 진척 타임라인 (단계별 세부 시간 추적)</span>
+            <span>🧪 1. 화학동 세부 파트별 개별 소요시간 추적</span>
             <div style="display:flex; gap:6px; align-items:center;">
               <label style="font-size:11px; color:var(--text-secondary);">모니터링 라인:</label>
               <select id="activeChemSelect" onchange="updateAllGauges()">
-                <option value="화7">화7 (전처리+촉매+화학동 1,000분)</option>
-                <option value="화8">화8 (전처리+화학동 630분 / 촉매제외)</option>
-                <option value="화9">화9 (전처리+화학동 630분 / 촉매제외)</option>
-                <option value="화13">화13 (전처리+촉매+화학동 1,000분)</option>
-                <option value="화14">화14 (전처리+화학동 630분)</option>
+                <option value="화7">화7 (전처리 150분 / 촉매 370분 / 화학동 480분)</option>
+                <option value="화8">화8 (전처리 150분 / 화학동 480분 / 촉매제외)</option>
+                <option value="화9">화9 (전처리 150분 / 화학동 480분 / 촉매제외)</option>
+                <option value="화13">화13 (전처리 150분 / 촉매 370분 / 화학동 480분)</option>
+                <option value="화14">화14 (전처리 150분 / 화학동 480분 / 촉매제외)</option>
               </select>
             </div>
           </div>
 
-          <div class="gauge-box">
-            <div class="progress-track">
-              <div id="chemProgressBar" class="progress-fill" style="width:0%;"></div>
-            </div>
-            <div id="chemTimelineTicks" class="timeline-ticks"></div>
-            <div id="chemStatusBox" class="status-detail-box"></div>
+          <div id="chemGaugesContainer" style="display:flex; flex-direction:column; gap:10px;">
+            <!-- JS 동적 생성: 전처리, 촉매, 화학동 파트별 개별 게이지 -->
           </div>
         </div>
 
-        <!-- [2순위] 전기동 PM 자동 진척 게이지 (복수 라인 개별 카드 & 설비작업 연동) -->
+        <!-- [2순위] 전기동 PM 자동 진척 게이지 -->
         <div class="card">
           <div class="card-title">
             <span>⚡ 2. 전기동 PM 자동 진척 게이지 (금일 진행 라인 개별 표시)</span>
@@ -511,7 +511,7 @@
         <!-- 화학동 72H 주기 & 화8 48H 빌드업 타이머 -->
         <div class="card">
           <div class="card-title">
-            <span>화학동 72시간 주기 & 화8 48H 빌드업 관리</span>
+            <span>화학동 72시간 주기 & 화8 48시간 빌드업 관리</span>
             <button class="btn btn-sub btn-sm" onclick="saveChemData()">데이터 저장</button>
           </div>
           <div id="chemListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
@@ -592,7 +592,6 @@ const DEFAULT_PULSE = [
   { line: 'MSF 전기동', lastDate: '2026-08-10' }
 ];
 
-// 요청사항: 기본 인써트교체, 촉매건욕 등 기본 체크 해제 (빈 배열)
 const DEFAULT_MANUAL_NOTES = [];
 
 const ANCHOR_BIWEEK = {
@@ -601,60 +600,74 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-20T00:00:00')
 };
 
-// --- [화학동 세부 공정 단계 정의 (사용자 제공 규격 반영)] ---
-// 화7 (전처리 150분 + 촉매 370분 + 화학동 480분 = 총 1,000분 / 약 16시간 40분)
-const CHEM_STEPS_HWA7 = [
-  // 전처리 (150분)
-  { section: '전처리', step: '물세척', min: 30 },
-  { section: '전처리', step: '박리세척', min: 30 },
-  { section: '전처리', step: '박리후세척', min: 30 },
-  { section: '전처리', step: '물세척', min: 30 },
-  { section: '전처리', step: '물세척', min: 30 },
-  // 촉매 (370분)
-  { section: '촉매', step: '액이송', min: 30 },
-  { section: '촉매', step: '물세척', min: 40 },
-  { section: '촉매', step: '박리세척', min: 120 },
-  { section: '촉매', step: '박리 후 물세척', min: 40 },
-  { section: '촉매', step: '물세척', min: 40 },
-  { section: '촉매', step: '물세척', min: 40 },
-  { section: '촉매', step: '액이송', min: 30 },
-  // 화학동 (480분)
-  { section: '화학동', step: '액이송', min: 30 },
-  { section: '화학동', step: '물세척', min: 30 },
-  { section: '화학동', step: '박리세척', min: 300 },
-  { section: '화학동', step: '박리후세척', min: 30 },
-  { section: '화학동', step: '알카리세척', min: 30 },
-  { section: '화학동', step: '알카리 후 세척', min: 30 },
-  { section: '화학동', step: '액이송', min: 30 }
-];
+// --- [화학동 세부 파트별 단계 규격 (개별 소요시간)] ---
+const PART_PRE_TREATMENT = {
+  title: '전처리',
+  totalMin: 150,
+  steps: [
+    { step: '물세척', min: 30 },
+    { step: '박리세척', min: 30 },
+    { step: '박리후세척', min: 30 },
+    { step: '물세척', min: 30 },
+    { step: '물세척', min: 30 }
+  ]
+};
 
-// 화8, 화9 (촉매 제외, 전처리 150분 + 화학동 480분 = 총 630분 / 약 10시간 30분)
-const CHEM_STEPS_HWA8_9 = [
-  // 전처리 (150분)
-  { section: '전처리', step: '물세척', min: 30 },
-  { section: '전처리', step: '박리세척', min: 30 },
-  { section: '전처리', step: '박리후세척', min: 30 },
-  { section: '전처리', step: '물세척', min: 30 },
-  { section: '전처리', step: '물세척', min: 30 },
-  // 화학동 (480분)
-  { section: '화학동', step: '액이송', min: 30 },
-  { section: '화학동', step: '물세척', min: 30 },
-  { section: '화학동', step: '박리세척', min: 300 },
-  { section: '화학동', step: '박리후세척', min: 30 },
-  { section: '화학동', step: '알카리세척', min: 30 },
-  { section: '화학동', step: '알카리 후 세척', min: 30 },
-  { section: '화학동', step: '액이송', min: 30 }
-];
+const PART_CATALYST = {
+  title: '촉매',
+  totalMin: 370,
+  steps: [
+    { step: '액이송', min: 30 },
+    { step: '물세척', min: 40 },
+    { step: '박리세척', min: 120 },
+    { step: '박리 후 물세척', min: 40 },
+    { step: '물세척', min: 40 },
+    { step: '물세척', min: 40 },
+    { step: '액이송', min: 30 }
+  ]
+};
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v5')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v5')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v5')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v5')) || {};
+const PART_CHEM = {
+  title: '화학동',
+  totalMin: 480,
+  steps: [
+    { step: '액이송', min: 30 },
+    { step: '물세척', min: 30 },
+    { step: '박리세척', min: 300 },
+    { step: '박리후세척', min: 30 },
+    { step: '알카리세척', min: 30 },
+    { step: '알카리 후 세척', min: 30 },
+    { step: '액이송', min: 30 }
+  ]
+};
+
+let chemList = JSON.parse(localStorage.getItem('chem_data_v6')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v6')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v6')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v6')) || {};
 
 let currentCalDate = new Date();
 let selectedDateStr = '';
 
-// --- [2. 초기화] ---
+// --- [2. 시간 포맷 헬퍼: 18:30 -> 18시 30분] ---
+function formatTimeKr(hour, min) {
+  const h = Number(hour);
+  const m = Number(min);
+  if (isNaN(h)) return '';
+  if (isNaN(m) || m === 0) return `${h}시`;
+  return `${h}시 ${String(m).padStart(2, '0')}분`;
+}
+
+function formatDateTimeKr(d) {
+  if (isNaN(d.getTime())) return '-';
+  const M = d.getMonth() + 1;
+  const D = d.getDate();
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return `${M}월 ${D}일 ${formatTimeKr(h, m)}`;
+}
+
+// --- [3. 초기화] ---
 window.onload = function() {
   const today = new Date();
   const y = today.getFullYear();
@@ -677,9 +690,19 @@ window.onload = function() {
 
 function tick() {
   const now = new Date();
-  document.getElementById('liveClock').innerText = formatDateTime(now, true);
+  document.getElementById('liveClock').innerText = formatClock(now);
   updateAllGauges();
   updateChemRealtimeStatuses();
+}
+
+function formatClock(d) {
+  const Y = d.getFullYear();
+  const M = String(d.getMonth() + 1).padStart(2, '0');
+  const D = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 }
 
 function switchTab(t) {
@@ -701,10 +724,10 @@ function switchTab(t) {
   }
 }
 
-// --- [3. 주간 매트릭스 렌더링 (월~일 7일 전체 표시 & 화학동/블랙홀 행 주말 포함)] ---
+// --- [4. 주간 매트릭스 (월~일 주말 포함 & 시간 표기)] ---
 function renderWeeklyMatrix() {
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
-  const currentDay = targetDate.getDay(); // 0:일, 1:월, ..., 6:토
+  const currentDay = targetDate.getDay();
 
   const diffToMon = (currentDay === 0 ? -6 : 1 - currentDay);
   const monday = new Date(targetDate.getTime() + diffToMon * 86400000);
@@ -731,7 +754,7 @@ function renderWeeklyMatrix() {
   setTag('tag_w_elec12', checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate));
   setTag('tag_w_wash1', checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate));
 
-  // 화학동 주말 포함 요일별 시간 매핑
+  // 화학동 주말 포함 요일별 시간 매핑 (예: 화7 (00시), 화13 (13시))
   for (let i = 0; i < 7; i++) {
     const dObj = weekDates[i].date;
     const cell = document.getElementById(`chem_cell_${i+1}`);
@@ -744,9 +767,8 @@ function renderWeeklyMatrix() {
         const diffMs = dObj.getTime() - new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
         const diffDays = Math.round(diffMs / 86400000);
         if (diffDays >= 0 && diffDays % 3 === 0) {
-          const hh = String(base.getHours()).padStart(2, '0');
-          const mm = String(base.getMinutes()).padStart(2, '0');
-          matches.push(`<strong>${c.id}</strong> <span style="color:var(--accent);">(${hh}:${mm})</span>`);
+          const timeKr = formatTimeKr(base.getHours(), base.getMinutes());
+          matches.push(`<strong>${c.id}</strong> <span style="color:var(--accent);">(${timeKr})</span>`);
         }
       }
     });
@@ -798,7 +820,7 @@ function setTag(id, active) {
   el.className = active ? 'badge badge-green' : 'badge badge-sub';
 }
 
-// --- [4. 수동기입 엔진] ---
+// --- [5. 수동기입 엔진 (신규 건욕 태그 포함)] ---
 function addManualNote() {
   const date = document.getElementById('manualDateInput').value;
   const line = document.getElementById('manualLineSelect').value;
@@ -818,7 +840,10 @@ function addManualNote() {
   updateAllGauges();
 }
 
-function setQuickTag(tag) { document.getElementById('manualContentInput').value = tag; }
+function setQuickTag(tag) {
+  document.getElementById('manualContentInput').value = tag;
+}
+
 function removeManualNote(index) {
   manualNotes.splice(index, 1);
   saveManualNotes();
@@ -837,57 +862,59 @@ function renderManualNotesList() {
     container.appendChild(chip);
   });
 }
-function saveManualNotes() { localStorage.setItem('manual_notes_v5', JSON.stringify(manualNotes)); }
+function saveManualNotes() { localStorage.setItem('manual_notes_v6', JSON.stringify(manualNotes)); }
 
-// --- [5. 화학동 실시간 진척 계산 엔진 (화7 1,000분 / 화8·9 630분 규격 적용)] ---
+// --- [6. 화학동 파트별 개별 소요시간 실시간 게이지 엔진] ---
 function updateAllGauges() {
   const now = new Date();
 
+  // 1. 화학동 파트별 개별 소요시간 렌더링
+  renderChemIndividualGauges(now);
+
+  // 2. 전기동 개별 라인 진척 게이지 렌더링
+  renderElectroGauges(now);
+}
+
+function renderChemIndividualGauges(now) {
+  const container = document.getElementById('chemGaugesContainer');
+  if (!container) return;
+
   const lineId = document.getElementById('activeChemSelect').value;
   const line = chemList.find(c => c.id === lineId) || chemList[0];
-  const chemBar = document.getElementById('chemProgressBar');
-  const chemBox = document.getElementById('chemStatusBox');
-  const ticksContainer = document.getElementById('chemTimelineTicks');
 
-  // 라인 규격 선택: 화8, 화9, 화14는 촉매 제외 630분, 화7, 화13은 촉매 포함 1,000분
-  const isExcludedCatalyst = (line.id === '화8' || line.id === '화9' || line.id === '화14');
-  const stepList = isExcludedCatalyst ? CHEM_STEPS_HWA8_9 : CHEM_STEPS_HWA7;
-  const totalDurationMin = stepList.reduce((acc, cur) => acc + cur.min, 0); // 630분 또는 1000분
+  // 화7, 화13: 전처리, 촉매, 화학동 3개 파트
+  // 화8, 화9, 화14: 전처리, 화학동 2개 파트
+  const hasCatalyst = (line.id === '화7' || line.id === '화13');
+  const parts = [PART_PRE_TREATMENT];
+  if (hasCatalyst) parts.push(PART_CATALYST);
+  parts.push(PART_CHEM);
 
-  // 눈금 렌더링
-  if (isExcludedCatalyst) {
-    ticksContainer.innerHTML = `
-      <span>0H (PM시작)</span>
-      <span style="color:var(--accent); font-weight:700;">2.5H (전처리완료 150분)</span>
-      <span style="color:var(--warning); font-weight:700;">화학동 박리세척 (300분)</span>
-      <span style="color:var(--danger); font-weight:700;">10H (액이송)</span>
-      <span style="color:var(--success); font-weight:700;">10.5H (양산준비)</span>
+  if (line.status !== '진행중') {
+    const nextDue = new Date(new Date(line.lastDone).getTime() + 72 * 3600000);
+    const rH = ((nextDue - now) / 3600000).toFixed(1);
+    container.innerHTML = `
+      <div class="status-detail-box">
+        <div><strong>${line.id}</strong> 라인은 현재 <strong style="color:var(--accent);">${line.status}</strong> 상태입니다.</div>
+        <div>차기 72시간 PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong> (${rH > 0 ? rH + '시간 남음' : '주기 도래'})</div>
+      </div>
     `;
-  } else {
-    ticksContainer.innerHTML = `
-      <span>0H (시작)</span>
-      <span style="color:var(--accent);">2.5H (전처리 150m)</span>
-      <span style="color:var(--purple);">8.7H (촉매 370m)</span>
-      <span style="color:var(--warning);">화학동 박리(300m)</span>
-      <span style="color:var(--danger); font-weight:700;">16.2H (액이송)</span>
-      <span style="color:var(--success); font-weight:700;">16.7H (완료)</span>
-    `;
+    return;
   }
 
-  if (line.status === '진행중') {
-    const startTime = new Date(line.lastDone);
-    const elapsedMin = Math.max(0, (now - startTime) / 60000);
-    const pct = Math.min(100, (elapsedMin / totalDurationMin) * 100);
-    chemBar.style.width = pct.toFixed(1) + '%';
+  const startTime = new Date(line.lastDone);
+  const elapsedMin = Math.max(0, (now - startTime) / 60000);
 
-    // 세부 단계 위치 판별
-    let accumulated = 0;
+  let html = '';
+
+  parts.forEach(part => {
+    const pct = Math.min(100, (elapsedMin / part.totalMin) * 100);
     let currentStepObj = null;
     let stepElapsed = 0;
     let stepRemain = 0;
+    let accumulated = 0;
 
-    for (let i = 0; i < stepList.length; i++) {
-      const s = stepList[i];
+    for (let i = 0; i < part.steps.length; i++) {
+      const s = part.steps[i];
       if (elapsedMin >= accumulated && elapsedMin < accumulated + s.min) {
         currentStepObj = s;
         stepElapsed = Math.floor(elapsedMin - accumulated);
@@ -897,56 +924,61 @@ function updateAllGauges() {
       accumulated += s.min;
     }
 
-    const totalRemainMin = Math.max(0, Math.ceil(totalDurationMin - elapsedMin));
+    const totalRemainMin = Math.max(0, Math.ceil(part.totalMin - elapsedMin));
     const rH = Math.floor(totalRemainMin / 60);
     const rM = totalRemainMin % 60;
 
-    if (currentStepObj) {
-      const isStripStep = currentStepObj.step.includes('박리세척');
-      const isTransferStep = currentStepObj.step.includes('액이송');
+    let barClass = 'progress-fill';
+    let boxClass = 'status-detail-box';
+    let statusText = '';
+    let remainText = '';
 
-      chemBar.className = isTransferStep ? 'progress-fill alert' : (isStripStep ? 'progress-fill warn' : 'progress-fill');
-      chemBox.className = isTransferStep ? 'status-detail-box alert' : (isStripStep ? 'status-detail-box warn' : 'status-detail-box');
-
-      chemBox.innerHTML = `
-        <div style="display:flex; justify-content:space-between;">
-          <span>진행 단계: <strong style="color:var(--accent);">[${currentStepObj.section}] ${currentStepObj.step}</strong> (${stepElapsed}분 / ${currentStepObj.min}분 진행 중)</span>
-          <span>전체 진척: <strong>${(elapsedMin/60).toFixed(1)}H</strong> (${pct.toFixed(0)}%)</span>
-        </div>
-        <div>
-          ⏱️ 현재 단계 잔여: <strong>${stepRemain}분</strong> 남음 | 세척·액이송 전체 완료까지 <strong>${rH}시간 ${rM}분</strong> 남음
-        </div>
-      `;
-    } else {
-      // 지정된 모든 단계 시간 초과 (1,000분 or 630분 경과)
-      chemBar.className = 'progress-fill done';
-      chemBox.className = 'status-detail-box';
-      chemBox.innerHTML = `
-        <div style="display:flex; justify-content:space-between;">
-          <span style="color:var(--success); font-weight:700;">✅ 세척 및 액이송 전체 완료 구간 도달</span>
-          <span>진척: <strong>${(elapsedMin/60).toFixed(1)}시간</strong> (100%)</span>
-        </div>
-        <div>
-          작업: <strong>더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 백라이트/에치레이트 시편 확인 후 양산 진행</strong>
-        </div>
-      `;
+    if (elapsedMin >= part.totalMin) {
+      barClass = 'progress-fill done';
+      statusText = `✅ [${part.title}] 모든 세척/작업 완료 (${part.totalMin}분 소요)`;
+      remainText = '파트 완료됨';
+    } else if (currentStepObj) {
+      if (currentStepObj.step.includes('박리세척')) {
+        barClass = 'progress-fill warn';
+        boxClass = 'status-detail-box warn';
+      } else if (currentStepObj.step.includes('액이송')) {
+        barClass = 'progress-fill alert';
+        boxClass = 'status-detail-box alert';
+      }
+      statusText = `현재 단계: <strong>${currentStepObj.step}</strong> (${stepElapsed}분 / ${currentStepObj.min}분 진행 중)`;
+      remainText = `현재 단계 잔여 <strong>${stepRemain}분</strong> | ${part.title} 완료까지 <strong>${rH > 0 ? rH + '시간 ' : ''}${rM}분 남음</strong>`;
     }
-  } else {
-    chemBar.style.width = '0%';
-    chemBar.className = 'progress-fill';
-    chemBox.className = 'status-detail-box';
-    const nextDue = new Date(new Date(line.lastDone).getTime() + 72 * 3600000);
-    const rH = ((nextDue - now) / 3600000).toFixed(1);
-    chemBox.innerHTML = `
-      <div>${line.id} 라인은 현재 <strong>${line.status}</strong> 상태입니다.</div>
-      <div>차기 72H PM 예정: <strong>${formatDateTime(nextDue, false)}</strong> (${rH > 0 ? rH + '시간 남음' : '주기 도래'})</div>
-    `;
-  }
 
-  // 2. 전기동 개별 라인 진척 게이지 렌더링
-  renderElectroGauges(now);
+    html += `
+      <div class="gauge-box">
+        <div class="gauge-top">
+          <strong>[${part.title}] 개별 공정 (기준: ${part.totalMin}분 / 약 ${(part.totalMin/60).toFixed(1)}시간)</strong>
+          <span class="badge ${elapsedMin >= part.totalMin ? 'badge-green' : 'badge-blue'}">${pct.toFixed(0)}%</span>
+        </div>
+        <div class="progress-track"><div class="${barClass}" style="width:${pct}%;"></div></div>
+        <div class="${boxClass}">
+          <div>${statusText}</div>
+          <div style="font-size:11.5px; color:var(--text-secondary);">${remainText}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  // 화학동 완료 후 공정 알림
+  const chemDone = (elapsedMin >= PART_CHEM.totalMin);
+  html += `
+    <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; font-size:12px;">
+      <strong style="color:var(--accent);">📋 화학동 PM 양산 전 표준 프로세스 가이드:</strong>
+      <div style="margin-top:4px; color:${chemDone ? 'var(--danger)' : 'var(--text-secondary)'}; font-weight:${chemDone ? '700' : 'normal'};">
+        ${chemDone ? '🚨 화학동 480분 세척 완료 도달! ' : ''}화학동 액이송 완료 후 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 백라이트 / 에치레이트 시편 확인 후 양산 진행
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
 }
 
+// --- [7. 전기동 개별 라인 진척 게이지 (18시 30분 포맷 반영)] ---
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   if (!container) return;
@@ -995,30 +1027,30 @@ function renderElectroGauges(now) {
         const t_dummy = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0);
 
         if (now < start0830) {
-          stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
+          stepName = '07시 패스 완료 / 08시 30분 PM 시작 대기'; progressPct = 5;
         } else if (now >= start0830 && now < end1400) {
           progressPct = ((now - start0830) / 330 / 60000) * 35;
           const rMin = Math.ceil((end1400 - now) / 60000);
-          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
           barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
-          alertMsg = '14:00 건욕 완료 후 PM팀 설비작업(17:00 마감) 예정';
+          alertMsg = '14시 건욕 완료 후 PM팀 설비작업(17시 마감) 예정';
         } else if (now >= end1400 && now < end1700) {
           progressPct = 35 + ((now - end1400) / 180 / 60000) * 20;
-          stepName = '🛠️ PM팀 설비작업 진행 중 (17:00 마무리 예정 / 더미 대기)';
+          stepName = '🛠️ PM팀 설비작업 진행 중 (17시 마무리 예정 / 더미 대기)';
           barClass = 'progress-fill alert'; boxClass = 'status-detail-box alert';
           alertMsg = `설비작업 완료까지 약 ${Math.ceil((end1700 - now)/60000)}분 남음 (완료 후 DC 0.5 투입)`;
         } else if (now >= end1700 && now < t_dc05) {
           progressPct = 55 + ((now - end1700) / 90 / 60000) * 12;
-          stepName = '2단계: [DC 0.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+          stepName = '2단계: [DC 0.5] 1시간 30분 진행 중 (18시 30분 전환)'; barClass = 'progress-fill warn';
         } else if (now >= t_dc05 && now < t_dc15) {
           progressPct = 67 + ((now - t_dc05) / 90 / 60000) * 12;
-          stepName = '3단계: [DC 1.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+          stepName = '3단계: [DC 1.5] 1시간 30분 진행 중 (20시 전환)'; barClass = 'progress-fill warn';
         } else if (now >= t_dc15 && now < t_pass) {
           progressPct = 79 + ((now - t_dc15) / 90 / 60000) * 10;
-          stepName = '4단계: [패스 후 다 나옴] 1시간 30분 진행 중';
+          stepName = '4단계: [패스 후 다 나옴] 1시간 30분 진행 중 (21시 30분 전환)';
         } else if (now >= t_pass && now < t_dummy) {
           progressPct = 89 + ((now - t_pass) / 90 / 60000) * 10;
-          stepName = '5단계: [펄스 더미] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+          stepName = '5단계: [펄스 더미] 1시간 30분 진행 중 (23시 전환)'; barClass = 'progress-fill warn';
         } else {
           progressPct = 100; stepName = '6단계: [광 상태 확인 진행] 후 양산 투입'; barClass = 'progress-fill done';
         }
@@ -1029,24 +1061,24 @@ function renderElectroGauges(now) {
         const t_dummy = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
 
         if (now < start0830) {
-          stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
+          stepName = '07시 패스 완료 / 08시 30분 PM 시작 대기'; progressPct = 5;
         } else if (now >= start0830 && now < end1400) {
           progressPct = ((now - start0830) / 330 / 60000) * 40;
           const rMin = Math.ceil((end1400 - now) / 60000);
-          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
           barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
         } else if (now >= end1400 && now < t_dc05) {
           progressPct = 40 + ((now - end1400) / 90 / 60000) * 15;
-          stepName = '2단계: [DC 0.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+          stepName = '2단계: [DC 0.5] 1시간 30분 진행 중 (15시 30분 전환)'; barClass = 'progress-fill warn';
         } else if (now >= t_dc05 && now < t_dc15) {
           progressPct = 55 + ((now - t_dc05) / 90 / 60000) * 15;
-          stepName = '3단계: [DC 1.5] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+          stepName = '3단계: [DC 1.5] 1시간 30분 진행 중 (17시 전환)'; barClass = 'progress-fill warn';
         } else if (now >= t_dc15 && now < t_pass) {
           progressPct = 70 + ((now - t_dc15) / 90 / 60000) * 15;
-          stepName = '4단계: [패스 후 다 나옴] 1시간 30분 소요 진행 중';
+          stepName = '4단계: [패스 후 다 나옴] 1시간 30분 소요 진행 중 (18시 30분 전환)';
         } else if (now >= t_pass && now < t_dummy) {
           progressPct = 85 + ((now - t_pass) / 90 / 60000) * 15;
-          stepName = '5단계: [펄스 더미] 1시간 30분 진행 중'; barClass = 'progress-fill warn';
+          stepName = '5단계: [펄스 더미] 1시간 30분 진행 중 (20시 전환)'; barClass = 'progress-fill warn';
         } else {
           progressPct = 100; stepName = '6단계: [광 상태 확인 진행] 후 정상 양산 투입'; barClass = 'progress-fill done';
         }
@@ -1066,9 +1098,9 @@ function renderElectroGauges(now) {
           </div>
           <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
           <div class="timeline-ticks">
-            <span>08:30 시작</span>
-            <span>14:00 건욕완료</span>
-            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
+            <span>08시 30분 시작</span>
+            <span>14시 건욕완료</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17시 설비완료</span>' : ''}
             <span>DC 0.5(1.5H)</span>
             <span>DC 1.5(1.5H)</span>
             <span>패스(1.5H)</span>
@@ -1094,21 +1126,21 @@ function renderElectroGauges(now) {
         const t_dummyEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 30, 0);
 
         if (now < start0830) {
-          stepName = '07:00 제품 패스 / 08:30 PM 시작 대기'; progressPct = 5;
+          stepName = '07시 제품 패스 / 08시 30분 PM 시작 대기'; progressPct = 5;
         } else if (now >= start0830 && now < end1400) {
           progressPct = ((now - start0830) / 330 / 60000) * 45;
           const rMin = Math.ceil((end1400 - now) / 60000);
-          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
           barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
-          alertMsg = '14:00 건욕 완료 후 PM팀 설비작업(17:00 마감) 진행 예정';
+          alertMsg = '14시 건욕 완료 후 PM팀 설비작업(17시 마감) 진행 예정';
         } else if (now >= end1400 && now < end1700) {
           progressPct = 45 + ((now - end1400) / 180 / 60000) * 30;
-          stepName = '🛠️ PM팀 설비작업 진행 중 (17:00 마무리 예정 / 더미 대기)';
+          stepName = '🛠️ PM팀 설비작업 진행 중 (17시 마무리 예정 / 더미 대기)';
           barClass = 'progress-fill alert'; boxClass = 'status-detail-box alert';
           alertMsg = `설비작업 완료까지 약 ${Math.ceil((end1700 - now)/60000)}분 남음 (완료 후 더미 1싸이클 투입)`;
         } else if (now >= end1700 && now < t_dummyEnd) {
           progressPct = 75 + ((now - end1700) / 90 / 60000) * 25;
-          stepName = '🔄 더미 1싸이클 투입 진행 중 (1시간 30분 소요)';
+          stepName = '🔄 더미 1싸이클 투입 진행 중 (1시간 30분 소요 / 18시 30분 완료 예정)';
           barClass = 'progress-fill warn'; boxClass = 'status-detail-box warn';
           alertMsg = `더미 완료 및 양산 전환까지 약 ${Math.ceil((t_dummyEnd - now)/60000)}분 남음`;
         } else {
@@ -1120,15 +1152,15 @@ function renderElectroGauges(now) {
         const t_dummyEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 30, 0);
 
         if (now < start0830) {
-          stepName = '07:00 제품 패스 / 08:30 PM 시작 대기'; progressPct = 5;
+          stepName = '07시 제품 패스 / 08시 30분 PM 시작 대기'; progressPct = 5;
         } else if (now >= start0830 && now < end1400) {
           progressPct = ((now - start0830) / 330 / 60000) * 60;
           const rMin = Math.ceil((end1400 - now) / 60000);
-          stepName = `전처리 건욕 진행 중 (14:00 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
+          stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
           barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
         } else if (now >= end1400 && now < t_dummyEnd) {
           progressPct = 60 + ((now - end1400) / 90 / 60000) * 40;
-          stepName = '🔄 더미 1싸이클 투입 진행 중 (1시간 30분 소요)';
+          stepName = '🔄 더미 1싸이클 투입 진행 중 (1시간 30분 소요 / 15시 30분 완료 예정)';
           barClass = 'progress-fill warn'; boxClass = 'status-detail-box warn';
           alertMsg = `더미 완료 및 양산 전환까지 약 ${Math.ceil((t_dummyEnd - now)/60000)}분 남음`;
         } else {
@@ -1152,10 +1184,10 @@ function renderElectroGauges(now) {
           </div>
           <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
           <div class="timeline-ticks">
-            <span>07:00 패스</span>
-            <span>08:30 PM시작</span>
-            <span style="color:var(--danger); font-weight:700;">14:00 건욕완료</span>
-            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
+            <span>07시 패스</span>
+            <span>08시 30분 시작</span>
+            <span style="color:var(--danger); font-weight:700;">14시 건욕완료</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17시 설비완료</span>' : ''}
             <span>더미 1싸이클(1.5H)</span>
             <span style="color:var(--success); font-weight:700;">양산 진행</span>
           </div>
@@ -1173,7 +1205,7 @@ function renderElectroGauges(now) {
 
 function toggleEquipWork(lineName, isChecked) {
   equipWorkFlags[lineName] = isChecked;
-  localStorage.setItem('equip_work_flags_v5', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('equip_work_flags_v6', JSON.stringify(equipWorkFlags));
 
   const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
   if (isChecked && existingIdx === -1) {
@@ -1188,7 +1220,7 @@ function toggleEquipWork(lineName, isChecked) {
   updateAllGauges();
 }
 
-// --- [6. 화학동 72H 주기 관리 & 화8 48H 빌드업] ---
+// --- [8. 화학동 72H 주기 관리 & 화8 48H 빌드업] ---
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   container.innerHTML = '';
@@ -1206,7 +1238,7 @@ function renderChemList() {
 
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48H 빌드업 금지 규정</span>' : ''}</strong>
+        <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지 규정</span>' : ''}</strong>
         <div>
           <select id="stat_${idx}" onchange="changeChemStatus(${idx}, this.value)">
             <option value="대기" ${c.status === '대기' ? 'selected' : ''}>대기</option>
@@ -1236,21 +1268,21 @@ function updateChemRealtimeStatuses() {
     if (isNaN(t.getTime())) { box.innerText = '일시 확인 필요'; return; }
 
     const isExcluded = (c.id === '화8' || c.id === '화9' || c.id === '화14');
-    const totalH = isExcluded ? 10.5 : 16.7;
+    const totalH = isExcluded ? 8 : 8; // 화학동 기준 480분(8시간)
 
     if (c.status === '진행중') {
       const elapsedH = (now - t) / 3600000;
-      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 (${elapsedH.toFixed(1)}H 경과)</span> | 예상 완료: <strong>${formatDateTime(new Date(t.getTime() + totalH * 3600000), false).slice(5)}</strong> (${totalH}H 규격)`;
+      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 (${elapsedH.toFixed(1)}H 경과)</span> | 화학동 완료 예정: <strong>${formatDateTimeKr(new Date(t.getTime() + totalH * 3600000))}</strong>`;
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const remainH = (nextDue - now) / 3600000;
-      let html = `다음 PM(72H): <strong>${formatDateTime(nextDue, false).slice(5)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '도래'})`;
+      let html = `다음 PM(72H): <strong>${formatDateTimeKr(nextDue)}</strong> (${remainH > 0 ? remainH.toFixed(1) + 'H 남음' : '도래'})`;
 
       if (c.id === '화8') {
         const buildupLimit = new Date(t.getTime() + 48 * 3600000);
         const bRemain = (buildupLimit - now) / 3600000;
         if (bRemain <= 0) {
-          html += `<br><span style="color:var(--danger); font-weight:700;">⛔ 빌드업 금지 적용 중 (${formatDateTime(buildupLimit, false).slice(5)} 경과)</span>`;
+          html += `<br><span style="color:var(--danger); font-weight:700;">⛔ 빌드업 금지 적용 중 (${formatDateTimeKr(buildupLimit)} 경과)</span>`;
         } else {
           html += `<br><span style="color:var(--success); font-weight:700;">✅ 빌드업 가능 (${bRemain.toFixed(1)}H 후 금지)</span>`;
         }
@@ -1269,9 +1301,9 @@ function setChemNow(idx) {
   document.getElementById(`time_${idx}`).value = chemList[idx].lastDone;
   saveChemData(); updateAllGauges(); generateShareText();
 }
-function saveChemData() { localStorage.setItem('chem_data_v5', JSON.stringify(chemList)); }
+function saveChemData() { localStorage.setItem('chem_data_v6', JSON.stringify(chemList)); }
 
-// --- [7. 펄스라인 120일 액퍼내기] ---
+// --- [9. 펄스라인 120일 액퍼내기] ---
 function renderPulseTable() {
   const tbody = document.getElementById('pulseTableBody');
   tbody.innerHTML = '';
@@ -1299,9 +1331,9 @@ function renderPulseTable() {
   });
 }
 function updatePulseDate(idx, val) { pulseList[idx].lastDate = val; savePulseData(); renderPulseTable(); }
-function savePulseData() { localStorage.setItem('pulse_data_v5', JSON.stringify(pulseList)); }
+function savePulseData() { localStorage.setItem('pulse_data_v6', JSON.stringify(pulseList)); }
 
-// --- [8. 월간 캘린더] ---
+// --- [10. 월간 캘린더 (시간 포맷 적용)] ---
 function renderCalendar() {
   const year = currentCalDate.getFullYear();
   const month = currentCalDate.getMonth();
@@ -1364,9 +1396,8 @@ function createCalCell(dayNum, isOther, dateObj, isToday = false, isSelected = f
         const diffMs = dateObj.getTime() - new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
         const diffDays = Math.round(diffMs / 86400000);
         if (diffDays >= 0 && diffDays % 3 === 0) {
-          const hh = String(base.getHours()).padStart(2, '0');
-          const mm = String(base.getMinutes()).padStart(2, '0');
-          div.innerHTML += `<div class="cal-pill pill-chem">${c.id} (${hh}:${mm})</div>`;
+          const timeKr = formatTimeKr(base.getHours(), base.getMinutes());
+          div.innerHTML += `<div class="cal-pill pill-chem">${c.id} (${timeKr})</div>`;
         }
       }
     });
@@ -1409,7 +1440,7 @@ function goToday() {
   updateAllGauges();
 }
 
-// --- [9. 야간 05시 이전 브리핑 공유 텍스트 자동 완성] ---
+// --- [11. 야간 05시 이전 브리핑 공유 텍스트 자동 완성 (18시 30분 표기 적용)] ---
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1461,22 +1492,23 @@ function generateShareText() {
     blackhole = `화10 정기PM${getNote('화10')}`;
     if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 유산동 (${pass})${getNote('전기동 12')}`);
     electro.push(`전13 탈지 산세 박리건욕 (${pass})${getNote('전기동 13')}`);
-    electro.push(`전21 탈지 산세 박리건욕 (7시30분패스)${getNote('전기동 21')}`);
+    electro.push(`전21 탈지 산세 박리건욕 (7시 30분패스)${getNote('전기동 21')}`);
   }
 
-  // 화학동 진행 및 도래 건 취합
+  // 화학동 진행 및 도래 건 취합 (18시 30분 포맷 반영)
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
     if (c.status === '진행중') {
-      ongoing.push(`-${c.id} ${t.getHours()}시PM중`);
+      const timeKr = formatTimeKr(t.getHours(), t.getMinutes());
+      ongoing.push(`-${c.id} ${timeKr}PM중`);
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const manualChemNote = getNote(c.id);
       if (nextDue >= windowStart && nextDue <= windowEnd) {
-        const h = nextDue.getHours();
+        const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
         const prefix = (nextDue.getDate() !== targetDate.getDate()) ? `익일(${nextDue.getDate()}일) ` : '';
         const noteText = manualChemNote || (c.note ? ` ${c.note}` : ' 정기PM');
-        chems.push(`${c.id} ${prefix}${h}시${noteText}`);
+        chems.push(`${c.id} ${prefix}${timeKr}${noteText}`);
       } else if (manualChemNote) {
         chems.push(`${c.id} ${manualChemNote}`);
       } else if (c.note && c.note.includes(`${d}일`)) {
@@ -1520,16 +1552,7 @@ function checkBiWeek(anchor, target) {
   const diffDays = Math.floor((target - anchor) / 86400000);
   return (Math.floor(diffDays / 7) % 2 === 0);
 }
-function formatDateTime(d, sec) {
-  if (isNaN(d.getTime())) return '-';
-  const Y = d.getFullYear();
-  const M = String(d.getMonth() + 1).padStart(2, '0');
-  const D = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  if (sec) return `${Y}-${M}-${D} ${h}:${m}:${String(d.getSeconds()).padStart(2, '0')}`;
-  return `${Y}-${M}-${D} ${h}:${m}`;
-}
+
 function formatDateOnly(d) {
   if (isNaN(d.getTime())) return '-';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
