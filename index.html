@@ -2,8 +2,13 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>동도금 PM 일정 & 진척 모니터링 시스템</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>동도금 PM 일정 & 실시간 통합 모니터링 시스템</title>
+
+<!-- Firebase SDK (무설치 CDN) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <style>
   :root {
     --bg-base: #f1f5f9;
@@ -29,54 +34,81 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
     background-color: var(--bg-base);
     color: var(--text-primary);
-    padding: 16px;
+    padding: 14px;
     font-size: 13px;
     line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
   }
 
-  .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
+  /* 헤더 반응형 */
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 22px;
+    border-radius: 10px;
+    padding: 14px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
-  .header-left h1 { font-size: 20px; font-weight: 800; color: var(--accent); }
-  .header-left p { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .header-left h1 { font-size: 18px; font-weight: 800; color: var(--accent); }
+  .header-left p { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .sync-status-badge {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    background: #fff;
+  }
   .live-clock-box {
     background: #f8fafc;
     border: 1px solid var(--border);
-    padding: 6px 14px;
-    border-radius: 8px;
+    padding: 5px 12px;
+    border-radius: 6px;
     text-align: right;
   }
-  .live-clock-box span { font-size: 15px; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .live-clock-box span { font-size: 14px; font-weight: 700; color: var(--accent); font-family: monospace; }
 
+  /* 모바일 가로 슬라이딩 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
     border-bottom: 2px solid var(--border);
     padding-bottom: 2px;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .main-nav::-webkit-scrollbar { display: none; }
+
   .nav-btn {
     background: #e2e8f0;
     border: 1px solid var(--border);
     border-bottom: none;
     color: var(--text-secondary);
-    padding: 9px 16px;
-    font-size: 13.5px;
+    padding: 8px 14px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    border-radius: 8px 8px 0 0;
+    border-radius: 7px 7px 0 0;
     transition: 0.15s;
+    flex-shrink: 0;
   }
   .nav-btn.active {
     background: var(--bg-card);
@@ -85,48 +117,58 @@
     border-bottom: 2px solid var(--bg-card);
     margin-bottom: -2px;
   }
-  .nav-btn:hover:not(.active) { background: #cbd5e1; color: var(--text-primary); }
 
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
 
+  /* 그리드 시스템 */
   .grid-2col {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 12px;
   }
-  @media(min-width: 1080px) {
+  @media(min-width: 1024px) {
     .grid-2col { grid-template-columns: 1.35fr 1fr; }
   }
 
   .card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 10px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
   }
   .card-title {
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 700;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-light);
     padding-bottom: 8px;
+    gap: 6px;
   }
 
-  table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; }
-  th, td { padding: 8px 8px; border: 1px solid var(--border-light); text-align: left; vertical-align: top; }
+  /* 테이블 가로 스크롤 래퍼 */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 4px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+  }
+  table { width: 100%; min-width: 580px; border-collapse: collapse; font-size: 12px; background: #fff; }
+  th, td { padding: 7px 8px; border: 1px solid var(--border-light); text-align: left; vertical-align: top; }
   th { background: #f8fafc; color: var(--text-secondary); font-weight: 700; }
   .today-col { background: #f0f9ff !important; border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
   .weekend-th { background: #fef2f2; color: #b91c1c; }
   .weekend-sat-th { background: #eff6ff; color: #1d4ed8; }
 
-  .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; }
+  .badge { font-size: 10.5px; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; white-space: nowrap; }
   .badge-blue { background: var(--accent-light); color: var(--accent); }
   .badge-yellow { background: var(--warning-light); color: var(--warning); }
   .badge-red { background: var(--danger-light); color: var(--danger); }
@@ -139,21 +181,24 @@
     background: #ffffff;
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: 6px 10px;
+    padding: 6px 8px;
     border-radius: 6px;
     font-size: 12px;
+    max-width: 100%;
   }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
   .btn {
     background: var(--accent);
     color: #fff;
     border: none;
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-weight: 700;
     font-size: 12px;
     cursor: pointer;
     transition: 0.15s;
+    white-space: nowrap;
+    touch-action: manipulation;
   }
   .btn:hover { background: #0369a1; }
   .btn-sub { background: #64748b; color: #fff; }
@@ -161,21 +206,29 @@
   .btn-sm { padding: 4px 8px; font-size: 11px; }
 
   .report-area {
-    width: 100%; min-height: 440px; background: #f8fafc; color: #0f172a;
-    font-family: Consolas, "Courier New", monospace; font-size: 13px; line-height: 1.6;
-    padding: 14px; border-radius: 8px; border: 1px solid var(--border); resize: vertical;
+    width: 100%;
+    min-height: 380px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    resize: vertical;
   }
 
   .gauge-box {
     background: #f8fafc;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 14px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
-  .gauge-top { display: flex; justify-content: space-between; align-items: center; }
+  .gauge-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
   .progress-track {
     width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden;
   }
@@ -184,7 +237,7 @@
   .progress-fill.alert { background: linear-gradient(90deg, #ef4444, #b91c1c); }
   .progress-fill.done { background: linear-gradient(90deg, #22c55e, #16a34a); }
 
-  .timeline-ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-secondary); }
+  .timeline-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-secondary); gap: 2px; }
   .status-detail-box {
     background: #ffffff; border: 1px solid var(--border-light); border-left: 4px solid var(--accent);
     padding: 8px 10px; border-radius: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 3px;
@@ -196,14 +249,14 @@
     background: #f8fafc;
     border: 1px dashed var(--border);
     border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 12px;
+    padding: 10px 12px;
+    font-size: 11.5px;
   }
-  .ref-box ul { margin-left: 18px; margin-top: 4px; color: var(--text-secondary); line-height: 1.6; }
+  .ref-box ul { margin-left: 16px; margin-top: 4px; color: var(--text-secondary); line-height: 1.5; }
 
   .note-chip {
     display: inline-flex; align-items: center; gap: 4px; background: #ffedd5;
-    color: #9a3412; font-size: 11px; padding: 2px 7px; border-radius: 4px; margin-top: 2px;
+    color: #9a3412; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 2px;
   }
   .note-chip button {
     background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 11px;
@@ -220,23 +273,44 @@
     border: 1px solid #e2e8f0;
     border-radius: 6px;
   }
+
+  /* 모바일 전용 미디어 쿼리 (< 768px) */
+  @media (max-width: 768px) {
+    body { padding: 8px; }
+    header { padding: 10px 12px; flex-direction: column; align-items: flex-start; }
+    .header-right { width: 100%; justify-content: space-between; }
+    .card { padding: 10px; }
+    .timeline-ticks { font-size: 8.5px; }
+    .etching-bar { justify-content: space-between; }
+    .briefing-control-row { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+    .briefing-control-row > div { width: 100%; }
+    .briefing-btn-group { text-align: right; width: 100%; }
+    .report-area { min-height: 320px; font-size: 12px; }
+    .chem-input-grid { grid-template-columns: 1fr !important; }
+  }
 </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- 상단 공통 헤더 -->
   <header>
     <div class="header-left">
-      <h1>동도금 PM 일정 & 진척 모니터링 시스템</h1>
-      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 관리 · 펄스 6단계 & 일반 더미 1싸이클</p>
+      <h1>동도금 PM 일정 & 실시간 통합 모니터링</h1>
+      <p>주간 정기 PM (월~일) · 화학동 12시간 액이송 기준 진척 · 펄스 6단계 & 일반 더미</p>
     </div>
-    <div class="live-clock-box">
-      <div style="font-size:11px; color:var(--text-secondary);">현재 실시간 시각</div>
-      <span id="liveClock">로딩 중...</span>
+    <div class="header-right">
+      <div id="syncStatus" class="sync-status-badge">
+        <span>⚪</span> 연결 확인 중...
+      </div>
+      <div class="live-clock-box">
+        <div style="font-size:10.5px; color:var(--text-secondary);">현재 시각</div>
+        <span id="liveClock">로딩 중...</span>
+      </div>
     </div>
   </header>
 
-  <!-- 5개 메인 탭 -->
+  <!-- 메인 탭 네비게이션 (모바일 가로 스크롤 지원) -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       🗓️ 일주일 / 오늘 PM 브리핑
@@ -259,145 +333,150 @@
   <div id="tab1" class="tab-pane active">
     <div class="grid-2col">
       
-      <!-- 좌측: 이번 주 정기 PM 매트릭스 -->
+      <!-- 좌측: 주간 정기 PM 매트릭스 -->
       <div class="card">
         <div class="card-title">
-          <span>금주 정기 PM 매트릭스 (주말 토·일 포함)</span>
+          <span>금주 정기 PM 매트릭스 (월~일)</span>
           <span class="badge badge-blue" id="weekRangeBadge">금주</span>
         </div>
 
-        <!-- 우측 에칭 PM 배치 -->
         <div class="etching-bar">
           <span>⚡ <strong>금일 에칭 PM:</strong></span>
           <input type="text" id="todayEtchingInput" value="에3.4" style="width:75px; padding:3px 6px; font-weight:700; color:var(--accent);" oninput="onEtchingChange(this.value)">
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th style="width:85px;">공정</th>
-              <th id="th_1">월</th>
-              <th id="th_2">화</th>
-              <th id="th_3">수</th>
-              <th id="th_4">목</th>
-              <th id="th_5">금</th>
-              <th id="th_6" class="weekend-sat-th">토</th>
-              <th id="th_7" class="weekend-th">일</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 1순위: 데버링 / 고압수세 -->
-            <tr>
-              <td><strong>데버링 /<br>고압수세</strong></td>
-              <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
-              <td>-</td>
-              <td><strong>데버링 3</strong></td>
-              <td>-</td>
-              <td><strong>데버링 2</strong></td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
-            <!-- 2순위: 디스미어 -->
-            <tr>
-              <td><strong>디스미어</strong></td>
-              <td>
-                <div>디스미어 8 <span id="custom_des8"></span></div>
-                <div>디스미어 11 <span id="tag_w_des11" class="badge"></span> <span id="custom_des11"></span></div>
-                <div>디스미어 15 <span id="tag_w_des15" class="badge"></span> <span id="custom_des15"></span></div>
-              </td>
-              <td>
-                <div>디스미어 9 <span id="custom_des9"></span></div>
-                <div>디스미어 6 <span id="custom_des6"></span></div>
-              </td>
-              <td>
-                <div>디스미어 12 <span id="custom_des12"></span></div>
-              </td>
-              <td>
-                <div>디스미어 7 <span id="custom_des7"></span></div>
-              </td>
-              <td>
-                <div>디스미어 10 <span id="custom_des10"></span></div>
-              </td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
-            <!-- 3순위: 화학동 / 블랙홀 -->
-            <tr style="background:#f0fdf4;">
-              <td><strong style="color:var(--accent);">화학동 /<br>블랙홀</strong></td>
-              <td>
-                <div><span class="badge badge-purple">화12</span> <span id="custom_화12"></span></div>
-                <div id="chem_cell_1" style="margin-top:3px;">-</div>
-              </td>
-              <td>
-                <div id="chem_cell_2">-</div>
-              </td>
-              <td>
-                <div><span class="badge badge-purple">화11</span> <span id="custom_화11"></span></div>
-                <div id="chem_cell_3" style="margin-top:3px;">-</div>
-              </td>
-              <td>
-                <div id="chem_cell_4">-</div>
-              </td>
-              <td>
-                <div><span class="badge badge-purple">화10</span> <span id="custom_화10"></span></div>
-                <div id="chem_cell_5" style="margin-top:3px;">-</div>
-              </td>
-              <td>
-                <div id="chem_cell_6">-</div>
-              </td>
-              <td>
-                <div id="chem_cell_7">-</div>
-              </td>
-            </tr>
-            <!-- 4순위: 전기동 -->
-            <tr>
-              <td><strong>전기동</strong></td>
-              <td>
-                <div>전기동 9 <span id="custom_전9"></span></div>
-                <div>전기동 16 <span id="custom_전16"></span></div>
-              </td>
-              <td>
-                <div>전기동 18 <span id="custom_전18"></span></div>
-                <div>전기동 22 <span id="custom_전22"></span></div>
-              </td>
-              <td>
-                <div>전기동 15 <span id="custom_전15"></span></div>
-                <div>전기동 20 <span id="custom_전20"></span></div>
-              </td>
-              <td>
-                <div>전기동 11 <span id="custom_전11"></span></div>
-                <div>전기동 14 <span id="custom_전14"></span></div>
-                <div>전기동 17 <span id="custom_전17"></span></div>
-              </td>
-              <td>
-                <div>전기동 12 <span id="tag_w_elec12" class="badge"></span> <span id="custom_전12"></span></div>
-                <div>전기동 13 <span id="custom_전13"></span></div>
-                <div>전기동 21 <span id="custom_전21"></span></div>
-              </td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- 가로 스크롤 보호 래퍼 -->
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:80px;">공정</th>
+                <th id="th_1">월</th>
+                <th id="th_2">화</th>
+                <th id="th_3">수</th>
+                <th id="th_4">목</th>
+                <th id="th_5">금</th>
+                <th id="th_6" class="weekend-sat-th">토</th>
+                <th id="th_7" class="weekend-th">일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 1순위: 데버링 / 고압수세 -->
+              <tr>
+                <td><strong>데버링 /<br>고압수세</strong></td>
+                <td>고압수세 1 <span id="tag_w_wash1" class="badge"></span></td>
+                <td>-</td>
+                <td><strong>데버링 3</strong></td>
+                <td>-</td>
+                <td><strong>데버링 2</strong></td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <!-- 2순위: 디스미어 -->
+              <tr>
+                <td><strong>디스미어</strong></td>
+                <td>
+                  <div>디스미어 8 <span id="custom_des8"></span></div>
+                  <div>디스미어 11 <span id="tag_w_des11" class="badge"></span> <span id="custom_des11"></span></div>
+                  <div>디스미어 15 <span id="tag_w_des15" class="badge"></span> <span id="custom_des15"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 9 <span id="custom_des9"></span></div>
+                  <div>디스미어 6 <span id="custom_des6"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 12 <span id="custom_des12"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 7 <span id="custom_des7"></span></div>
+                </td>
+                <td>
+                  <div>디스미어 10 <span id="custom_des10"></span></div>
+                </td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <!-- 3순위: 화학동 / 블랙홀 -->
+              <tr style="background:#f0fdf4;">
+                <td><strong style="color:var(--accent);">화학동 /<br>블랙홀</strong></td>
+                <td>
+                  <div><span class="badge badge-purple">화12</span> <span id="custom_화12"></span></div>
+                  <div id="chem_cell_1" style="margin-top:3px;">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_2">-</div>
+                </td>
+                <td>
+                  <div><span class="badge badge-purple">화11</span> <span id="custom_화11"></span></div>
+                  <div id="chem_cell_3" style="margin-top:3px;">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_4">-</div>
+                </td>
+                <td>
+                  <div><span class="badge badge-purple">화10</span> <span id="custom_화10"></span></div>
+                  <div id="chem_cell_5" style="margin-top:3px;">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_6">-</div>
+                </td>
+                <td>
+                  <div id="chem_cell_7">-</div>
+                </td>
+              </tr>
+              <!-- 4순위: 전기동 -->
+              <tr>
+                <td><strong>전기동</strong></td>
+                <td>
+                  <div>전기동 9 <span id="custom_전9"></span></div>
+                  <div>전기동 16 <span id="custom_전16"></span></div>
+                </td>
+                <td>
+                  <div>전기동 18 <span id="custom_전18"></span></div>
+                  <div>전기동 22 <span id="custom_전22"></span></div>
+                </td>
+                <td>
+                  <div>전기동 15 <span id="custom_전15"></span></div>
+                  <div>전기동 20 <span id="custom_전20"></span></div>
+                </td>
+                <td>
+                  <div>전기동 11 <span id="custom_전11"></span></div>
+                  <div>전기동 14 <span id="custom_전14"></span></div>
+                  <div>전기동 17 <span id="custom_전17"></span></div>
+                </td>
+                <td>
+                  <div>전기동 12 <span id="tag_w_elec12" class="badge"></span> <span id="custom_전12"></span></div>
+                  <div>전기동 13 <span id="custom_전13"></span></div>
+                  <div>전기동 21 <span id="custom_전21"></span></div>
+                </td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:11px; color:var(--text-secondary); text-align:right;">
+          👈 좌우로 밀어서 7일 전체 일정 확인 가능
+        </div>
       </div>
 
-      <!-- 우측: 오늘 PM 일정 & 야간 05시 이전 브리핑 공유 텍스트 -->
+      <!-- 우측: 오늘 PM 브리핑 & 공유 텍스트 -->
       <div class="card">
         <div class="card-title">
           <span id="briefingTitle">오늘 PM 브리핑 & 공유 양식</span>
           <span class="badge badge-blue">익일 08시 30분 이전 자동 취합</span>
         </div>
 
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div class="briefing-control-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <div>
             <label style="font-size:11px; color:var(--text-secondary);">기준 날짜:</label><br>
-            <input type="date" id="targetDateInput" onchange="onDateChange()">
+            <input type="date" id="targetDateInput" onchange="onDateChange()" style="width:130px;">
           </div>
           <div>
             <label style="font-size:11px; color:var(--text-secondary);">전기동 패스 기준:</label><br>
-            <input type="text" id="passTimeInput" value="7시패스" style="width:90px;" oninput="generateShareText()">
+            <input type="text" id="passTimeInput" value="7시패스" style="width:85px;" oninput="generateShareText()">
           </div>
-          <div style="flex:1; text-align:right; align-self:flex-end;">
+          <div class="briefing-btn-group" style="flex:1; text-align:right; align-self:flex-end;">
             <button class="btn btn-sub" onclick="generateShareText()">새로고침</button>
             <button class="btn" onclick="copyShareText()">텍스트 복사</button>
           </div>
@@ -413,14 +492,13 @@
   <div id="tab2" class="tab-pane">
     <div class="grid-2col">
       
-      <!-- 좌측: 화학동 진척 게이지 (PM 시작 후 12시간 후 액이송 기준) -->
-      <div style="display:flex; flex-direction:column; gap:14px;">
+      <!-- 화학동 진척 -->
+      <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
-            <span>🧪 1. 일반 화학동 진척 게이지 (12시간 액이송 기준)</span>
+            <span>🧪 1. 일반 화학동 진척 (12시간 액이송)</span>
             <div style="display:flex; gap:6px; align-items:center;">
-              <label style="font-size:11px; color:var(--text-secondary);">모니터링 라인:</label>
-              <select id="activeChemSelect" onchange="updateAllGauges()">
+              <select id="activeChemSelect" onchange="updateAllGauges()" style="font-size:11.5px; padding:4px 6px;">
                 <option value="화7">화7</option>
                 <option value="화8">화8</option>
                 <option value="화9">화9</option>
@@ -439,36 +517,36 @@
               <div id="chemProgressBar" class="progress-fill" style="width:0%;"></div>
             </div>
             <div class="timeline-ticks">
-              <span>0시 (PM시작)</span>
-              <span>4시 (C/S 진행)</span>
-              <span>8시 (세척구간)</span>
-              <span style="color:var(--danger); font-weight:700;">★ 12시간 (액이송 마일스톤)</span>
-              <span style="color:var(--success); font-weight:700;">14시간 (양산가동)</span>
+              <span>0H (PM시작)</span>
+              <span>4H (C/S진행)</span>
+              <span>8H (세척)</span>
+              <span style="color:var(--danger); font-weight:700;">★12H (액이송)</span>
+              <span style="color:var(--success); font-weight:700;">14H (양산)</span>
             </div>
             <div id="chemStatusBox" class="status-detail-box"></div>
           </div>
 
           <div class="ref-box">
-            <strong style="color:var(--accent);">📋 화학동 C/S 세척 소요 시간 참고 기준 (개별 병렬 진행):</strong>
+            <strong style="color:var(--accent);">📋 화학동 C/S 세척 소요 시간 참고 기준:</strong>
             <ul>
-              <li><strong>전처리 (총 150분 / 2시간 30분):</strong> 물세척 30분 → 박리세척 30분 → 박리후세척 30분 → 물세척 30분 → 물세척 30분</li>
-              <li><strong>촉매 (총 370분 / 6시간 10분, 화7·화13 대상):</strong> 액이송 30분 → 물세척 40분 → 박리세척 120분 → 박리 후 물세척 40분 → 물세척 40분 → 물세척 40분 → 액이송 30분</li>
-              <li><strong>화학동 (총 480분 / 8시간):</strong> 액이송 30분 → 물세척 30분 → 박리세척 300분 → 박리후세척 30분 → 알카리세척 30분 → 알카리 후 세척 30분 → 액이송 30분</li>
-              <li>💡 <em>C/S 세척 완료 후 <strong>12시간째 액이송 시작</strong> ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 백라이트/에치레이트 시편 확인 후 양산 가동</em></li>
+              <li><strong>전처리 (150분):</strong> 물세척 30분 → 박리세척 30분 → 박리후세척 30분 → 물세척 30분 → 물세척 30분</li>
+              <li><strong>촉매 (370분, 화7·화13):</strong> 액이송 30분 → 물세척 40분 → 박리 120분 → 박리후세척 40분 → 물세척 40분 → 물세척 40분 → 액이송 30분</li>
+              <li><strong>화학동 (480분):</strong> 액이송 30분 → 물세척 30분 → 박리 300분 → 박리후세척 30분 → 알카리 30분 → 알카리후세척 30분 → 액이송 30분</li>
+              <li>💡 <em>12시간째 액이송 시작 ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 시편 확인 후 양산</em></li>
             </ul>
           </div>
         </div>
       </div>
 
-      <!-- 우측: 전기동 PM 자동 진척 게이지 -->
-      <div style="display:flex; flex-direction:column; gap:14px;">
+      <!-- 전기동 진척 -->
+      <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
-            <span>⚡ 2. 전기동 PM 자동 진척 게이지 (금일 진행 라인 개별 표시)</span>
+            <span>⚡ 2. 전기동 PM 자동 진척 게이지</span>
             <span class="badge badge-blue" id="elecTodayLinesBadge">진행 라인</span>
           </div>
 
-          <div id="elecGaugesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+          <div id="elecGaugesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
 
@@ -480,10 +558,10 @@
     <div class="card">
       <div class="card-title">
         <span>🧪 화학동 72시간 주기 & 화8 48시간 빌드업 설정</span>
-        <button class="btn btn-sub btn-sm" onclick="saveChemData()">데이터 저장</button>
+        <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
-      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:4px;">
-        💡 비고란 옆의 <strong>[+ 촉매건욕]</strong> 또는 <strong>[+ 화학동 건욕]</strong> 버튼을 누르면 해당 라인 비고에 즉시 반영됩니다.
+      <div style="font-size:11.5px; color:var(--text-secondary);">
+        💡 비고란의 <strong>[+ 촉매건욕]</strong>, <strong>[+ 화학동 건욕]</strong> 버튼을 누르면 즉시 실시간 동기화됩니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -500,11 +578,11 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <div>
           <label style="font-size:11px; color:var(--text-secondary);">적용 일자:</label><br>
-          <input type="date" id="manualDateInput">
+          <input type="date" id="manualDateInput" style="width:130px;">
         </div>
         <div>
           <label style="font-size:11px; color:var(--text-secondary);">해당 라인:</label><br>
-          <select id="manualLineSelect">
+          <select id="manualLineSelect" style="width:110px;">
             <option value="디스미어 8">디스미어 8</option>
             <option value="디스미어 10">디스미어 10</option>
             <option value="디스미어 11">디스미어 11</option>
@@ -523,16 +601,16 @@
             <option value="화14">화14</option>
           </select>
         </div>
-        <div style="flex:1; min-width:180px;">
+        <div style="flex:1; min-width:160px;">
           <label style="font-size:11px; color:var(--text-secondary);">특이사항 내용:</label><br>
-          <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 버튼 클릭" style="width:100%;">
+          <input type="text" id="manualContentInput" placeholder="직접 입력 또는 아래 버튼" style="width:100%;">
         </div>
         <div style="align-self:flex-end;">
-          <button class="btn" onclick="addManualNote()">등록/추가</button>
+          <button class="btn" onclick="addManualNote()">등록</button>
         </div>
       </div>
 
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
         <button class="btn btn-sub btn-sm" onclick="setQuickTag('스웰러 건욕')">+ 스웰러 건욕</button>
         <button class="btn btn-sub btn-sm" onclick="setQuickTag('망간 건욕')">+ 망간 건욕</button>
         <button class="btn btn-sub btn-sm" onclick="setQuickTag('전체건욕')">+ 전체건욕</button>
@@ -541,7 +619,7 @@
         <button class="btn btn-sub btn-sm" onclick="setQuickTag('설비작업')">+ 설비작업(17시)</button>
       </div>
 
-      <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"></div>
+      <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;"></div>
     </div>
   </div>
 
@@ -550,31 +628,48 @@
     <div class="card">
       <div class="card-title">
         <span>💧 펄스라인 액퍼내기 예정일 관리 (120일 주기)</span>
-        <button class="btn btn-sub btn-sm" onclick="savePulseData()">펄스 데이터 저장</button>
+        <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
-      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:4px;">
-        펄스라인 액퍼내기 완료 날짜를 기입하면 1차(+120일), 2차(+240일), 3차(+360일) 예정일 및 잔여 D-Day가 자동 산출됩니다.
+      <div style="font-size:11.5px; color:var(--text-secondary);">
+        액퍼내기 날짜 입력 시 1차(+120일), 2차(+240일), 3차(+360일) 일정과 D-Day가 자동 계산됩니다.
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>라인명</th>
-            <th>최근 작업일</th>
-            <th>1차 예정 (+120일)</th>
-            <th>2차 예정 (+240일)</th>
-            <th>3차 예정 (+360일)</th>
-            <th>상태 (D-Day)</th>
-          </tr>
-        </thead>
-        <tbody id="pulseTableBody"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>라인명</th>
+              <th>최근 작업일</th>
+              <th>1차 (+120일)</th>
+              <th>2차 (+240일)</th>
+              <th>3차 (+360일)</th>
+              <th>상태 (D-Day)</th>
+            </tr>
+          </thead>
+          <tbody id="pulseTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
 </div>
 
 <script>
-// --- [1. 기초 데이터셋] ---
+// =================================================================
+// ★ Firebase 설정 (필요 시 Config 입력, 미입력 시 브라우저 로컬 자동 동작)
+// =================================================================
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+let db = null;
+let isFirebaseConnected = false;
+
 const DEFAULT_CHEM = [
   { id: '화7', lastDone: '2026-09-25T00:00', status: '진행중', note: '0시PM중' },
   { id: '화8', lastDone: '2026-09-23T18:30', status: '완료', note: '' },
@@ -599,14 +694,72 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = JSON.parse(localStorage.getItem('chem_data_v11')) || DEFAULT_CHEM;
-let pulseList = JSON.parse(localStorage.getItem('pulse_data_v11')) || DEFAULT_PULSE;
-let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v11')) || DEFAULT_MANUAL_NOTES;
-let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v11')) || {};
+let chemList = JSON.parse(localStorage.getItem('chem_data_v12')) || DEFAULT_CHEM;
+let pulseList = JSON.parse(localStorage.getItem('pulse_data_v12')) || DEFAULT_PULSE;
+let manualNotes = JSON.parse(localStorage.getItem('manual_notes_v12')) || DEFAULT_MANUAL_NOTES;
+let equipWorkFlags = JSON.parse(localStorage.getItem('equip_work_flags_v12')) || {};
 
 let selectedDateStr = '2026-09-25';
 
-// --- [2. 시간 포맷 헬퍼] ---
+function initFirebase() {
+  const statusEl = document.getElementById('syncStatus');
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+    statusEl.innerHTML = `<span style="color:#d97706;">🟡 로컬 모드</span>`;
+    return;
+  }
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+
+    db.ref('.info/connected').on('value', (snap) => {
+      if (snap.val() === true) {
+        isFirebaseConnected = true;
+        statusEl.innerHTML = `<span style="color:#16a34a;">🟢 실시간 서버 연결</span>`;
+      } else {
+        isFirebaseConnected = false;
+        statusEl.innerHTML = `<span style="color:#dc2626;">🔴 오프라인</span>`;
+      }
+    });
+
+    db.ref('pm_system_data').on('value', (snapshot) => {
+      const remoteData = snapshot.val();
+      if (remoteData) {
+        if (remoteData.chemList) chemList = remoteData.chemList;
+        if (remoteData.pulseList) pulseList = remoteData.pulseList;
+        if (remoteData.manualNotes) manualNotes = remoteData.manualNotes;
+        if (remoteData.equipWorkFlags) equipWorkFlags = remoteData.equipWorkFlags;
+
+        renderWeeklyMatrix();
+        renderManualNotesList();
+        renderChemList();
+        renderPulseTable();
+        updateAllGauges();
+        generateShareText();
+      }
+    });
+  } catch (e) {
+    statusEl.innerHTML = `<span style="color:#dc2626;">⚠️ 서버 오류</span>`;
+  }
+}
+
+function syncDataToFirebase() {
+  localStorage.setItem('chem_data_v12', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v12', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v12', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v12', JSON.stringify(equipWorkFlags));
+
+  if (db && isFirebaseConnected) {
+    db.ref('pm_system_data').set({
+      chemList: chemList,
+      pulseList: pulseList,
+      manualNotes: manualNotes,
+      equipWorkFlags: equipWorkFlags,
+      lastUpdated: new Date().toISOString()
+    }).catch(err => console.error("Firebase sync error:", err));
+  }
+}
+
 function formatTimeKr(hour, min) {
   const h = Number(hour);
   const m = Number(min);
@@ -629,7 +782,6 @@ function formatDateOnly(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// --- [3. 초기화] ---
 window.onload = function() {
   const today = new Date();
   const y = today.getFullYear();
@@ -638,6 +790,8 @@ window.onload = function() {
   selectedDateStr = `${y}-${m}-${d}`;
   document.getElementById('targetDateInput').value = selectedDateStr;
   document.getElementById('manualDateInput').value = selectedDateStr;
+
+  initFirebase();
 
   renderWeeklyMatrix();
   renderManualNotesList();
@@ -678,12 +832,8 @@ function switchTab(t) {
     'tab5': 'tabBtn5'
   };
 
-  if (document.getElementById(btnMap[t])) {
-    document.getElementById(btnMap[t]).classList.add('active');
-  }
-  if (document.getElementById(t)) {
-    document.getElementById(t).classList.add('active');
-  }
+  if (document.getElementById(btnMap[t])) document.getElementById(btnMap[t]).classList.add('active');
+  if (document.getElementById(t)) document.getElementById(t).classList.add('active');
 
   if (t === 'tab1') renderWeeklyMatrix();
   else if (t === 'tab2') updateAllGauges();
@@ -692,7 +842,6 @@ function switchTab(t) {
   else if (t === 'tab5') renderPulseTable();
 }
 
-// --- [4. 주간 매트릭스 렌더링 (금주 / 차주 반영 & 7일 표시)] ---
 function renderWeeklyMatrix() {
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
   const currentDay = targetDate.getDay();
@@ -710,7 +859,7 @@ function renderWeeklyMatrix() {
 
     const th = document.getElementById(`th_${i+1}`);
     if (th) {
-      th.innerHTML = `${dayNames[i]} <span style="font-size:11px; font-weight:normal; opacity:0.8;">(${d.getMonth()+1}/${d.getDate()})</span>`;
+      th.innerHTML = `${dayNames[i]} <span style="font-size:10.5px; font-weight:normal; opacity:0.85;">(${d.getMonth()+1}/${d.getDate()})</span>`;
       th.className = (dateStr === selectedDateStr) ? 'today-col' : (i === 5 ? 'weekend-sat-th' : (i === 6 ? 'weekend-th' : ''));
     }
   }
@@ -806,7 +955,6 @@ function onEtchingChange(val) {
   generateShareText();
 }
 
-// --- [5. 수동기입 엔진 (탭 4)] ---
 function addManualNote() {
   const date = document.getElementById('manualDateInput').value;
   const line = document.getElementById('manualLineSelect').value;
@@ -818,7 +966,7 @@ function addManualNote() {
   }
 
   manualNotes.push({ date, line, text });
-  saveManualNotes();
+  syncDataToFirebase();
   document.getElementById('manualContentInput').value = '';
   renderManualNotesList();
   renderWeeklyMatrix();
@@ -832,7 +980,7 @@ function setQuickTag(tag) {
 
 function removeManualNote(index) {
   manualNotes.splice(index, 1);
-  saveManualNotes();
+  syncDataToFirebase();
   renderManualNotesList();
   renderWeeklyMatrix();
   generateShareText();
@@ -851,9 +999,6 @@ function renderManualNotesList() {
   });
 }
 
-function saveManualNotes() { localStorage.setItem('manual_notes_v11', JSON.stringify(manualNotes)); }
-
-// --- [6. 자동 진척 게이지 엔진 (탭 2: 화학동 12시간 액이송 기준)] ---
 function updateAllGauges() {
   const now = new Date();
   renderChem12hGauge(now);
@@ -911,12 +1056,12 @@ function renderChem12hGauge(now) {
     }
 
     chemBox.innerHTML = `
-      <div style="display:flex; justify-content:space-between;">
-        <span>진척 상태: <strong>C/S 세척 및 준비 구간 진행 중</strong> (경과: <strong>${elapsedH}시간</strong>)</span>
-        <strong style="color:var(--danger);">액이송(12시간)까지 ${rH > 0 ? rH + '시간 ' : ''}${rM}분 남음</strong>
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+        <span>진척 상태: <strong>C/S 세척 및 준비 구간</strong> (경과: <strong>${elapsedH}시간</strong>)</span>
+        <strong style="color:var(--danger);">액이송(12H)까지 ${rH > 0 ? rH + '시간 ' : ''}${rM}분 남음</strong>
       </div>
       <div>
-        💡 하단의 C/S 세척 기준에 맞춰 작업 진행 ➔ <strong>12시간 도래 시 액이송 시작 준비</strong>
+        💡 하단의 C/S 세척 기준에 맞춰 작업 진행 ➔ <strong>12시간 도래 시 액이송 시작</strong>
       </div>
     `;
   } else if (elapsedMin >= target12hMin && elapsedMin < 840) {
@@ -928,7 +1073,7 @@ function renderChem12hGauge(now) {
     const to14hMin = Math.max(0, Math.ceil(840 - elapsedMin));
 
     chemBox.innerHTML = `
-      <div style="display:flex; justify-content:space-between;">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
         <strong style="color:var(--danger);">🚨 [12시간 경과] 액이송 시작 시점!</strong>
         <span>경과: <strong>${elapsedH}시간</strong></span>
       </div>
@@ -943,8 +1088,8 @@ function renderChem12hGauge(now) {
     badgeElem.innerText = '14H 완료';
 
     chemBox.innerHTML = `
-      <div style="display:flex; justify-content:space-between;">
-        <span style="color:var(--success); font-weight:700;">✅ 14시간 경과 - PM 완료 및 양산 가동 가능 구간</span>
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+        <span style="color:var(--success); font-weight:700;">✅ 14시간 경과 - PM 완료 및 양산 가동 가능</span>
         <span>경과: <strong>${elapsedH}시간</strong></span>
       </div>
       <div>
@@ -954,7 +1099,6 @@ function renderChem12hGauge(now) {
   }
 }
 
-// --- [7. 전기동 개별 라인 진척 게이지] ---
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   if (!container) return;
@@ -1064,23 +1208,23 @@ function renderElectroGauges(now) {
           <div class="gauge-top">
             <div>
               <strong>${line.name} <span class="badge badge-purple">펄스 라인</span></strong>
-              <label style="margin-left:10px; font-size:11.5px; font-weight:normal; cursor:pointer;">
+              <label style="margin-left:6px; font-size:11px; font-weight:normal; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
-                🛠️ PM팀 설비작업(17시마무리) 적용
+                🛠️ 설비작업(17시마감)
               </label>
             </div>
             <span class="badge badge-blue">${progressPct.toFixed(0)}%</span>
           </div>
           <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
           <div class="timeline-ticks">
-            <span>08시 30분 시작</span>
-            <span>14시 건욕완료</span>
-            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17시 설비완료</span>' : ''}
-            <span>DC 0.5(1.5H)</span>
-            <span>DC 1.5(1.5H)</span>
-            <span>패스(1.5H)</span>
-            <span>펄스더미(1.5H)</span>
-            <span style="color:var(--success); font-weight:700;">광확인/양산</span>
+            <span>08:30시작</span>
+            <span>14:00건욕</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00설비</span>' : ''}
+            <span>DC0.5</span>
+            <span>DC1.5</span>
+            <span>패스</span>
+            <span>더미</span>
+            <span style="color:var(--success); font-weight:700;">양산</span>
           </div>
           <div class="${boxClass}">
             <div style="font-weight:700;">${stepName}</div>
@@ -1148,22 +1292,22 @@ function renderElectroGauges(now) {
         <div class="gauge-box">
           <div class="gauge-top">
             <div>
-              <strong>${line.name} <span class="badge badge-blue">일반 건욕 라인</span></strong>
-              <label style="margin-left:10px; font-size:11.5px; font-weight:normal; cursor:pointer;">
+              <strong>${line.name} <span class="badge badge-blue">일반 건욕</span></strong>
+              <label style="margin-left:6px; font-size:11px; font-weight:normal; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
-                🛠️ PM팀 설비작업(17시마무리) 적용
+                🛠️ 설비작업(17시마감)
               </label>
             </div>
             <span class="badge badge-blue">${progressPct.toFixed(0)}%</span>
           </div>
           <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
           <div class="timeline-ticks">
-            <span>07시 패스</span>
-            <span>08시 30분 시작</span>
-            <span style="color:var(--danger); font-weight:700;">14시 건욕완료</span>
-            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17시 설비완료</span>' : ''}
-            <span>더미 1싸이클(1.5H)</span>
-            <span style="color:var(--success); font-weight:700;">양산 진행</span>
+            <span>07:00 패스</span>
+            <span>08:30 PM시작</span>
+            <span style="color:var(--danger); font-weight:700;">14:00 건욕완료</span>
+            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
+            <span>더미 1싸이클</span>
+            <span style="color:var(--success); font-weight:700;">양산</span>
           </div>
           <div class="${boxClass}">
             <div style="font-weight:700;">${stepName}</div>
@@ -1179,7 +1323,6 @@ function renderElectroGauges(now) {
 
 function toggleEquipWork(lineName, isChecked) {
   equipWorkFlags[lineName] = isChecked;
-  localStorage.setItem('equip_work_flags_v11', JSON.stringify(equipWorkFlags));
 
   const existingIdx = manualNotes.findIndex(n => n.date === selectedDateStr && n.line.includes(lineName.split('라인')[0]) && n.text.includes('설비작업'));
   if (isChecked && existingIdx === -1) {
@@ -1187,14 +1330,13 @@ function toggleEquipWork(lineName, isChecked) {
   } else if (!isChecked && existingIdx !== -1) {
     manualNotes.splice(existingIdx, 1);
   }
-  saveManualNotes();
+  syncDataToFirebase();
   renderManualNotesList();
   renderWeeklyMatrix();
   generateShareText();
   updateAllGauges();
 }
 
-// --- [8. 화학동 72H 주기 관리 (탭 3)] ---
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -1206,16 +1348,16 @@ function renderChemList() {
     card.style.background = '#f8fafc';
     card.style.border = '1px solid var(--border-light)';
     card.style.borderRadius = '8px';
-    card.style.padding = '12px';
+    card.style.padding = '10px';
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
-    card.style.gap = '8px';
+    card.style.gap = '6px';
 
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-        <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지 규정</span>' : ''}</strong>
+        <strong>${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지</span>' : ''}</strong>
         <div>
-          <select id="stat_${idx}" onchange="changeChemStatus(${idx}, this.value)">
+          <select id="stat_${idx}" onchange="changeChemStatus(${idx}, this.value)" style="font-size:11.5px; padding:3px 5px;">
             <option value="대기" ${c.status === '대기' ? 'selected' : ''}>대기</option>
             <option value="진행중" ${c.status === '진행중' ? 'selected' : ''}>진행중</option>
             <option value="완료" ${c.status === '완료' ? 'selected' : ''}>완료</option>
@@ -1223,11 +1365,11 @@ function renderChemList() {
           <button class="btn btn-sub btn-sm" onclick="setChemNow(${idx})">현재시각</button>
         </div>
       </div>
-      <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px;">
+      <div class="chem-input-grid" style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px;">
         <input type="datetime-local" id="time_${idx}" value="${c.lastDone}" onchange="updateChemTime(${idx}, this.value)">
         <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고 입력" oninput="updateChemNote(${idx}, this.value)">
       </div>
-      <div style="display:flex; gap:6px; align-items:center;">
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <span style="font-size:11px; color:var(--text-secondary);">태그 즉시입력:</span>
         <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '촉매건욕')">+ 촉매건욕</button>
         <button class="btn btn-sub btn-sm" onclick="setChemNoteTag(${idx}, '화학동 건욕')">+ 화학동 건욕</button>
@@ -1244,7 +1386,7 @@ function setChemNoteTag(idx, tag) {
   chemList[idx].note = tag;
   const noteInput = document.getElementById(`note_${idx}`);
   if (noteInput) noteInput.value = tag;
-  saveChemData();
+  syncDataToFirebase();
   updateAllGauges();
   generateShareText();
 }
@@ -1260,7 +1402,7 @@ function updateChemRealtimeStatuses() {
     if (c.status === '진행중') {
       const elapsedH = (now - t) / 3600000;
       const transferTime = new Date(t.getTime() + 12 * 3600000);
-      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 (${elapsedH.toFixed(1)}H 경과)</span> | 12시간 액이송 예정: <strong>${formatDateTimeKr(transferTime)}</strong>`;
+      box.innerHTML = `<span style="color:var(--accent); font-weight:700;">PM 진행 중 (${elapsedH.toFixed(1)}H 경과)</span> | 12시간 액이송: <strong>${formatDateTimeKr(transferTime)}</strong>`;
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const remainH = (nextDue - now) / 3600000;
@@ -1280,19 +1422,17 @@ function updateChemRealtimeStatuses() {
   });
 }
 
-function changeChemStatus(idx, val) { chemList[idx].status = val; saveChemData(); renderChemList(); updateAllGauges(); generateShareText(); }
-function updateChemTime(idx, val) { chemList[idx].lastDone = val; saveChemData(); updateAllGauges(); generateShareText(); }
-function updateChemNote(idx, val) { chemList[idx].note = val; saveChemData(); generateShareText(); }
+function changeChemStatus(idx, val) { chemList[idx].status = val; syncDataToFirebase(); renderChemList(); updateAllGauges(); generateShareText(); }
+function updateChemTime(idx, val) { chemList[idx].lastDone = val; syncDataToFirebase(); updateAllGauges(); generateShareText(); }
+function updateChemNote(idx, val) { chemList[idx].note = val; syncDataToFirebase(); generateShareText(); }
 function setChemNow(idx) {
   const now = new Date();
   chemList[idx].lastDone = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const timeInput = document.getElementById(`time_${idx}`);
   if (timeInput) timeInput.value = chemList[idx].lastDone;
-  saveChemData(); updateAllGauges(); generateShareText();
+  syncDataToFirebase(); updateAllGauges(); generateShareText();
 }
-function saveChemData() { localStorage.setItem('chem_data_v11', JSON.stringify(chemList)); }
 
-// --- [9. 펄스라인 120일 액퍼내기 (탭 5)] ---
 function renderPulseTable() {
   const tbody = document.getElementById('pulseTableBody');
   if (!tbody) return;
@@ -1313,18 +1453,21 @@ function renderPulseTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${p.line}</strong></td>
-      <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)"></td>
+      <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)" style="width:120px;"></td>
       <td><strong>${formatDateOnly(d1)}</strong></td>
       <td>${formatDateOnly(d2)}</td>
+      <td>${formatDateOnly(d3)}</td>
       <td>${badge}</td>
     `;
     tbody.appendChild(tr);
   });
 }
-function updatePulseDate(idx, val) { pulseList[idx].lastDate = val; savePulseData(); renderPulseTable(); }
-function savePulseData() { localStorage.setItem('pulse_data_v11', JSON.stringify(pulseList)); }
+function updatePulseDate(idx, val) {
+  pulseList[idx].lastDate = val;
+  syncDataToFirebase();
+  renderPulseTable();
+}
 
-// --- [10. 날짜 변경 핸들러] ---
 function onDateChange() {
   selectedDateStr = document.getElementById('targetDateInput').value;
   if (selectedDateStr) {
@@ -1336,7 +1479,6 @@ function onDateChange() {
   }
 }
 
-// --- [11. 브리핑 공유 텍스트 자동 완성 (고압수세 최상단 & 기본PM 제외)] ---
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
@@ -1356,7 +1498,7 @@ function generateShareText() {
   };
 
   let debarr = '';
-  let wash = ''; // 고압수세 단독 변수
+  let wash = '';
   const etchingInput = document.getElementById('todayEtchingInput');
   let etching = etchingInput ? etchingInput.value.trim() : '에3.4';
   let desmear = [];
@@ -1365,7 +1507,6 @@ function generateShareText() {
   let chems = [];
   let ongoing = [];
 
-  // 고압수세 1라인: 월요일 & 격주(금주) 도래 시 '고압수세 1라인'만 단독 기재
   if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1, targetDate)) {
     wash = '고압수세 1라인';
   }
@@ -1418,10 +1559,9 @@ function generateShareText() {
     }
   });
 
-  // 상단 순서: 데버링/고압수세 최상단 -> 에칭 -> 디스미어 -> 화학동/블랙홀 -> 전기동
   let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
   if (debarr) out += `${debarr}\n\n`;
-  if (wash) out += `${wash}\n\n`; // 고압수세 1라인 최상단 배치
+  if (wash) out += `${wash}\n\n`;
   if (etching) out += `${etching}\n\n`;
   if (desmear.length > 0) out += `${desmear.join('\n')}\n\n`;
 
