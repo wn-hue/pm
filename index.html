@@ -358,6 +358,14 @@
   .weekend-th { background: #fef2f2; color: #b91c1c; }
   .weekend-sat-th { background: #eff6ff; color: #1d4ed8; }
 
+  .note-chip {
+    display: inline-flex; align-items: center; gap: 5px; background: #ffedd5;
+    color: #9a3412; font-size: 11.5px; padding: 3px 8px; border-radius: 4px; margin: 2px;
+  }
+  .note-chip button {
+    background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 12px;
+  }
+
   @media (max-width: 640px) {
     .pulse-step-container { grid-template-columns: repeat(2, 1fr); }
     .nav-btn { font-size: 12.5px; padding: 9px 4px; }
@@ -412,7 +420,7 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
-      <!-- 카톡 복사 붙여넣기 스마트 파서 (요청 3 반영: 과거 시간 자동 인식) -->
+      <!-- 카톡 복사 붙여넣기 스마트 파서 -->
       <div class="parser-box">
         <div class="parser-header">
           <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
@@ -445,7 +453,7 @@
           </div>
         </div>
 
-        <textarea id="shareTextOutput" class="report-area"></textarea>
+        <textarea id="shareTextOutput" class="report-area" readonly></textarea>
 
         <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
@@ -487,7 +495,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 (요청 1 & 2 반영: 비고/태그 제거, 차기PM 강조 스타일) -->
+  <!-- [탭 3] 화학동 주기 관리 -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -501,7 +509,7 @@
     </div>
   </div>
 
-  <!-- [탭 4] 라인별 특이사항 수동 입력 -->
+  <!-- [탭 4] 라인별 특이사항 수동 입력 (요청 1, 2, 3 반영: 월 생략, 신규 태그 추가, 라인별 동적 태그 지원) -->
   <div id="tab4" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -510,13 +518,19 @@
       </div>
       
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <!-- 요청 1번: 월 표기 제거, 일 단위만 표시 -->
         <div style="display:flex; align-items:center; gap:2px;">
-          <input type="number" id="manualMonthInput" min="1" max="12" style="width:48px; text-align:center;">월
-          <input type="number" id="manualDayInput" min="1" max="31" style="width:48px; text-align:center;">일
+          <input type="number" id="manualDayInput" min="1" max="31" style="width:52px; text-align:center;">일
         </div>
         
+        <!-- 라인 선택 시 동적 태그 갱신 이벤트 연동 -->
         <div>
-          <select id="manualLineSelect" onchange="checkCustomLineInput(this.value)" style="width:145px; font-weight:700;">
+          <select id="manualLineSelect" onchange="onManualLineChange(this.value)" style="width:150px; font-weight:700;">
+            <optgroup label="데버링 / 고압수세">
+              <option value="고압수세 1">고압수세 1</option>
+              <option value="데버링 2">데버링 2</option>
+              <option value="데버링 3">데버링 3</option>
+            </optgroup>
             <optgroup label="에칭">
               <option value="에1.2">에1.2</option>
               <option value="에3.4">에3.4</option>
@@ -567,21 +581,15 @@
         </div>
 
         <div style="flex:1; min-width:160px;">
-          <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 태그 클릭" style="width:100%;">
+          <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 전용 태그 클릭" style="width:100%;">
         </div>
         <div>
           <button class="btn" onclick="addManualNote()">등록</button>
         </div>
       </div>
 
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
-        <button class="btn btn-sub btn-sm" onclick="setQuickTag('스웰러 건욕')">+ 스웰러 건욕</button>
-        <button class="btn btn-sub btn-sm" onclick="setQuickTag('망간 건욕')">+ 망간 건욕</button>
-        <button class="btn btn-sub btn-sm" onclick="setQuickTag('전체건욕')">+ 전체건욕</button>
-        <button class="btn btn-sub btn-sm" onclick="setQuickTag('인써트 교체')">+ 인써트 교체</button>
-        <button class="btn btn-sub btn-sm" onclick="setQuickTag('유산동필터')">+ 유산동필터</button>
-        <button class="btn btn-sub btn-sm" onclick="setQuickTag('설비작업')">+ 설비작업(17시)</button>
-      </div>
+      <!-- 요청 2 & 3번 반영: 라인에 맞춰 똑똑하게 바뀌는 동적 태그 컨테이너 -->
+      <div id="dynamicTagsContainer" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"></div>
 
       <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;"></div>
     </div>
@@ -734,7 +742,6 @@
 </div>
 
 <script>
-// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
   authDomain: "pm1234-3069b.firebaseapp.com",
@@ -786,20 +793,19 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v36')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v36')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v36')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v36')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v37')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v37')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v37')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v37')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v36')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v36')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v36')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v37')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v37')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v37')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
 let currentDateChoice = 'today';
 
-// 365일 무한 루프 에칭 계산 (2026-09-25 금 = '에3.4' 기준 3일 주기 순환)
 function getEtchingLine(dateObj) {
   const anchor = new Date('2026-09-25T00:00:00');
   const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
@@ -855,13 +861,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v36', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v36', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v36', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v36', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v36', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v36', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v36', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v37', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v37', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v37', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v37', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v37', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v37', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v37', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -894,7 +900,6 @@ function formatDateTimeKr(d) {
   return `${M}월 ${D}일 ${formatTimeKr(h, m)}`;
 }
 
-// 화학동 UI 전용: 월 생략, 일/시/분만 표시
 function formatDayTimeKr(d) {
   if (!d || isNaN(d.getTime())) return '-';
   const D = d.getDate();
@@ -939,6 +944,10 @@ function selectQuickDay(choice) {
   }
   selectedDateStr = formatDateOnly(target);
   updateDateToggleUI();
+
+  const mD = document.getElementById('manualDayInput');
+  if (mD) mD.value = target.getDate();
+
   safeRenderAll();
 }
 
@@ -988,7 +997,6 @@ function renderTab1ChemStatus() {
   container.innerHTML = html;
 }
 
-// 요청 3번 반영: 공지 시간(hh:mm)이 분석 시점보다 미래라면 전날(D-1) 시간으로 지능형 역산 인식
 function parseAndApplyKakaoMsg() {
   const raw = document.getElementById('kakaoRawInput').value.trim();
   if (!raw) {
@@ -1008,6 +1016,9 @@ function parseAndApplyKakaoMsg() {
     const todayStr = formatDateOnly(new Date());
     currentDateChoice = (selectedDateStr === todayStr) ? 'today' : 'custom';
     updateDateToggleUI();
+
+    const mD = document.getElementById('manualDayInput');
+    if (mD) mD.value = Number(dateMatch[2]);
     updatedCount++;
   }
 
@@ -1037,8 +1048,6 @@ function parseAndApplyKakaoMsg() {
           
           if (isOngoing) {
             item.status = '시작';
-            // 요청 3번: 26일 08시에 "13시 PM 진행중" 공지를 넣을 경우,
-            // 13시가 아직 안 되었으므로 전날(25일) 13시부터 진행 중인 것으로 자동 역산 보정
             let targetStart = new Date(`${selectedDateStr}T${hh}:${mm}:00`);
             const now = new Date();
             if (targetStart > now) {
@@ -1049,7 +1058,6 @@ function parseAndApplyKakaoMsg() {
             const sD = String(targetStart.getDate()).padStart(2, '0');
             item.lastDone = `${sY}-${sM}-${sD}T${hh}:${mm}`;
           } else {
-            // 완료 상태: 공지에 적힌 시간은 PM 예정 시간이므로 역산하여 72시간 전을 lastDone으로 저장
             item.status = '완료';
             const scheduledTime = new Date(`${selectedDateStr}T${hh}:${mm}:00`);
             const calculatedLastDone = new Date(scheduledTime.getTime() - 72 * 3600000);
@@ -1093,13 +1101,16 @@ window.onload = function() {
   lastCheckedDate = selectedDateStr;
   currentDateChoice = 'today';
   
-  const mM = document.getElementById('manualMonthInput');
   const mD = document.getElementById('manualDayInput');
-  if (mM) mM.value = today.getMonth() + 1;
   if (mD) mD.value = today.getDate();
 
   initFirebase();
   updateDateToggleUI();
+  
+  // 첫 로딩 시 라인별 기본 태그 렌더링
+  const lineSel = document.getElementById('manualLineSelect');
+  if (lineSel) onManualLineChange(lineSel.value);
+
   safeRenderAll();
 
   tick();
@@ -1124,9 +1135,7 @@ function tick() {
       tmr.setDate(tmr.getDate() + 1);
       selectedDateStr = formatDateOnly(tmr);
     }
-    const mM = document.getElementById('manualMonthInput');
     const mD = document.getElementById('manualDayInput');
-    if (mM) mM.value = now.getMonth() + 1;
     if (mD) mD.value = now.getDate();
     safeRenderAll();
   }
@@ -1165,7 +1174,11 @@ function switchTab(t) {
     renderElectroGauges(now);
   }
   else if (t === 'tab3') renderChemList();
-  else if (t === 'tab4') renderManualNotesList();
+  else if (t === 'tab4') {
+    const lineSel = document.getElementById('manualLineSelect');
+    if (lineSel) onManualLineChange(lineSel.value);
+    renderManualNotesList();
+  }
 }
 
 function renderWeeklyMatrix() {
@@ -1254,6 +1267,10 @@ function selectDayFromMatrix(dateStr) {
   else currentDateChoice = 'custom';
   updateDateToggleUI();
 
+  const d = new Date(dateStr + 'T00:00:00');
+  const mD = document.getElementById('manualDayInput');
+  if (mD) mD.value = d.getDate();
+
   renderWeeklyMatrix();
   generateShareText();
   renderElectroGauges(new Date());
@@ -1326,7 +1343,8 @@ function checkBiWeek(anchorDate, targetDate) {
   return (Math.abs(diffWeeks) % 2 === 0);
 }
 
-function checkCustomLineInput(val) {
+// 요청 2 & 3번 구현: 라인별 맞춤형 전용 태그 동적 렌더링
+function onManualLineChange(val) {
   const customInput = document.getElementById('manualCustomLineInput');
   if (val === 'CUSTOM') {
     customInput.style.display = 'inline-block';
@@ -1334,13 +1352,99 @@ function checkCustomLineInput(val) {
   } else {
     customInput.style.display = 'none';
   }
+
+  const container = document.getElementById('dynamicTagsContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let tags = [];
+
+  if (val.startsWith('디스미어')) {
+    // 디스미어 라인: 스웰러 건욕, 망간 건욕
+    tags.push({ name: '스웰러 건욕', isAppend: false });
+    tags.push({ name: '망간 건욕', isAppend: false });
+  } else if (val.startsWith('화') && ['화7', '화8', '화9', '화13', '화14'].includes(val)) {
+    // 일반 화학동: 촉매 건욕, 화학동 건욕
+    tags.push({ name: '촉매 건욕', isAppend: false });
+    tags.push({ name: '화학동 건욕', isAppend: false });
+    // 화7 라인에만 촉매cs 추가
+    if (val === '화7') {
+      tags.push({ name: '촉매cs', isAppend: false });
+    }
+  } else if (val.startsWith('전기동') || val.includes('MSF')) {
+    // 전기동 라인
+    tags.push({ name: '산탈지.산세.박리', isAppend: false });
+    // 15, 18 라인에만 프리딥 추가
+    if (val === '전기동 15' || val === '전기동 18') {
+      tags.push({ name: '산탈지.산세.프리딥.박리', isAppend: false });
+    }
+    // 펄스 라인(전9, 전20, 전21) 제외하고 유산동필터 교체 추가 (기존 PM 뒤에 덧붙이기 지원)
+    if (!['전기동 9', '전기동 20', '전기동 21'].includes(val)) {
+      tags.push({ name: '+ 유산동필터 교체', isAppend: true, val: '유산동필터 교체' });
+    }
+  }
+
+  // 공통 태그 항상 표시: 인써트 교체, 전체건욕, 설비작업
+  tags.push({ name: '인써트 교체', isAppend: false });
+  tags.push({ name: '전체건욕', isAppend: false });
+  tags.push({ name: '설비작업', isAppend: false });
+
+  // 버튼 생성
+  tags.forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = t.isAppend ? 'btn btn-sm' : 'btn btn-sub btn-sm';
+    if (t.isAppend) btn.style.background = '#0284c7';
+    btn.innerText = t.name;
+    btn.onclick = () => {
+      if (t.isAppend) appendQuickTag(t.val);
+      else setQuickTag(t.name);
+    };
+    container.appendChild(btn);
+  });
 }
 
+function setQuickTag(tag) {
+  document.getElementById('manualContentInput').value = tag;
+}
+
+// 전기동 필터교체 등 기존 내용 뒤에 덧붙이기
+function appendQuickTag(tag) {
+  const input = document.getElementById('manualContentInput');
+  const cur = input.value.trim();
+  if (cur) {
+    if (!cur.includes(tag)) {
+      input.value = cur + ' ' + tag;
+    }
+  } else {
+    input.value = tag;
+  }
+}
+
+// 요청 1번: 수동입력 '월' 생략 & 내부 연도/월 자동 연동
 function addManualNote() {
   const cur = new Date(selectedDateStr + 'T00:00:00');
-  const y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
-  const m = document.getElementById('manualMonthInput').value;
-  const d = document.getElementById('manualDayInput').value;
+  let y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
+  let m = isNaN(cur.getTime()) ? (new Date()).getMonth() + 1 : cur.getMonth() + 1;
+  const d = Number(document.getElementById('manualDayInput').value);
+
+  if (!d) {
+    alert('일자를 입력해주세요.');
+    return;
+  }
+
+  // 월말/월초 일자 경계 자동 보정 (예: 28일 기준에서 2일 입력 시 익월로 계산)
+  const prevD = isNaN(cur.getTime()) ? (new Date()).getDate() : cur.getDate();
+  if (prevD >= 25 && d <= 5) {
+    const nextM = new Date(y, m, 1);
+    y = nextM.getFullYear();
+    m = nextM.getMonth() + 1;
+  } else if (prevD <= 5 && d >= 25) {
+    const prevM = new Date(y, m - 2, 1);
+    y = prevM.getFullYear();
+    m = prevM.getMonth() + 1;
+  }
+
   const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   
   let line = document.getElementById('manualLineSelect').value;
@@ -1354,8 +1458,8 @@ function addManualNote() {
 
   const text = document.getElementById('manualContentInput').value.trim();
 
-  if (!m || !d || !text) {
-    alert('날짜와 특이사항 내용을 모두 입력해주세요.');
+  if (!text) {
+    alert('특이사항 내용을 입력해주세요.');
     return;
   }
 
@@ -1368,10 +1472,6 @@ function addManualNote() {
   renderElectroGauges(new Date());
 }
 
-function setQuickTag(tag) {
-  document.getElementById('manualContentInput').value = tag;
-}
-
 function removeManualNote(index) {
   manualNotes.splice(index, 1);
   syncDataToFirebase();
@@ -1381,6 +1481,7 @@ function removeManualNote(index) {
   renderElectroGauges(new Date());
 }
 
+// 특이사항 칩 리스트: 월 생략, 일 단위로 심플하게 표시
 function renderManualNotesList() {
   const container = document.getElementById('manualNoteList');
   if (!container) return;
@@ -1388,7 +1489,8 @@ function renderManualNotesList() {
   manualNotes.forEach((n, idx) => {
     const chip = document.createElement('span');
     chip.className = 'note-chip';
-    chip.innerHTML = `<strong>${escapeHtml(n.date.slice(5))} [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
+    const dayOnly = Number(n.date.split('-')[2]);
+    chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
     container.appendChild(chip);
   });
 }
@@ -1997,7 +2099,6 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-// 탭 3 화학동 관리 (1번 & 2번 수정: 비고/태그 제거, 날짜는 일 단위만 입력)
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -2046,7 +2147,6 @@ function renderChemList() {
       </div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:3px;">
-          <!-- 1번 수정: '월' UI에서 제거 (일, 시, 분만 표시) -->
           <input type="number" id="d_${idx}" value="${curD}" min="1" max="31" style="width:52px; text-align:center;" onchange="updateChemFromParts(${idx})">일
           <select id="h_${idx}" onchange="updateChemFromParts(${idx})">${hourOptions}</select>
           <select id="min_${idx}" onchange="updateChemFromParts(${idx})">
@@ -2055,7 +2155,6 @@ function renderChemList() {
           </select>
         </div>
       </div>
-      <!-- 1번 수정: 차기 PM 및 12시간 액이송 예정 시간 강조 스타일 박스 -->
       <div id="chem_box_${idx}" style="font-size:13px; padding:10px 14px; background:#ffffff; border-radius:6px; border-left:5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,0.03);"></div>
     `;
     container.appendChild(card);
@@ -2114,7 +2213,6 @@ function setChemStepStatus(idx, st) {
   generateShareText();
 }
 
-// 1번 수정: 화학동 주기 관리 내 차기 PM 날짜 및 시간 강조 스타일링
 function updateChemRealtimeStatuses() {
   const now = new Date();
   chemList.forEach((c, idx) => {
@@ -2164,6 +2262,8 @@ function updateChemRealtimeStatuses() {
     }
   });
 }
+
+function updateChemNote(idx, val) { chemList[idx].note = val; syncDataToFirebase(); generateShareText(); }
 
 function setChemNow(idx) {
   const now = new Date();
