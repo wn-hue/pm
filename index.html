@@ -63,7 +63,7 @@
     background: none; border: none; font-size: 16px; cursor: pointer; color: #86198f; font-weight: bold; padding: 0 6px;
   }
 
-  /* 헤더 */
+  /* 헤더: 상하/좌우 대칭 정렬 */
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -165,6 +165,7 @@
     flex-wrap: wrap;
   }
 
+  /* 입력폼 iOS 최적화 */
   input, select, textarea {
     background: #ffffff;
     border: 1px solid var(--border);
@@ -198,6 +199,7 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
+  /* 카톡 파서 박스 */
   .parser-box {
     background: #fefce8;
     border: 1px solid #fef08a;
@@ -223,6 +225,7 @@
     resize: vertical;
   }
 
+  /* 게이지 영역 */
   .grid-2col-even {
     display: grid;
     grid-template-columns: 1fr;
@@ -287,6 +290,7 @@
   .pulse-step-item.done { background: #ecfdf5; border-color: #a7f3d0; color: var(--success); }
   .pulse-step-item.active { background: #f3e8ff; border-color: #c084fc; color: var(--purple); }
 
+  /* 컴팩트 시작/완료 버튼 */
   .status-step-group-compact {
     display: inline-flex;
     background: #e2e8f0;
@@ -309,6 +313,7 @@
   .status-step-btn-compact.active-시작 { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
   .status-step-btn-compact.active-완료 { background: var(--success); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
+  /* 팝업 모달 */
   .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -368,11 +373,13 @@
 <body>
 
 <div class="container">
+  <!-- 펄스 리마인드 배너 -->
   <div id="remindBanner" class="remind-banner">
     <div id="remindBannerText">🔔 <strong>[액퍼내기 4주 전 알림]</strong> 건욕 일정이 도래했습니다.</div>
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
   </div>
 
+  <!-- 헤더 -->
   <header>
     <div class="header-top">
       <h1>동도금 PM 모니터링</h1>
@@ -391,6 +398,7 @@
     </div>
   </header>
 
+  <!-- 메인 탭 4개 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       📋 오늘 브리핑
@@ -410,6 +418,7 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
+      <!-- 카톡 복사 붙여넣기 스마트 파서 -->
       <div class="parser-box">
         <div class="parser-header">
           <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
@@ -442,9 +451,9 @@
           </div>
         </div>
 
-        <textarea id="shareTextOutput" class="report-area" readonly></textarea>
+        <textarea id="shareTextOutput" class="report-area"></textarea>
 
-        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 (요청 2 반영: 7H 이내 임박 강조) -->
+        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
             <span>🧪 일반 화학동 PM 현황 (화7, 화8, 화9, 화13, 화14)</span>
@@ -456,7 +465,7 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 (요청 3 & 4 반영: 14H 기준 초과 강조 & 일반 전기동 12H 지연 강조) -->
+  <!-- [탭 2] 자동 진척 게이지 -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col-even">
       <div style="display:flex; flex-direction:column; gap:12px;">
@@ -484,7 +493,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 (요청 2 반영: 7시간 이내 임박 강조) -->
+  <!-- [탭 3] 화학동 주기 관리 -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -498,7 +507,7 @@
     </div>
   </div>
 
-  <!-- [탭 4] 라인별 특이사항 수동 입력 (요청 1 반영: 오늘/내일 규칙 PM 라인만 동적 노출) -->
+  <!-- [탭 4] 라인별 특이사항 수동 입력 (요청 1 반영: 일반 화학동 포함 및 오늘/내일 규칙 PM 분리) -->
   <div id="tab4" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -511,7 +520,6 @@
           <input type="number" id="manualDayInput" min="1" max="31" style="width:52px; text-align:center;">일
         </div>
         
-        <!-- 요청 1번: 오늘/내일 규칙 PM 대상 라인만 동적 생성 -->
         <div>
           <select id="manualLineSelect" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
           <input type="text" id="manualCustomLineInput" placeholder="라인명 직접입력" style="display:none; width:120px; margin-left:4px;">
@@ -679,6 +687,7 @@
 </div>
 
 <script>
+// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
   authDomain: "pm1234-3069b.firebaseapp.com",
@@ -730,14 +739,14 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v38')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v38')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v38')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v38')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v39')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v39')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v39')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v39')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v38')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v38')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v38')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v39')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v39')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v39')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -798,13 +807,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v38', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v38', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v38', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v38', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v38', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v38', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v38', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v39', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v39', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v39', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v39', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v39', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v39', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v39', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -888,7 +897,6 @@ function selectQuickDay(choice) {
   safeRenderAll();
 }
 
-// 요청 2 반영: 화학동 현황판 7시간 이내 임박 시 주황색 강조
 function renderTab1ChemStatus() {
   const container = document.getElementById('tab1ChemStatusContainer');
   if (!container) return;
@@ -921,11 +929,11 @@ function renderTab1ChemStatus() {
       const dueKr = formatDateTimeKr(nextDue);
       const remainH = (nextDue - now) / 3600000;
       const isOverdue = now >= nextDue;
-      const isImminent = !isOverdue && remainH <= 7; // 7시간 이내 임박
+      const isImminent = !isOverdue && remainH <= 7;
 
       let bg = '#f8fafc';
       let border = '#e2e8f0';
-      let badgeHtml = `<span class="badge badge-sub">완료</span>`;
+      let badgeHtml = `<span class="badge badge-blue">${remainH.toFixed(1)}H 남음</span>`;
       let textCol = 'var(--accent)';
 
       if (isOverdue) {
@@ -1298,7 +1306,7 @@ function checkBiWeek(anchorDate, targetDate) {
   return (Math.abs(diffWeeks) % 2 === 0);
 }
 
-// 요청 1번 구현: 매트릭스를 참고하여 오늘과 내일의 규칙 PM 라인만 동적 생성 (일반 화학동 불규칙 제외)
+// 1번 수정: 일반 화학동 라인을 제외하지 않고 [오늘/내일 규칙 PM]과 [일반 화학동]으로 상시 포함
 function updateManualLineOptions() {
   const select = document.getElementById('manualLineSelect');
   if (!select) return;
@@ -1351,20 +1359,33 @@ function updateManualLineOptions() {
   const todayLines = getDayLines(targetDate);
   const tomorrowLines = getDayLines(tomorrowDate);
 
-  // 중복 제거하면서 순서 유지 (오늘 라인 -> 내일 라인)
-  const lineSet = new Set();
-  todayLines.forEach(l => lineSet.add(l));
-  tomorrowLines.forEach(l => lineSet.add(l));
+  // 오늘/내일 규칙 PM 라인
+  const ruleLinesSet = new Set();
+  todayLines.forEach(l => ruleLinesSet.add(l));
+  tomorrowLines.forEach(l => ruleLinesSet.add(l));
 
-  let html = '';
-  lineSet.forEach(l => {
+  // 일반 화학동 라인 (상시 포함)
+  const chemLines = ['화7', '화8', '화9', '화13', '화14'];
+
+  let html = '<optgroup label="오늘/내일 규칙 PM">';
+  ruleLinesSet.forEach(l => {
     html += `<option value="${l}">${l}</option>`;
   });
+  html += '</optgroup>';
+
+  html += '<optgroup label="일반 화학동">';
+  chemLines.forEach(l => {
+    html += `<option value="${l}">${l}</option>`;
+  });
+  html += '</optgroup>';
+
+  html += '<optgroup label="기타">';
   html += `<option value="CUSTOM">[직접 입력]</option>`;
+  html += '</optgroup>';
 
   select.innerHTML = html;
 
-  if (lineSet.has(curVal) || curVal === 'CUSTOM') {
+  if (ruleLinesSet.has(curVal) || chemLines.includes(curVal) || curVal === 'CUSTOM') {
     select.value = curVal;
   } else {
     select.selectedIndex = 0;
@@ -1510,936 +1531,6 @@ function renderManualNotesList() {
     chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
     container.appendChild(chip);
   });
-}
-
-// 1초 단위 실시간 자동 갱신 (요청 3 & 4 반영: 화학동 14H 기준 초과 강조 & 일반 전기동 12H 지연 강조)
-function updateLiveTimesOnly(now) {
-  chemList.forEach(line => {
-    const isRunning = (line.status === '시작');
-    if (!isRunning) return;
-
-    const bar = document.getElementById(`chem_bar_${line.id}`);
-    const pctBadge = document.getElementById(`chem_pct_${line.id}`);
-    const statusBox = document.getElementById(`chem_status_${line.id}`);
-    if (!bar || !statusBox) return;
-
-    const startTime = new Date(line.lastDone);
-    const elapsedMin = Math.max(0, (now - startTime) / 60000);
-    const target12hMin = 720;
-    const target14hMin = 840;
-    const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
-    const elapsedH = (elapsedMin / 60).toFixed(1);
-
-    bar.style.width = pct.toFixed(1) + '%';
-    if (pctBadge) pctBadge.innerText = `${pct.toFixed(0)}%`;
-
-    if (elapsedMin < target12hMin) {
-      const remainMin = Math.ceil(target12hMin - elapsedMin);
-      const rH = Math.floor(remainMin / 60);
-      const rM = remainMin % 60;
-      bar.className = 'progress-fill warn';
-      statusBox.className = 'status-detail-box';
-      statusBox.innerHTML = `
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <span>진척 상태: <strong>C/S 세척 및 준비 구간</strong> (경과: <strong>${elapsedH}시간</strong>)</span>
-          <strong style="color:var(--danger);">액이송(12H)까지 ${rH > 0 ? rH + '시간 ' : ''}${rM}분 남음</strong>
-        </div>
-        <div>💡 하단의 C/S 세척 기준에 맞춰 작업 진행 ➔ <strong>12시간 도래 시 액이송 시작</strong></div>
-      `;
-    } else if (elapsedMin >= target12hMin && elapsedMin < target14hMin) {
-      const to14hMin = Math.max(0, Math.ceil(target14hMin - elapsedMin));
-      bar.className = 'progress-fill alert';
-      statusBox.className = 'status-detail-box alert';
-      statusBox.innerHTML = `
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <strong style="color:var(--danger);">🚨 [12시간 경과] 액이송 시작 시점!</strong>
-          <span>경과: <strong>${elapsedH}시간</strong></span>
-        </div>
-        <div>작업: <strong>액이송 시작 ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 시편 확인</strong> (14H 기준까지 ${to14hMin}분 남음)</div>
-      `;
-    } else {
-      // 요청 4번 반영: 14시간은 양산가능이 아니라 PM 기준점! 14시간 초과 시 미완료 강력 경고 강조!
-      bar.className = 'progress-fill alert';
-      statusBox.className = 'status-detail-box alert';
-      statusBox.style.borderLeftColor = 'var(--danger)';
-      statusBox.style.background = '#fef2f2';
-      const overMin = Math.floor(elapsedMin - target14hMin);
-      const overH = (overMin / 60).toFixed(1);
-      statusBox.innerHTML = `
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <span style="color:var(--danger); font-weight:900; font-size:13.5px;">🚨 [14시간 기준 초과] PM 목표 시간 경과 (미완료 지연)</span>
-          <span style="color:var(--danger); font-weight:800;">총 경과: ${elapsedH}H (+${overH}H 초과)</span>
-        </div>
-        <div style="color:#991b1b; font-size:12px; margin-top:2px;">
-          화학동 PM 기준 소요시간(14H)이 초과되었습니다. 작업 상황을 확인하고 작업 종료 시 우측 상단의 <strong>[완료]</strong> 버튼을 눌러주세요.
-        </div>
-      `;
-    }
-  });
-
-  const day = new Date(selectedDateStr + 'T00:00:00').getDay();
-  let todayElecLines = [];
-  if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
-  else if (day === 2) todayElecLines = [{ name: '전기동 18라인', isPulse: false }, { name: '전기동 22라인', isPulse: false }];
-  else if (day === 3) todayElecLines = [{ name: '전기동 15라인', isPulse: false }, { name: '전기동 20라인', isPulse: true }];
-  else if (day === 4) todayElecLines = [{ name: '전기동 11라인', isPulse: false }, { name: '전기동 14라인', isPulse: false }, { name: '전기동 17라인', isPulse: false }];
-  else if (day === 5) todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
-  else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
-
-  todayElecLines.forEach(line => {
-    const isCompleted = !!elecCompletedFlags[selectedDateStr + '_' + line.name];
-    if (isCompleted) return;
-
-    if (line.isPulse) {
-      const pData = pulseProcessFlags[line.name];
-      const box = document.getElementById(`pulse_status_detail_${line.name}`);
-      const bar = document.getElementById(`pulse_bar_${line.name}`);
-      const pctBadge = document.getElementById(`pulse_pct_${line.name}`);
-      if (!box || !bar || !pData || !pData.isStarted) return;
-
-      const curH = pData.h !== undefined ? pData.h : 14;
-      const curM = pData.m !== undefined ? pData.m : 0;
-      
-      const baseD = new Date(selectedDateStr + 'T00:00:00');
-      const t0 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), curH, curM, 0);
-
-      const t1 = new Date(t0.getTime() + 90 * 60000);
-      const t2 = new Date(t1.getTime() + 90 * 60000);
-      const t3 = new Date(t2.getTime() + 90 * 60000);
-      const t4 = new Date(t3.getTime() + 90 * 60000);
-
-      const totalElapsedMin = Math.max(0, (now - t0) / 60000);
-      const totalPct = Math.min(100, Math.max(0, (totalElapsedMin / 360) * 100));
-      bar.style.width = totalPct.toFixed(1) + '%';
-      if (pctBadge) pctBadge.innerText = `${totalPct.toFixed(0)}%`;
-
-      let activeStepIdx = 0;
-      let remainMinStep = 0;
-      let currentStepName = '';
-
-      const s1 = document.getElementById(`pulse_step_${line.name}_1`);
-      const s2 = document.getElementById(`pulse_step_${line.name}_2`);
-      const s3 = document.getElementById(`pulse_step_${line.name}_3`);
-      const s4 = document.getElementById(`pulse_step_${line.name}_4`);
-
-      if (now < t0) {
-        currentStepName = '0.5 DC 더미 대기 중';
-        remainMinStep = Math.ceil((t0 - now) / 60000);
-        if (s1) s1.className = 'pulse-step-item';
-        if (s2) s2.className = 'pulse-step-item';
-        if (s3) s3.className = 'pulse-step-item';
-        if (s4) s4.className = 'pulse-step-item';
-      } else if (now >= t0 && now < t1) {
-        activeStepIdx = 1;
-        currentStepName = '0.5 DC 더미';
-        remainMinStep = Math.ceil((t1 - now) / 60000);
-        if (s1) s1.className = 'pulse-step-item active';
-        if (s2) s2.className = 'pulse-step-item';
-        if (s3) s3.className = 'pulse-step-item';
-        if (s4) s4.className = 'pulse-step-item';
-      } else if (now >= t1 && now < t2) {
-        activeStepIdx = 2;
-        currentStepName = '1.5 DC 더미';
-        remainMinStep = Math.ceil((t2 - now) / 60000);
-        if (s1) s1.className = 'pulse-step-item done';
-        if (s2) s2.className = 'pulse-step-item active';
-        if (s3) s3.className = 'pulse-step-item';
-        if (s4) s4.className = 'pulse-step-item';
-      } else if (now >= t2 && now < t3) {
-        activeStepIdx = 3;
-        currentStepName = '펄스대비 패스';
-        remainMinStep = Math.ceil((t3 - now) / 60000);
-        if (s1) s1.className = 'pulse-step-item done';
-        if (s2) s2.className = 'pulse-step-item done';
-        if (s3) s3.className = 'pulse-step-item active';
-        if (s4) s4.className = 'pulse-step-item';
-      } else if (now >= t3 && now < t4) {
-        activeStepIdx = 4;
-        currentStepName = '펄스 더미';
-        remainMinStep = Math.ceil((t4 - now) / 60000);
-        if (s1) s1.className = 'pulse-step-item done';
-        if (s2) s2.className = 'pulse-step-item done';
-        if (s3) s3.className = 'pulse-step-item done';
-        if (s4) s4.className = 'pulse-step-item active';
-      } else {
-        activeStepIdx = 5;
-        currentStepName = '광 확인 및 양산 가동';
-        remainMinStep = 0;
-        if (s1) s1.className = 'pulse-step-item done';
-        if (s2) s2.className = 'pulse-step-item done';
-        if (s3) s3.className = 'pulse-step-item done';
-        if (s4) s4.className = 'pulse-step-item done';
-      }
-
-      box.innerHTML = `
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <span>현재 진행: <strong style="color:var(--purple);">[${currentStepName}]</strong></span>
-          <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '전체 4단계 완료'}</strong>
-        </div>
-        <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">
-          ⏱️ <strong>단계별 자동 일정:</strong> 0.5 DC(${formatTimeKr(t1.getHours(), t1.getMinutes())}) ➔ 1.5 DC(${formatTimeKr(t2.getHours(), t2.getMinutes())}) ➔ 펄스패스(${formatTimeKr(t3.getHours(), t3.getMinutes())}) ➔ 펄스더미(${formatTimeKr(t4.getHours(), t4.getMinutes())})
-        </div>
-        <div style="color:var(--success); font-weight:800; font-size:13px; margin-top:4px;">
-          🎯 [펄스 4단계 완료] 최종 양산 예정: <strong>${formatTimeKr(t4.getHours(), t4.getMinutes())}</strong> (광 상태 확인 후 양산)
-        </div>
-      `;
-    } else {
-      // 일반 전기동 라인 (요청 3 반영: 12시간 넘도록 미완료 시 강력 강조)
-      const baseD = new Date(selectedDateStr + 'T00:00:00');
-      const start0830 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), 8, 30, 0);
-      const isOver12H = (now - start0830) >= (12 * 3600000); // 08:30 기준 12시간 경과 (20:30 이후)
-
-      const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
-      const dummyBox = document.getElementById(`elec_dummy_est_${line.name}`);
-      const gaugeCard = document.getElementById(`elec_card_${line.name}`);
-
-      if (gaugeCard) {
-        if (isOver12H) {
-          gaugeCard.style.borderLeft = '5px solid var(--danger)';
-          gaugeCard.style.background = '#fef2f2';
-        } else {
-          gaugeCard.style.borderLeft = '1px solid var(--border)';
-          gaugeCard.style.background = '#f8fafc';
-        }
-      }
-
-      let overdueNotice = '';
-      if (isOver12H) {
-        const elapsedTotalH = ((now - start0830) / 3600000).toFixed(1);
-        overdueNotice = `
-          <div style="background:#fee2e2; border:1px solid #fecaca; border-radius:6px; padding:7px 10px; margin-top:4px; color:var(--danger); font-weight:800; font-size:12.5px;">
-            🚨 [12시간 초과 지연] 일반 전기동 PM이 12시간(${elapsedTotalH}H 경과) 넘도록 미완료 상태입니다!
-          </div>
-        `;
-      }
-
-      if (dummyBox && isDummyChecked) {
-        const h = elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14;
-        const m = elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0;
-        const dStart = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), h, m, 0);
-        const targetProd = new Date(dStart.getTime() + 90 * 60000);
-        
-        let dummyStatusText = '';
-        if (now < dStart) {
-          dummyStatusText = `더미 투입 대기 중 (${h}시 ${m}분 시작 예정)`;
-        } else if (now >= dStart && now < targetProd) {
-          const rMin = Math.ceil((targetProd - now) / 60000);
-          dummyStatusText = `더미 1싸이클 진행 중 (완료까지 약 ${rMin}분 남음)`;
-        } else {
-          dummyStatusText = `✅ 더미 1싸이클 1.5시간 완료 ➔ 양산 가능`;
-        }
-
-        dummyBox.innerHTML = `
-          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:7px 10px; margin-top:4px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
-              <span style="font-size:12px; color:var(--text-secondary);">${dummyStatusText}</span>
-              <div style="color:var(--success); font-weight:800; font-size:12.5px;">
-                🎯 양산 예정 시각: <strong>${formatTimeKr(targetProd.getHours(), targetProd.getMinutes())}</strong>
-              </div>
-            </div>
-          </div>
-          ${overdueNotice}
-        `;
-      } else if (dummyBox) {
-        dummyBox.innerHTML = overdueNotice;
-      }
-    }
-  });
-}
-
-function renderActiveChemGauges(now) {
-  const container = document.getElementById('activeChemGaugesContainer');
-  if (!container) return;
-
-  const activeOrDueChems = chemList.filter(c => {
-    if (c.status === '시작') return true;
-    if (c.status === '완료') {
-      const base = new Date(c.lastDone);
-      if (!isNaN(base.getTime())) {
-        const nextDue = new Date(base.getTime() + 72 * 3600000);
-        return (now >= nextDue || formatDateOnly(nextDue) <= selectedDateStr);
-      }
-    }
-    return false;
-  });
-
-  if (activeOrDueChems.length === 0) {
-    let quickStartBtns = chemList.map(c => `
-      <button class="btn btn-sub btn-sm" onclick="setChemStepStatusById('${c.id}', '시작')">+ ${c.id} 시작</button>
-    `).join(' ');
-
-    container.innerHTML = `
-      <div class="status-detail-box" style="padding:16px; text-align:center; color:var(--text-secondary);">
-        현재 진행 중이거나 PM 예정 주기가 도래한 화학동 라인이 없습니다.<br>
-        <div style="margin-top:10px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
-          ${quickStartBtns}
-        </div>
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-
-  activeOrDueChems.forEach(line => {
-    const isDuePending = (line.status === '완료');
-    const startTime = new Date(line.lastDone);
-    const nextDue = new Date(startTime.getTime() + 72 * 3600000);
-
-    if (isDuePending) {
-      html += `
-        <div class="gauge-box" style="border-left: 4px solid var(--warning); background:#fffbeb;">
-          <div class="gauge-top">
-            <div>
-              <strong style="font-size:14.5px; color:#b45309;">🔔 ${escapeHtml(line.id)} PM 예정 시간 도래!</strong>
-              <span class="badge badge-yellow" style="margin-left:4px;">주기 도래</span>
-            </div>
-            <button class="btn btn-sm" style="background:var(--accent); padding:5px 12px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${escapeHtml(line.id)} PM 시작</button>
-          </div>
-          <div style="font-size:12.5px; color:#78350f;">
-            직전 완료: <strong>${formatDateTimeKr(startTime)}</strong> ➔ PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong><br>
-            💡 위 <strong>[PM 시작]</strong> 버튼을 누르면 시작 일시가 <strong>현재 시각</strong>으로 자동 갱신되며 탭3과 연동됩니다.
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    const elapsedMin = Math.max(0, (now - startTime) / 60000);
-    const target12hMin = 720;
-    const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
-
-    html += `
-      <div class="gauge-box" id="gauge_card_${line.id}">
-        <div class="gauge-top">
-          <div>
-            <strong style="font-size:15px; color:#0f172a;">${escapeHtml(line.id)} PM</strong>
-            <span class="badge badge-blue" style="margin-left:4px;">${escapeHtml(line.status)}</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <div class="status-step-group-compact">
-              <button class="status-step-btn-compact active-시작" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
-              <button class="status-step-btn-compact" onclick="completeChemPM('${line.id}')">완료</button>
-            </div>
-            <span class="badge badge-blue" id="chem_pct_${line.id}">${pct.toFixed(0)}%</span>
-          </div>
-        </div>
-        <div class="progress-track"><div id="chem_bar_${line.id}" class="progress-fill ${pct>=100?'done':(pct>=90?'alert':'warn')}" style="width:${pct}%;"></div></div>
-        <div class="timeline-ticks">
-          <span>0H (PM시작)</span>
-          <span>4H (C/S진행)</span>
-          <span>8H (세척)</span>
-          <span style="color:var(--danger); font-weight:700;">★12H (액이송)</span>
-          <span style="color:var(--warning); font-weight:700;">14H (PM기준)</span>
-        </div>
-        <div class="status-detail-box" id="chem_status_${line.id}"></div>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  updateLiveTimesOnly(now);
-}
-
-function setChemStepStatusById(lineId, st) {
-  const line = chemList.find(c => c.id === lineId);
-  if (!line) return;
-
-  line.status = st;
-
-  if (st === '시작') {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    const d = now.getDate();
-    const h = now.getHours();
-    const min = now.getMinutes() >= 30 ? 30 : 0;
-    line.lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  }
-
-  syncDataToFirebase();
-  renderChemList();
-  renderWeeklyMatrix();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
-}
-
-function completeChemPM(lineId) {
-  if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
-  const line = chemList.find(c => c.id === lineId);
-  if (!line) return;
-  
-  line.status = '완료';
-  line.lastDone = new Date().toISOString();
-
-  syncDataToFirebase();
-  renderChemList();
-  renderWeeklyMatrix();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
-}
-
-function togglePulseProcess(lineName, isChecked) {
-  if (isChecked) {
-    const now = new Date();
-    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
-    pulseProcessFlags[lineName] = {
-      isStarted: true,
-      h: now.getHours(),
-      m: roundMin
-    };
-  } else {
-    delete pulseProcessFlags[lineName];
-  }
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
-}
-
-function updatePulseProcessTime(lineName, part, val) {
-  if (!pulseProcessFlags[lineName]) return;
-  pulseProcessFlags[lineName][part] = Number(val);
-  syncDataToFirebase();
-  updateLiveTimesOnly(new Date());
-}
-
-function completeElecPM(lineName) {
-  if (!confirm(`[${lineName}] PM을 완료하시겠습니까?\n진척 게이지 목록에서 제외됩니다.`)) return;
-
-  const key = selectedDateStr + '_' + lineName;
-  elecCompletedFlags[key] = true;
-
-  delete elecDummyFlags[lineName];
-  delete pulseProcessFlags[lineName];
-
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
-}
-
-function restoreCompletedElec() {
-  const day = new Date(selectedDateStr + 'T00:00:00').getDay();
-  let todayElecLines = [];
-  if (day === 1) todayElecLines = ['전기동 9라인', '전기동 16라인'];
-  else if (day === 2) todayElecLines = ['전기동 18라인', '전기동 22라인'];
-  else if (day === 3) todayElecLines = ['전기동 15라인', '전기동 20라인'];
-  else if (day === 4) todayElecLines = ['전기동 11라인', '전기동 14라인', '전기동 17라인'];
-  else if (day === 5) todayElecLines = ['전기동 13라인', '전기동 21라인'];
-  else todayElecLines = ['전기동 13라인', '전기동 21라인'];
-
-  todayElecLines.forEach(name => {
-    delete elecCompletedFlags[selectedDateStr + '_' + name];
-  });
-
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
-}
-
-function toggleElecDummy(lineName, isChecked) {
-  if (isChecked) {
-    const now = new Date();
-    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
-    elecDummyFlags[lineName] = {
-      isDummy: true,
-      h: now.getHours(),
-      m: roundMin
-    };
-  } else {
-    delete elecDummyFlags[lineName];
-  }
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
-}
-
-function updateElecDummyTimeSelect(lineName, part, val) {
-  if (!elecDummyFlags[lineName]) return;
-  elecDummyFlags[lineName][part] = Number(val);
-  syncDataToFirebase();
-  updateLiveTimesOnly(new Date());
-}
-
-function renderElectroGauges(now) {
-  const container = document.getElementById('elecGaugesContainer');
-  const restoreBtn = document.getElementById('btnRestoreElec');
-  if (!container) return;
-
-  const targetDate = new Date(selectedDateStr + 'T00:00:00');
-  const day = targetDate.getDay();
-  let todayElecLines = [];
-
-  if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
-  else if (day === 2) todayElecLines = [{ name: '전기동 18라인', isPulse: false }, { name: '전기동 22라인', isPulse: false }];
-  else if (day === 3) todayElecLines = [{ name: '전기동 15라인', isPulse: false }, { name: '전기동 20라인', isPulse: true }];
-  else if (day === 4) todayElecLines = [{ name: '전기동 11라인', isPulse: false }, { name: '전기동 14라인', isPulse: false }, { name: '전기동 17라인', isPulse: false }];
-  else if (day === 5) todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
-  else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
-
-  const pendingElecLines = todayElecLines.filter(l => !elecCompletedFlags[selectedDateStr + '_' + l.name]);
-  const hasCompletedAny = todayElecLines.some(l => !!elecCompletedFlags[selectedDateStr + '_' + l.name]);
-
-  if (restoreBtn) {
-    restoreBtn.style.display = hasCompletedAny ? 'inline-block' : 'none';
-  }
-
-  if (pendingElecLines.length === 0) {
-    container.innerHTML = `
-      <div class="status-detail-box" style="padding:16px; text-align:center; color:var(--text-secondary);">
-        금일 예정된 모든 전기동 PM이 <strong>완료</strong>되었습니다. ✅<br>
-        <button class="btn btn-sub btn-sm" style="margin-top:8px;" onclick="restoreCompletedElec()">완료 라인 다시 표시하기</button>
-      </div>
-    `;
-    return;
-  }
-
-  const start0830 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 30, 0);
-  const end1400 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0, 0);
-
-  let html = '';
-
-  pendingElecLines.forEach(line => {
-    const hasManualEquipNote = manualNotes.some(n => n.date === selectedDateStr && n.line.includes(line.name.split('라인')[0]) && n.text.includes('설비작업'));
-    const isEquipWorkActive = (equipWorkFlags[line.name] !== undefined) ? equipWorkFlags[line.name] : hasManualEquipNote;
-
-    if (line.isPulse) {
-      const pData = pulseProcessFlags[line.name] || {};
-      const isPulseStarted = !!pData.isStarted;
-      const curH = isPulseStarted ? (pData.h !== undefined ? pData.h : 14) : 14;
-      const curM = isPulseStarted ? (pData.m !== undefined ? pData.m : 0) : 0;
-
-      let hourOptions = '';
-      for (let h = 0; h <= 23; h++) {
-        hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
-      }
-      let minOptions = `
-        <option value="0" ${curM === 0 ? 'selected' : ''}>00분</option>
-        <option value="30" ${curM === 30 ? 'selected' : ''}>30분</option>
-      `;
-
-      let pulseTimeControls = '';
-      if (isPulseStarted) {
-        pulseTimeControls = `
-          <div style="display:inline-flex; align-items:center; gap:2px; margin-left:2px;">
-            <select style="padding:2px 4px; font-size:11px;" onchange="updatePulseProcessTime('${line.name}', 'h', this.value)">${hourOptions}</select>
-            <select style="padding:2px 4px; font-size:11px;" onchange="updatePulseProcessTime('${line.name}', 'm', this.value)">${minOptions}</select>
-          </div>
-        `;
-      }
-
-      html += `
-        <div class="gauge-box">
-          <div class="gauge-top">
-            <div>
-              <strong>${escapeHtml(line.name)} <span class="badge badge-purple">펄스 4단계 공정</span></strong>
-              <label style="margin-left:6px; font-size:11.5px; cursor:pointer;">
-                <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
-                🛠️ 설비(17시)
-              </label>
-            </div>
-            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-              <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
-              <label style="font-size:11.5px; font-weight:800; color:var(--purple); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
-                <input type="checkbox" ${isPulseStarted ? 'checked' : ''} onchange="togglePulseProcess('${line.name}', this.checked)">
-                ⚡ 0.5 DC 시작
-              </label>
-              ${pulseTimeControls}
-              <span class="badge badge-purple" id="pulse_pct_${line.name}">0%</span>
-            </div>
-          </div>
-
-          <div class="pulse-step-container">
-            <div class="pulse-step-item" id="pulse_step_${line.name}_1">
-              <span>1단계 (1.5H)</span>
-              <div>0.5 DC 더미</div>
-            </div>
-            <div class="pulse-step-item" id="pulse_step_${line.name}_2">
-              <span>2단계 (1.5H)</span>
-              <div>1.5 DC 더미</div>
-            </div>
-            <div class="pulse-step-item" id="pulse_step_${line.name}_3">
-              <span>3단계 (1.5H)</span>
-              <div>펄스대비 패스</div>
-            </div>
-            <div class="pulse-step-item" id="pulse_step_${line.name}_4">
-              <span>4단계 (1.5H)</span>
-              <div>펄스 더미</div>
-            </div>
-          </div>
-
-          <div class="progress-track"><div id="pulse_bar_${line.name}" class="progress-fill warn" style="width:0%;"></div></div>
-          
-          <div class="timeline-ticks">
-            <span>0.5 DC 시작</span>
-            <span>1.5 DC</span>
-            <span>패스</span>
-            <span>더미</span>
-            <span style="color:var(--success); font-weight:700;">광확인/양산</span>
-          </div>
-
-          <div class="status-detail-box" id="pulse_status_detail_${line.name}">
-            <div>${isPulseStarted ? '진행 상태 계산 중...' : '08:30 PM 시작 ➔ 14:00 건욕 완료 후 <strong>[0.5 DC 시작]</strong>을 체크하면 시간마다 자동으로 단계가 넘어갑니다.'}</div>
-          </div>
-        </div>
-      `;
-
-    } else {
-      // 일반 전기동 라인 (12시간 넘도록 미완료 시 지연 강조)
-      const baseD = new Date(selectedDateStr + 'T00:00:00');
-      const start0830 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), 8, 30, 0);
-      const isOver12H = (now - start0830) >= (12 * 3600000);
-
-      const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
-      const curH = isDummyChecked ? (elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14) : 14;
-      const curM = isDummyChecked ? (elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0) : 0;
-
-      let hourOptions = '';
-      for (let h = 0; h <= 23; h++) {
-        hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
-      }
-      let minOptions = `
-        <option value="0" ${curM === 0 ? 'selected' : ''}>00분</option>
-        <option value="30" ${curM === 30 ? 'selected' : ''}>30분</option>
-      `;
-
-      let timeSelectHtml = '';
-      if (isDummyChecked) {
-        timeSelectHtml = `
-          <div style="display:inline-flex; align-items:center; gap:2px; margin-left:2px;">
-            <select style="padding:2px 4px; font-size:11px;" onchange="updateElecDummyTimeSelect('${line.name}', 'h', this.value)">${hourOptions}</select>
-            <select style="padding:2px 4px; font-size:11px;" onchange="updateElecDummyTimeSelect('${line.name}', 'm', this.value)">${minOptions}</select>
-          </div>
-        `;
-      }
-
-      let progressPct = 0;
-      let stepName = '';
-      let barClass = 'progress-fill';
-
-      if (now < start0830) {
-        stepName = '07:00 패스 완료 / 08:30 PM 시작 대기'; progressPct = 5;
-      } else if (now >= start0830 && now < end1400) {
-        progressPct = ((now - start0830) / 330 / 60000) * 40;
-        const rMin = Math.ceil((end1400 - now) / 60000);
-        stepName = `전처리 건욕 진행 중 (14시 마감까지 ${Math.floor(rMin/60)}시간 ${rMin%60}분 남음)`;
-        barClass = rMin <= 60 ? 'progress-fill alert' : 'progress-fill warn';
-      } else {
-        progressPct = 100;
-        stepName = '✅ 14시 전처리 건욕 완료 구간 경과';
-        barClass = 'progress-fill done';
-      }
-
-      html += `
-        <div class="gauge-box" id="elec_card_${line.name}">
-          <div class="gauge-top">
-            <div>
-              <strong>${escapeHtml(line.name)} <span class="badge badge-blue">일반 건욕</span></strong>
-              <label style="margin-left:6px; font-size:11.5px; cursor:pointer;">
-                <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
-                🛠️ 설비(17시)
-              </label>
-            </div>
-            <div style="display:flex; align-items:center; gap:2px; flex-wrap:wrap;">
-              <button class="btn btn-sm" style="background:var(--success); padding:3px 8px;" onclick="completeElecPM('${line.name}')">완료</button>
-              <label style="font-size:11.5px; font-weight:700; color:var(--success); cursor:pointer; display:flex; align-items:center; gap:2px; margin-left:4px;">
-                <input type="checkbox" ${isDummyChecked ? 'checked' : ''} onchange="toggleElecDummy('${line.name}', this.checked)">
-                🔄 더미투입
-              </label>
-              ${timeSelectHtml}
-              <span class="badge badge-blue" style="margin-left:4px;">${progressPct.toFixed(0)}%</span>
-            </div>
-          </div>
-          <div class="progress-track"><div class="${barClass}" style="width:${progressPct}%;"></div></div>
-          <div class="timeline-ticks">
-            <span>07:00 패스</span>
-            <span>08:30 PM시작</span>
-            <span style="color:var(--danger); font-weight:700;">14:00 건욕완료</span>
-            ${isEquipWorkActive ? '<span style="color:var(--danger); font-weight:700;">17:00 설비완료</span>' : ''}
-            <span>더미 1싸이클</span>
-            <span style="color:var(--success); font-weight:700;">양산</span>
-          </div>
-          <div class="status-detail-box">
-            <div style="font-weight:700;">${stepName}</div>
-            <div id="elec_dummy_est_${line.name}"></div>
-          </div>
-        </div>
-      `;
-    }
-  });
-
-  container.innerHTML = html;
-  updateLiveTimesOnly(now);
-}
-
-// 탭 3 화학동 관리 (요청 2 반영: 7시간 이내 임박 시 주황색 강조)
-function renderChemList() {
-  const container = document.getElementById('chemListContainer');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const statusList = ['시작', '완료'];
-
-  chemList.forEach((c, idx) => {
-    if (c.status === '대기' || c.status === '분석') c.status = '시작';
-
-    const isHwa8 = c.id === '화8';
-    const card = document.createElement('div');
-    card.style.background = '#f8fafc';
-    card.style.border = '1px solid var(--border-light)';
-    card.style.borderRadius = '10px';
-    card.style.padding = '12px 14px';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.gap = '8px';
-
-    let statusBtnsHtml = `<div class="status-step-group-compact">`;
-    statusList.forEach(st => {
-      const activeClass = (c.status === st) ? `active-${st}` : '';
-      statusBtnsHtml += `<button class="status-step-btn-compact ${activeClass}" onclick="setChemStepStatus(${idx}, '${st}')">${st}</button>`;
-    });
-    statusBtnsHtml += `</div>`;
-
-    const t = new Date(c.lastDone);
-    const curD = isNaN(t.getTime()) ? (new Date().getDate()) : t.getDate();
-    const curH = isNaN(t.getTime()) ? 0 : t.getHours();
-    const rawMin = isNaN(t.getTime()) ? 0 : t.getMinutes();
-    const curMin = rawMin >= 30 ? 30 : 0;
-
-    let hourOptions = '';
-    for (let h = 0; h <= 23; h++) {
-      hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
-    }
-
-    card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-        <strong style="font-size:14.5px;">${escapeHtml(c.id)} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지</span>' : ''}</strong>
-        <div>
-          ${statusBtnsHtml}
-          <button class="btn btn-sub btn-sm" style="margin-left:4px; padding:4px 8px;" onclick="setChemNow(${idx})">현재시각</button>
-        </div>
-      </div>
-      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:3px;">
-          <input type="number" id="d_${idx}" value="${curD}" min="1" max="31" style="width:52px; text-align:center;" onchange="updateChemFromParts(${idx})">일
-          <select id="h_${idx}" onchange="updateChemFromParts(${idx})">${hourOptions}</select>
-          <select id="min_${idx}" onchange="updateChemFromParts(${idx})">
-            <option value="0" ${curMin === 0 ? 'selected' : ''}>00분</option>
-            <option value="30" ${curMin === 30 ? 'selected' : ''}>30분</option>
-          </select>
-        </div>
-      </div>
-      <div id="chem_box_${idx}" style="font-size:13px; padding:10px 14px; background:#ffffff; border-radius:6px; border-left:5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,0.03);"></div>
-    `;
-    container.appendChild(card);
-  });
-  updateChemRealtimeStatuses();
-}
-
-function updateChemFromParts(idx) {
-  const d = Number(document.getElementById(`d_${idx}`).value);
-  const h = Number(document.getElementById(`h_${idx}`).value);
-  const min = Number(document.getElementById(`min_${idx}`).value);
-
-  let base = new Date(chemList[idx].lastDone);
-  if (isNaN(base.getTime())) base = new Date();
-  
-  let year = base.getFullYear();
-  let month = base.getMonth() + 1;
-
-  const prevD = base.getDate();
-  if (prevD >= 25 && d <= 5) {
-    const nextMonthDate = new Date(year, month, 1);
-    year = nextMonthDate.getFullYear();
-    month = nextMonthDate.getMonth() + 1;
-  } else if (prevD <= 5 && d >= 25) {
-    const prevMonthDate = new Date(year, month - 2, 1);
-    year = prevMonthDate.getFullYear();
-    month = prevMonthDate.getMonth() + 1;
-  }
-
-  chemList[idx].lastDone = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  syncDataToFirebase();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
-  updateChemRealtimeStatuses();
-}
-
-function setChemStepStatus(idx, st) {
-  chemList[idx].status = st;
-
-  if (st === '시작') {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    const d = now.getDate();
-    const h = now.getHours();
-    const min = now.getMinutes() >= 30 ? 30 : 0;
-    chemList[idx].lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  }
-
-  syncDataToFirebase();
-  renderChemList();
-  renderWeeklyMatrix();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
-}
-
-// 요청 2 반영: 화학동 관리 내 차기 PM 7시간 이내 임박 시 강조
-function updateChemRealtimeStatuses() {
-  const now = new Date();
-  chemList.forEach((c, idx) => {
-    const box = document.getElementById(`chem_box_${idx}`);
-    if (!box) return;
-    const t = new Date(c.lastDone);
-    if (isNaN(t.getTime())) { box.innerText = '일시 확인 필요'; return; }
-
-    const isRunning = (c.status === '시작');
-
-    if (isRunning) {
-      const elapsedH = (now - t) / 3600000;
-      const transferTime = new Date(t.getTime() + 12 * 3600000);
-      box.style.borderLeftColor = 'var(--success)';
-      box.style.background = '#f0fdf4';
-      box.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-          <span style="color:#15803d; font-weight:800; font-size:13.5px;">⚡ PM 진행 중 [${c.status}] (${elapsedH.toFixed(1)}H 경과)</span>
-          <span style="font-size:12px; color:var(--text-secondary);">시작: ${formatDayTimeKr(t)}</span>
-        </div>
-        <div style="font-size:14px; margin-top:3px;">★ 12시간 액이송 예정: <strong style="color:var(--danger); font-size:15px; font-weight:900;">${formatDayTimeKr(transferTime)}</strong></div>
-      `;
-    } else {
-      const nextDue = new Date(t.getTime() + 72 * 3600000);
-      const remainH = (nextDue - now) / 3600000;
-      const isOverdue = now >= nextDue;
-      const isImminent = !isOverdue && remainH <= 7; // 7시간 이내 임박
-
-      let borderCol = 'var(--accent)';
-      let bgCol = '#ffffff';
-      let badgeHtml = `<span class="badge badge-blue">${remainH.toFixed(1)}H 남음</span>`;
-      let textCol = 'var(--accent)';
-
-      if (isOverdue) {
-        borderCol = 'var(--danger)';
-        bgCol = '#fef2f2';
-        badgeHtml = `<span class="badge badge-red">주기 초과</span>`;
-        textCol = 'var(--danger)';
-      } else if (isImminent) {
-        borderCol = 'var(--warning)';
-        bgCol = '#fffbeb';
-        badgeHtml = `<span class="badge badge-yellow">⚠️ 7H 이내 임박</span>`;
-        textCol = 'var(--warning)';
-      }
-
-      box.style.borderLeftColor = borderCol;
-      box.style.background = bgCol;
-
-      let html = `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-          <span style="font-size:12.5px; color:var(--text-secondary);">차기 72H PM 주기</span>
-          ${badgeHtml}
-        </div>
-        <div style="font-size:14px; margin-top:2px;">차기 PM 예정: <strong style="color:${textCol}; font-size:15.5px; font-weight:900;">${formatDayTimeKr(nextDue)}</strong></div>
-      `;
-
-      if (c.id === '화8') {
-        const buildupLimit = new Date(t.getTime() + 48 * 3600000);
-        const bRemain = (buildupLimit - now) / 3600000;
-        if (bRemain <= 0) {
-          html += `<div style="color:var(--danger); font-weight:800; font-size:12.5px; margin-top:3px;">⛔ 빌드업 금지 적용 중 (${formatDayTimeKr(buildupLimit)} 경과)</div>`;
-        } else {
-          html += `<div style="color:var(--success); font-weight:800; font-size:12.5px; margin-top:3px;">✅ 빌드업 가능 (${formatDayTimeKr(buildupLimit)}까지 / ${bRemain.toFixed(1)}H 남음)</div>`;
-        }
-      }
-      box.innerHTML = html;
-    }
-  });
-}
-
-function setChemNow(idx) {
-  const now = new Date();
-  const year = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const d = now.getDate();
-  const h = now.getHours();
-  const min = now.getMinutes() >= 30 ? 30 : 0;
-  chemList[idx].lastDone = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  
-  const elD = document.getElementById(`d_${idx}`);
-  const elH = document.getElementById(`h_${idx}`);
-  const elMin = document.getElementById(`min_${idx}`);
-  if (elD) elD.value = d;
-  if (elH) elH.value = h;
-  if (elMin) elMin.value = min;
-
-  syncDataToFirebase();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
-}
-
-let activePulseReminds = [];
-
-function renderPulseTable() {
-  const tbody = document.getElementById('pulseTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  const now = new Date();
-  activePulseReminds = [];
-
-  pulseList.forEach((p, idx) => {
-    const base = new Date(p.lastDate + 'T00:00:00');
-    const d1 = new Date(base.getTime() + 120 * 86400000);
-    const d2 = new Date(base.getTime() + 240 * 86400000);
-    const d3 = new Date(base.getTime() + 360 * 86400000);
-    const diff = Math.ceil((d1 - now) / 86400000);
-
-    let badge = '';
-    if (diff <= 28 && diff > 0) {
-      badge = `<span class="badge badge-purple">🔔 D-${diff} (4주 전 리마인드)</span>`;
-      activePulseReminds.push(`${p.line} 4주 전 (${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]} 예정)`);
-    } else if (diff < 0) {
-      badge = `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`;
-    } else {
-      badge = `<span class="badge badge-green">D-${diff}</span>`;
-    }
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${escapeHtml(p.line)}</strong></td>
-      <td><input type="date" value="${escapeHtml(p.lastDate)}" onchange="updatePulseDate(${idx}, this.value)" style="width:130px;"></td>
-      <td><strong>${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]}</strong></td>
-      <td>${formatDateTimeKr(d2).split(' ')[0]} ${formatDateTimeKr(d2).split(' ')[1]}</td>
-      <td>${formatDateTimeKr(d3).split(' ')[0]} ${formatDateTimeKr(d3).split(' ')[1]}</td>
-      <td>${badge}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  checkPulseBannerTrigger();
-}
-
-function checkPulseBannerTrigger() {
-  const banner = document.getElementById('remindBanner');
-  const bannerText = document.getElementById('remindBannerText');
-  const dismissedKey = 'pulse_banner_dismissed_' + selectedDateStr;
-
-  if (activePulseReminds.length > 0 && !sessionStorage.getItem(dismissedKey)) {
-    bannerText.innerHTML = `🔔 <strong>[액퍼내기 4주 전 알림]</strong> ${activePulseReminds.join(' / ')}`;
-    banner.style.display = 'flex';
-  } else {
-    banner.style.display = 'none';
-  }
-}
-
-function dismissRemindBanner() {
-  document.getElementById('remindBanner').style.display = 'none';
-  sessionStorage.setItem('pulse_banner_dismissed_' + selectedDateStr, 'true');
-}
-
-function updatePulseDate(idx, val) {
-  pulseList[idx].lastDate = val;
-  syncDataToFirebase();
-  renderPulseTable();
 }
 
 function generateShareText() {
