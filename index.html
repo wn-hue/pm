@@ -63,7 +63,7 @@
     background: none; border: none; font-size: 16px; cursor: pointer; color: #86198f; font-weight: bold; padding: 0 6px;
   }
 
-  /* 헤더: 상하/좌우 대칭 정렬 */
+  /* 헤더 */
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -165,7 +165,6 @@
     flex-wrap: wrap;
   }
 
-  /* 입력폼 iOS 최적화 */
   input, select, textarea {
     background: #ffffff;
     border: 1px solid var(--border);
@@ -199,7 +198,6 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
-  /* 카톡 파서 박스 */
   .parser-box {
     background: #fefce8;
     border: 1px solid #fef08a;
@@ -209,11 +207,7 @@
     flex-direction: column;
     gap: 8px;
   }
-  .parser-header {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
+  .parser-header { display: flex; flex-direction: column; gap: 2px; }
 
   .report-area {
     width: 100%;
@@ -229,7 +223,6 @@
     resize: vertical;
   }
 
-  /* 게이지 영역 */
   .grid-2col-even {
     display: grid;
     grid-template-columns: 1fr;
@@ -262,6 +255,8 @@
     background: #ffffff; border: 1px solid var(--border-light); border-left: 4px solid var(--accent);
     padding: 10px 12px; border-radius: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 4px;
   }
+  .status-detail-box.warn { border-left-color: var(--warning); background: #fffbeb; }
+  .status-detail-box.alert { border-left-color: var(--danger); background: #fef2f2; }
 
   .badge {
     font-size: 11px; padding: 2px 7px; border-radius: 5px; font-weight: 700; display: inline-block; white-space: nowrap;
@@ -292,7 +287,6 @@
   .pulse-step-item.done { background: #ecfdf5; border-color: #a7f3d0; color: var(--success); }
   .pulse-step-item.active { background: #f3e8ff; border-color: #c084fc; color: var(--purple); }
 
-  /* 컴팩트 시작/완료 버튼 */
   .status-step-group-compact {
     display: inline-flex;
     background: #e2e8f0;
@@ -315,7 +309,6 @@
   .status-step-btn-compact.active-시작 { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
   .status-step-btn-compact.active-완료 { background: var(--success); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
-  /* 팝업 모달 */
   .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -375,13 +368,11 @@
 <body>
 
 <div class="container">
-  <!-- 펄스 리마인드 배너 -->
   <div id="remindBanner" class="remind-banner">
     <div id="remindBannerText">🔔 <strong>[액퍼내기 4주 전 알림]</strong> 건욕 일정이 도래했습니다.</div>
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
   </div>
 
-  <!-- 헤더 -->
   <header>
     <div class="header-top">
       <h1>동도금 PM 모니터링</h1>
@@ -400,7 +391,6 @@
     </div>
   </header>
 
-  <!-- 메인 탭 4개 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       📋 오늘 브리핑
@@ -420,7 +410,6 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
-      <!-- 카톡 복사 붙여넣기 스마트 파서 -->
       <div class="parser-box">
         <div class="parser-header">
           <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
@@ -455,7 +444,7 @@
 
         <textarea id="shareTextOutput" class="report-area" readonly></textarea>
 
-        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
+        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 (요청 2 반영: 7H 이내 임박 강조) -->
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
             <span>🧪 일반 화학동 PM 현황 (화7, 화8, 화9, 화13, 화14)</span>
@@ -467,13 +456,13 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 -->
+  <!-- [탭 2] 자동 진척 게이지 (요청 3 & 4 반영: 14H 기준 초과 강조 & 일반 전기동 12H 지연 강조) -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col-even">
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div class="card">
           <div class="card-title">
-            <span>🧪 1. 일반 화학동 진행 진척 (12시간 액이송 기준)</span>
+            <span>🧪 1. 일반 화학동 진행 진척 (12시간 액이송 / 14시간 PM기준)</span>
             <span class="badge badge-blue">진행 라인 자동 연동</span>
           </div>
           <div id="activeChemGaugesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
@@ -495,7 +484,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 -->
+  <!-- [탭 3] 화학동 주기 관리 (요청 2 반영: 7시간 이내 임박 강조) -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -509,7 +498,7 @@
     </div>
   </div>
 
-  <!-- [탭 4] 라인별 특이사항 수동 입력 (요청 1, 2, 3 반영: 월 생략, 신규 태그 추가, 라인별 동적 태그 지원) -->
+  <!-- [탭 4] 라인별 특이사항 수동 입력 (요청 1 반영: 오늘/내일 규칙 PM 라인만 동적 노출) -->
   <div id="tab4" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -518,65 +507,13 @@
       </div>
       
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <!-- 요청 1번: 월 표기 제거, 일 단위만 표시 -->
         <div style="display:flex; align-items:center; gap:2px;">
           <input type="number" id="manualDayInput" min="1" max="31" style="width:52px; text-align:center;">일
         </div>
         
-        <!-- 라인 선택 시 동적 태그 갱신 이벤트 연동 -->
+        <!-- 요청 1번: 오늘/내일 규칙 PM 대상 라인만 동적 생성 -->
         <div>
-          <select id="manualLineSelect" onchange="onManualLineChange(this.value)" style="width:150px; font-weight:700;">
-            <optgroup label="데버링 / 고압수세">
-              <option value="고압수세 1">고압수세 1</option>
-              <option value="데버링 2">데버링 2</option>
-              <option value="데버링 3">데버링 3</option>
-            </optgroup>
-            <optgroup label="에칭">
-              <option value="에1.2">에1.2</option>
-              <option value="에3.4">에3.4</option>
-              <option value="에6">에6</option>
-            </optgroup>
-            <optgroup label="디스미어">
-              <option value="디스미어 6">디스미어 6</option>
-              <option value="디스미어 7">디스미어 7</option>
-              <option value="디스미어 8">디스미어 8</option>
-              <option value="디스미어 9">디스미어 9</option>
-              <option value="디스미어 10">디스미어 10</option>
-              <option value="디스미어 11">디스미어 11</option>
-              <option value="디스미어 12">디스미어 12</option>
-              <option value="디스미어 15">디스미어 15</option>
-            </optgroup>
-            <optgroup label="일반 화학동">
-              <option value="화7">화7</option>
-              <option value="화8">화8</option>
-              <option value="화9">화9</option>
-              <option value="화13">화13</option>
-              <option value="화14">화14</option>
-            </optgroup>
-            <optgroup label="블랙홀 (정기PM)">
-              <option value="화10">화10</option>
-              <option value="화11">화11</option>
-              <option value="화12">화12</option>
-            </optgroup>
-            <optgroup label="전기동">
-              <option value="전기동 9">전기동 9 (펄스)</option>
-              <option value="전기동 11">전기동 11</option>
-              <option value="전기동 12">전기동 12</option>
-              <option value="전기동 13">전기동 13</option>
-              <option value="전기동 14">전기동 14</option>
-              <option value="전기동 15">전기동 15</option>
-              <option value="전기동 16">전기동 16</option>
-              <option value="전기동 17">전기동 17</option>
-              <option value="전기동 18">전기동 18</option>
-              <option value="전기동 20">전기동 20 (펄스)</option>
-              <option value="전기동 21">전기동 21 (펄스)</option>
-              <option value="전기동 22">전기동 22</option>
-              <option value="MSF 전기동">MSF 전기동</option>
-            </optgroup>
-            <optgroup label="기타">
-              <option value="CUSTOM">[직접 입력]</option>
-            </optgroup>
-          </select>
+          <select id="manualLineSelect" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
           <input type="text" id="manualCustomLineInput" placeholder="라인명 직접입력" style="display:none; width:120px; margin-left:4px;">
         </div>
 
@@ -588,7 +525,7 @@
         </div>
       </div>
 
-      <!-- 요청 2 & 3번 반영: 라인에 맞춰 똑똑하게 바뀌는 동적 태그 컨테이너 -->
+      <!-- 라인별 동적 태그 컨테이너 -->
       <div id="dynamicTagsContainer" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"></div>
 
       <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;"></div>
@@ -793,14 +730,14 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v37')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v37')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v37')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v37')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v38')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v38')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v38')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v38')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v37')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v37')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v37')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v38')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v38')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v38')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -861,13 +798,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v37', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v37', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v37', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v37', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v37', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v37', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v37', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v38', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v38', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v38', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v38', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v38', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v38', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v38', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -951,12 +888,14 @@ function selectQuickDay(choice) {
   safeRenderAll();
 }
 
+// 요청 2 반영: 화학동 현황판 7시간 이내 임박 시 주황색 강조
 function renderTab1ChemStatus() {
   const container = document.getElementById('tab1ChemStatusContainer');
   if (!container) return;
 
   const targetIds = ['화7', '화8', '화9', '화13', '화14'];
   let html = '';
+  const now = new Date();
 
   targetIds.forEach(id => {
     const line = chemList.find(c => c.id === id);
@@ -980,15 +919,33 @@ function renderTab1ChemStatus() {
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const dueKr = formatDateTimeKr(nextDue);
-      const isOverdue = new Date() >= nextDue;
+      const remainH = (nextDue - now) / 3600000;
+      const isOverdue = now >= nextDue;
+      const isImminent = !isOverdue && remainH <= 7; // 7시간 이내 임박
+
+      let bg = '#f8fafc';
+      let border = '#e2e8f0';
+      let badgeHtml = `<span class="badge badge-sub">완료</span>`;
+      let textCol = 'var(--accent)';
+
+      if (isOverdue) {
+        bg = '#fef2f2'; border = '#fecaca';
+        badgeHtml = `<span class="badge badge-red">주기 초과</span>`;
+        textCol = 'var(--danger)';
+      } else if (isImminent) {
+        bg = '#fffbeb'; border = '#fde68a';
+        badgeHtml = `<span class="badge badge-yellow">⚠️ 7H 이내 임박</span>`;
+        textCol = 'var(--warning)';
+      }
+
       html += `
-        <div style="background: ${isOverdue ? '#fffbeb' : '#f8fafc'}; border: 1px solid ${isOverdue ? '#fde68a' : '#e2e8f0'}; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
+        <div style="background: ${bg}; border: 1px solid ${border}; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}</strong>
-            <span class="badge ${isOverdue ? 'badge-yellow' : 'badge-sub'}">${isOverdue ? '주기도래' : '완료'}</span>
+            ${badgeHtml}
           </div>
           <div style="color: var(--text-secondary); font-size: 11px;">차기 PM 예정:</div>
-          <div style="font-weight: 800; color: ${isOverdue ? 'var(--warning)' : 'var(--accent)'}; font-size: 12px; margin-top: 1px;">${dueKr}</div>
+          <div style="font-weight: 800; color: ${textCol}; font-size: 12px; margin-top: 1px;">${dueKr}</div>
         </div>
       `;
     }
@@ -1088,6 +1045,7 @@ function safeRenderAll() {
   try { generateShareText(); } catch(e){}
   try { renderTab1ChemStatus(); } catch(e){}
   try { renderWeeklyMatrix(); } catch(e){}
+  try { updateManualLineOptions(); } catch(e){}
   try { renderManualNotesList(); } catch(e){}
   try { renderChemList(); } catch(e){}
   try { renderPulseTable(); } catch(e){}
@@ -1106,10 +1064,7 @@ window.onload = function() {
 
   initFirebase();
   updateDateToggleUI();
-  
-  // 첫 로딩 시 라인별 기본 태그 렌더링
-  const lineSel = document.getElementById('manualLineSelect');
-  if (lineSel) onManualLineChange(lineSel.value);
+  updateManualLineOptions();
 
   safeRenderAll();
 
@@ -1175,8 +1130,7 @@ function switchTab(t) {
   }
   else if (t === 'tab3') renderChemList();
   else if (t === 'tab4') {
-    const lineSel = document.getElementById('manualLineSelect');
-    if (lineSel) onManualLineChange(lineSel.value);
+    updateManualLineOptions();
     renderManualNotesList();
   }
 }
@@ -1275,6 +1229,7 @@ function selectDayFromMatrix(dateStr) {
   generateShareText();
   renderElectroGauges(new Date());
   renderTab1ChemStatus();
+  updateManualLineOptions();
   closeModal('matrixModal');
 }
 
@@ -1343,7 +1298,81 @@ function checkBiWeek(anchorDate, targetDate) {
   return (Math.abs(diffWeeks) % 2 === 0);
 }
 
-// 요청 2 & 3번 구현: 라인별 맞춤형 전용 태그 동적 렌더링
+// 요청 1번 구현: 매트릭스를 참고하여 오늘과 내일의 규칙 PM 라인만 동적 생성 (일반 화학동 불규칙 제외)
+function updateManualLineOptions() {
+  const select = document.getElementById('manualLineSelect');
+  if (!select) return;
+
+  const curVal = select.value;
+  const targetDate = new Date(selectedDateStr + 'T00:00:00');
+  const tomorrowDate = new Date(targetDate.getTime() + 86400000);
+
+  const getDayLines = (d) => {
+    const day = d.getDay();
+    const lines = [];
+
+    // 에칭
+    lines.push(getEtchingLine(d));
+
+    // 데버링 / 고압수세
+    if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1, d)) lines.push('고압수세 1');
+    if (day === 3) lines.push('데버링 3');
+    if (day === 5) lines.push('데버링 2');
+
+    // 디스미어
+    if (day === 1) {
+      lines.push('디스미어 8');
+      if (checkBiWeek(ANCHOR_BIWEEK.des11, d)) {
+        lines.push('디스미어 11', '디스미어 15');
+      }
+    } else if (day === 2) lines.push('디스미어 9', '디스미어 6');
+    else if (day === 3) lines.push('디스미어 12');
+    else if (day === 4) lines.push('디스미어 7');
+    else if (day === 5) lines.push('디스미어 10');
+
+    // 블랙홀
+    if (day === 1) lines.push('화12');
+    else if (day === 3) lines.push('화11');
+    else if (day === 5) lines.push('화10');
+
+    // 전기동
+    if (day === 1) lines.push('전기동 9', '전기동 16');
+    else if (day === 2) lines.push('전기동 18', '전기동 22');
+    else if (day === 3) lines.push('전기동 15', '전기동 20');
+    else if (day === 4) lines.push('전기동 11', '전기동 14', '전기동 17');
+    else if (day === 5) {
+      if (checkBiWeek(ANCHOR_BIWEEK.elec12, d)) lines.push('전기동 12');
+      lines.push('전기동 13', '전기동 21');
+    }
+
+    return lines;
+  };
+
+  const todayLines = getDayLines(targetDate);
+  const tomorrowLines = getDayLines(tomorrowDate);
+
+  // 중복 제거하면서 순서 유지 (오늘 라인 -> 내일 라인)
+  const lineSet = new Set();
+  todayLines.forEach(l => lineSet.add(l));
+  tomorrowLines.forEach(l => lineSet.add(l));
+
+  let html = '';
+  lineSet.forEach(l => {
+    html += `<option value="${l}">${l}</option>`;
+  });
+  html += `<option value="CUSTOM">[직접 입력]</option>`;
+
+  select.innerHTML = html;
+
+  if (lineSet.has(curVal) || curVal === 'CUSTOM') {
+    select.value = curVal;
+  } else {
+    select.selectedIndex = 0;
+  }
+
+  onManualLineChange(select.value);
+}
+
 function onManualLineChange(val) {
   const customInput = document.getElementById('manualCustomLineInput');
   if (val === 'CUSTOM') {
@@ -1360,36 +1389,28 @@ function onManualLineChange(val) {
   let tags = [];
 
   if (val.startsWith('디스미어')) {
-    // 디스미어 라인: 스웰러 건욕, 망간 건욕
     tags.push({ name: '스웰러 건욕', isAppend: false });
     tags.push({ name: '망간 건욕', isAppend: false });
   } else if (val.startsWith('화') && ['화7', '화8', '화9', '화13', '화14'].includes(val)) {
-    // 일반 화학동: 촉매 건욕, 화학동 건욕
     tags.push({ name: '촉매 건욕', isAppend: false });
     tags.push({ name: '화학동 건욕', isAppend: false });
-    // 화7 라인에만 촉매cs 추가
     if (val === '화7') {
       tags.push({ name: '촉매cs', isAppend: false });
     }
   } else if (val.startsWith('전기동') || val.includes('MSF')) {
-    // 전기동 라인
     tags.push({ name: '산탈지.산세.박리', isAppend: false });
-    // 15, 18 라인에만 프리딥 추가
     if (val === '전기동 15' || val === '전기동 18') {
       tags.push({ name: '산탈지.산세.프리딥.박리', isAppend: false });
     }
-    // 펄스 라인(전9, 전20, 전21) 제외하고 유산동필터 교체 추가 (기존 PM 뒤에 덧붙이기 지원)
     if (!['전기동 9', '전기동 20', '전기동 21'].includes(val)) {
       tags.push({ name: '+ 유산동필터 교체', isAppend: true, val: '유산동필터 교체' });
     }
   }
 
-  // 공통 태그 항상 표시: 인써트 교체, 전체건욕, 설비작업
   tags.push({ name: '인써트 교체', isAppend: false });
   tags.push({ name: '전체건욕', isAppend: false });
   tags.push({ name: '설비작업', isAppend: false });
 
-  // 버튼 생성
   tags.forEach(t => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -1408,7 +1429,6 @@ function setQuickTag(tag) {
   document.getElementById('manualContentInput').value = tag;
 }
 
-// 전기동 필터교체 등 기존 내용 뒤에 덧붙이기
 function appendQuickTag(tag) {
   const input = document.getElementById('manualContentInput');
   const cur = input.value.trim();
@@ -1421,7 +1441,6 @@ function appendQuickTag(tag) {
   }
 }
 
-// 요청 1번: 수동입력 '월' 생략 & 내부 연도/월 자동 연동
 function addManualNote() {
   const cur = new Date(selectedDateStr + 'T00:00:00');
   let y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
@@ -1433,7 +1452,6 @@ function addManualNote() {
     return;
   }
 
-  // 월말/월초 일자 경계 자동 보정 (예: 28일 기준에서 2일 입력 시 익월로 계산)
   const prevD = isNaN(cur.getTime()) ? (new Date()).getDate() : cur.getDate();
   if (prevD >= 25 && d <= 5) {
     const nextM = new Date(y, m, 1);
@@ -1481,7 +1499,6 @@ function removeManualNote(index) {
   renderElectroGauges(new Date());
 }
 
-// 특이사항 칩 리스트: 월 생략, 일 단위로 심플하게 표시
 function renderManualNotesList() {
   const container = document.getElementById('manualNoteList');
   if (!container) return;
@@ -1495,6 +1512,7 @@ function renderManualNotesList() {
   });
 }
 
+// 1초 단위 실시간 자동 갱신 (요청 3 & 4 반영: 화학동 14H 기준 초과 강조 & 일반 전기동 12H 지연 강조)
 function updateLiveTimesOnly(now) {
   chemList.forEach(line => {
     const isRunning = (line.status === '시작');
@@ -1508,6 +1526,7 @@ function updateLiveTimesOnly(now) {
     const startTime = new Date(line.lastDone);
     const elapsedMin = Math.max(0, (now - startTime) / 60000);
     const target12hMin = 720;
+    const target14hMin = 840;
     const pct = Math.min(100, (elapsedMin / target12hMin) * 100);
     const elapsedH = (elapsedMin / 60).toFixed(1);
 
@@ -1518,6 +1537,8 @@ function updateLiveTimesOnly(now) {
       const remainMin = Math.ceil(target12hMin - elapsedMin);
       const rH = Math.floor(remainMin / 60);
       const rM = remainMin % 60;
+      bar.className = 'progress-fill warn';
+      statusBox.className = 'status-detail-box';
       statusBox.innerHTML = `
         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
           <span>진척 상태: <strong>C/S 세척 및 준비 구간</strong> (경과: <strong>${elapsedH}시간</strong>)</span>
@@ -1525,22 +1546,33 @@ function updateLiveTimesOnly(now) {
         </div>
         <div>💡 하단의 C/S 세척 기준에 맞춰 작업 진행 ➔ <strong>12시간 도래 시 액이송 시작</strong></div>
       `;
-    } else if (elapsedMin >= target12hMin && elapsedMin < 840) {
-      const to14hMin = Math.max(0, Math.ceil(840 - elapsedMin));
+    } else if (elapsedMin >= target12hMin && elapsedMin < target14hMin) {
+      const to14hMin = Math.max(0, Math.ceil(target14hMin - elapsedMin));
+      bar.className = 'progress-fill alert';
+      statusBox.className = 'status-detail-box alert';
       statusBox.innerHTML = `
         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
           <strong style="color:var(--danger);">🚨 [12시간 경과] 액이송 시작 시점!</strong>
           <span>경과: <strong>${elapsedH}시간</strong></span>
         </div>
-        <div>작업: <strong>액이송 시작 ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 시편 확인</strong> (${to14hMin}분 남음)</div>
+        <div>작업: <strong>액이송 시작 ➔ 더미 투입 ➔ 분석기 3.0 도달 시 분석 의뢰 ➔ 시편 확인</strong> (14H 기준까지 ${to14hMin}분 남음)</div>
       `;
     } else {
+      // 요청 4번 반영: 14시간은 양산가능이 아니라 PM 기준점! 14시간 초과 시 미완료 강력 경고 강조!
+      bar.className = 'progress-fill alert';
+      statusBox.className = 'status-detail-box alert';
+      statusBox.style.borderLeftColor = 'var(--danger)';
+      statusBox.style.background = '#fef2f2';
+      const overMin = Math.floor(elapsedMin - target14hMin);
+      const overH = (overMin / 60).toFixed(1);
       statusBox.innerHTML = `
         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-          <span style="color:var(--success); font-weight:700;">✅ 14시간 경과 - 양산 가동 가능</span>
-          <span>경과: <strong>${elapsedH}시간</strong></span>
+          <span style="color:var(--danger); font-weight:900; font-size:13.5px;">🚨 [14시간 기준 초과] PM 목표 시간 경과 (미완료 지연)</span>
+          <span style="color:var(--danger); font-weight:800;">총 경과: ${elapsedH}H (+${overH}H 초과)</span>
         </div>
-        <div>상태: 시편 이상 없음 확인 후 양산 진행 | PM 종료 시 <strong>[완료]</strong> 버튼을 눌러주세요.</div>
+        <div style="color:#991b1b; font-size:12px; margin-top:2px;">
+          화학동 PM 기준 소요시간(14H)이 초과되었습니다. 작업 상황을 확인하고 작업 종료 시 우측 상단의 <strong>[완료]</strong> 버튼을 눌러주세요.
+        </div>
       `;
     }
   });
@@ -1581,6 +1613,7 @@ function updateLiveTimesOnly(now) {
       bar.style.width = totalPct.toFixed(1) + '%';
       if (pctBadge) pctBadge.innerText = `${totalPct.toFixed(0)}%`;
 
+      let activeStepIdx = 0;
       let remainMinStep = 0;
       let currentStepName = '';
 
@@ -1597,6 +1630,7 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t0 && now < t1) {
+        activeStepIdx = 1;
         currentStepName = '0.5 DC 더미';
         remainMinStep = Math.ceil((t1 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item active';
@@ -1604,6 +1638,7 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t1 && now < t2) {
+        activeStepIdx = 2;
         currentStepName = '1.5 DC 더미';
         remainMinStep = Math.ceil((t2 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item done';
@@ -1611,6 +1646,7 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t2 && now < t3) {
+        activeStepIdx = 3;
         currentStepName = '펄스대비 패스';
         remainMinStep = Math.ceil((t3 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item done';
@@ -1618,6 +1654,7 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item active';
         if (s4) s4.className = 'pulse-step-item';
       } else if (now >= t3 && now < t4) {
+        activeStepIdx = 4;
         currentStepName = '펄스 더미';
         remainMinStep = Math.ceil((t4 - now) / 60000);
         if (s1) s1.className = 'pulse-step-item done';
@@ -1625,6 +1662,7 @@ function updateLiveTimesOnly(now) {
         if (s3) s3.className = 'pulse-step-item done';
         if (s4) s4.className = 'pulse-step-item active';
       } else {
+        activeStepIdx = 5;
         currentStepName = '광 확인 및 양산 가동';
         remainMinStep = 0;
         if (s1) s1.className = 'pulse-step-item done';
@@ -1646,12 +1684,38 @@ function updateLiveTimesOnly(now) {
         </div>
       `;
     } else {
+      // 일반 전기동 라인 (요청 3 반영: 12시간 넘도록 미완료 시 강력 강조)
+      const baseD = new Date(selectedDateStr + 'T00:00:00');
+      const start0830 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), 8, 30, 0);
+      const isOver12H = (now - start0830) >= (12 * 3600000); // 08:30 기준 12시간 경과 (20:30 이후)
+
       const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
       const dummyBox = document.getElementById(`elec_dummy_est_${line.name}`);
+      const gaugeCard = document.getElementById(`elec_card_${line.name}`);
+
+      if (gaugeCard) {
+        if (isOver12H) {
+          gaugeCard.style.borderLeft = '5px solid var(--danger)';
+          gaugeCard.style.background = '#fef2f2';
+        } else {
+          gaugeCard.style.borderLeft = '1px solid var(--border)';
+          gaugeCard.style.background = '#f8fafc';
+        }
+      }
+
+      let overdueNotice = '';
+      if (isOver12H) {
+        const elapsedTotalH = ((now - start0830) / 3600000).toFixed(1);
+        overdueNotice = `
+          <div style="background:#fee2e2; border:1px solid #fecaca; border-radius:6px; padding:7px 10px; margin-top:4px; color:var(--danger); font-weight:800; font-size:12.5px;">
+            🚨 [12시간 초과 지연] 일반 전기동 PM이 12시간(${elapsedTotalH}H 경과) 넘도록 미완료 상태입니다!
+          </div>
+        `;
+      }
+
       if (dummyBox && isDummyChecked) {
         const h = elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14;
         const m = elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0;
-        const baseD = new Date(selectedDateStr + 'T00:00:00');
         const dStart = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), h, m, 0);
         const targetProd = new Date(dStart.getTime() + 90 * 60000);
         
@@ -1674,9 +1738,10 @@ function updateLiveTimesOnly(now) {
               </div>
             </div>
           </div>
+          ${overdueNotice}
         `;
       } else if (dummyBox) {
-        dummyBox.innerHTML = '';
+        dummyBox.innerHTML = overdueNotice;
       }
     }
   });
@@ -1765,7 +1830,7 @@ function renderActiveChemGauges(now) {
           <span>4H (C/S진행)</span>
           <span>8H (세척)</span>
           <span style="color:var(--danger); font-weight:700;">★12H (액이송)</span>
-          <span style="color:var(--success); font-weight:700;">14H (양산)</span>
+          <span style="color:var(--warning); font-weight:700;">14H (PM기준)</span>
         </div>
         <div class="status-detail-box" id="chem_status_${line.id}"></div>
       </div>
@@ -2017,6 +2082,11 @@ function renderElectroGauges(now) {
       `;
 
     } else {
+      // 일반 전기동 라인 (12시간 넘도록 미완료 시 지연 강조)
+      const baseD = new Date(selectedDateStr + 'T00:00:00');
+      const start0830 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), 8, 30, 0);
+      const isOver12H = (now - start0830) >= (12 * 3600000);
+
       const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
       const curH = isDummyChecked ? (elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14) : 14;
       const curM = isDummyChecked ? (elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0) : 0;
@@ -2058,7 +2128,7 @@ function renderElectroGauges(now) {
       }
 
       html += `
-        <div class="gauge-box">
+        <div class="gauge-box" id="elec_card_${line.name}">
           <div class="gauge-top">
             <div>
               <strong>${escapeHtml(line.name)} <span class="badge badge-blue">일반 건욕</span></strong>
@@ -2099,6 +2169,7 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
+// 탭 3 화학동 관리 (요청 2 반영: 7시간 이내 임박 시 주황색 강조)
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -2213,6 +2284,7 @@ function setChemStepStatus(idx, st) {
   generateShareText();
 }
 
+// 요청 2 반영: 화학동 관리 내 차기 PM 7시간 이내 임박 시 강조
 function updateChemRealtimeStatuses() {
   const now = new Date();
   chemList.forEach((c, idx) => {
@@ -2239,14 +2311,34 @@ function updateChemRealtimeStatuses() {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const remainH = (nextDue - now) / 3600000;
       const isOverdue = now >= nextDue;
-      box.style.borderLeftColor = isOverdue ? 'var(--danger)' : 'var(--accent)';
-      box.style.background = isOverdue ? '#fef2f2' : '#ffffff';
+      const isImminent = !isOverdue && remainH <= 7; // 7시간 이내 임박
+
+      let borderCol = 'var(--accent)';
+      let bgCol = '#ffffff';
+      let badgeHtml = `<span class="badge badge-blue">${remainH.toFixed(1)}H 남음</span>`;
+      let textCol = 'var(--accent)';
+
+      if (isOverdue) {
+        borderCol = 'var(--danger)';
+        bgCol = '#fef2f2';
+        badgeHtml = `<span class="badge badge-red">주기 초과</span>`;
+        textCol = 'var(--danger)';
+      } else if (isImminent) {
+        borderCol = 'var(--warning)';
+        bgCol = '#fffbeb';
+        badgeHtml = `<span class="badge badge-yellow">⚠️ 7H 이내 임박</span>`;
+        textCol = 'var(--warning)';
+      }
+
+      box.style.borderLeftColor = borderCol;
+      box.style.background = bgCol;
+
       let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
           <span style="font-size:12.5px; color:var(--text-secondary);">차기 72H PM 주기</span>
-          <span class="badge ${isOverdue ? 'badge-red' : 'badge-blue'}">${isOverdue ? '주기 도래' : remainH.toFixed(1) + 'H 남음'}</span>
+          ${badgeHtml}
         </div>
-        <div style="font-size:14px; margin-top:2px;">차기 PM 예정: <strong style="color:${isOverdue ? 'var(--danger)' : 'var(--accent)'}; font-size:15.5px; font-weight:900;">${formatDayTimeKr(nextDue)}</strong></div>
+        <div style="font-size:14px; margin-top:2px;">차기 PM 예정: <strong style="color:${textCol}; font-size:15.5px; font-weight:900;">${formatDayTimeKr(nextDue)}</strong></div>
       `;
 
       if (c.id === '화8') {
@@ -2262,8 +2354,6 @@ function updateChemRealtimeStatuses() {
     }
   });
 }
-
-function updateChemNote(idx, val) { chemList[idx].note = val; syncDataToFirebase(); generateShareText(); }
 
 function setChemNow(idx) {
   const now = new Date();
