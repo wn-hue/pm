@@ -44,7 +44,6 @@
 
   .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
-  /* 펄스 리마인드 배너 */
   .remind-banner {
     background: #fdf4ff;
     border: 1px solid #f0abfc;
@@ -63,7 +62,6 @@
     background: none; border: none; font-size: 16px; cursor: pointer; color: #86198f; font-weight: bold; padding: 0 6px;
   }
 
-  /* 헤더: 상하/좌우 대칭 정렬 */
   header {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -110,7 +108,6 @@
     gap: 5px;
   }
 
-  /* 메인 탭 네비게이션 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -165,7 +162,6 @@
     flex-wrap: wrap;
   }
 
-  /* 입력폼 iOS 최적화 */
   input, select, textarea {
     background: #ffffff;
     border: 1px solid var(--border);
@@ -199,7 +195,6 @@
   .btn-sub:hover { background: #475569; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
-  /* 카톡 파서 박스 */
   .parser-box {
     background: #fefce8;
     border: 1px solid #fef08a;
@@ -209,11 +204,7 @@
     flex-direction: column;
     gap: 8px;
   }
-  .parser-header {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
+  .parser-header { display: flex; flex-direction: column; gap: 2px; }
 
   .report-area {
     width: 100%;
@@ -229,7 +220,6 @@
     resize: vertical;
   }
 
-  /* 게이지 영역 */
   .grid-2col-even {
     display: grid;
     grid-template-columns: 1fr;
@@ -292,7 +282,6 @@
   .pulse-step-item.done { background: #ecfdf5; border-color: #a7f3d0; color: var(--success); }
   .pulse-step-item.active { background: #f3e8ff; border-color: #c084fc; color: var(--purple); }
 
-  /* 2번, 3번 수정: 시작/완료 버튼 크기를 단정하고 컴팩트하게 축소 */
   .status-step-group-compact {
     display: inline-flex;
     background: #e2e8f0;
@@ -315,7 +304,6 @@
   .status-step-btn-compact.active-시작 { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
   .status-step-btn-compact.active-완료 { background: var(--success); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
-  /* 팝업 모달 */
   .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -358,6 +346,14 @@
   .weekend-th { background: #fef2f2; color: #b91c1c; }
   .weekend-sat-th { background: #eff6ff; color: #1d4ed8; }
 
+  .note-chip {
+    display: inline-flex; align-items: center; gap: 5px; background: #ffedd5;
+    color: #9a3412; font-size: 11.5px; padding: 3px 8px; border-radius: 4px; margin: 2px;
+  }
+  .note-chip button {
+    background: none; border: none; color: #9a3412; cursor: pointer; font-weight: bold; font-size: 12px;
+  }
+
   @media (max-width: 640px) {
     .pulse-step-container { grid-template-columns: repeat(2, 1fr); }
     .nav-btn { font-size: 12.5px; padding: 9px 4px; }
@@ -367,13 +363,11 @@
 <body>
 
 <div class="container">
-  <!-- 펄스 리마인드 배너 -->
   <div id="remindBanner" class="remind-banner">
     <div id="remindBannerText">🔔 <strong>[액퍼내기 4주 전 알림]</strong> 건욕 일정이 도래했습니다.</div>
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
   </div>
 
-  <!-- 헤더 -->
   <header>
     <div class="header-top">
       <h1>동도금 PM 모니터링</h1>
@@ -392,7 +386,6 @@
     </div>
   </header>
 
-  <!-- 메인 탭 4개 -->
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       📋 오늘 브리핑
@@ -408,11 +401,10 @@
     </button>
   </div>
 
-  <!-- [탭 1] 오늘 PM 브리핑 & 공유 + 카톡 자동인식 파서 -->
+  <!-- [탭 1] 오늘 PM 브리핑 & 공유 -->
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
-      <!-- 카톡 복사 붙여넣기 스마트 파서 -->
       <div class="parser-box">
         <div class="parser-header">
           <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
@@ -445,9 +437,8 @@
           </div>
         </div>
 
-        <textarea id="shareTextOutput" class="report-area"></textarea>
+        <textarea id="shareTextOutput" class="report-area" readonly></textarea>
 
-        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
             <span>🧪 일반 화학동 PM 현황 (화7, 화8, 화9, 화13, 화14)</span>
@@ -459,7 +450,7 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 (2번 수정: 시작/완료 버튼 크기 축소) -->
+  <!-- [탭 2] 자동 진척 게이지 -->
   <div id="tab2" class="tab-pane">
     <div class="grid-2col-even">
       <div style="display:flex; flex-direction:column; gap:12px;">
@@ -487,7 +478,7 @@
     </div>
   </div>
 
-  <!-- [탭 3] 화학동 주기 관리 (3번 수정: 시작/완료 버튼 크기 축소) -->
+  <!-- [탭 3] 화학동 주기 관리 -->
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
@@ -587,7 +578,7 @@
     </div>
   </div>
 
-  <!-- [모달 팝업 1: 주간 PM 매트릭스] (1번 수정: 일요일 포함 에칭 1,2/3,4/6 무한 루프) -->
+  <!-- [모달 팝업 1: 주간 PM 매트릭스] (에칭 3일 순환 + 데버링/고압수세 통합 + 좌측 빈칸) -->
   <div id="matrixModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
@@ -613,7 +604,6 @@
               </tr>
             </thead>
             <tbody>
-              <!-- 1번 수정: 좌측 카테고리 빈칸 + 에칭(월~일 무한 루프) + 고압수세/데버링 동시 배치 -->
               <tr style="background:#fffcf5;">
                 <td style="background:#fafafa;"></td>
                 <td id="etch_cell_1"></td>
@@ -624,7 +614,6 @@
                 <td id="etch_cell_6"></td>
                 <td id="etch_cell_7"></td>
               </tr>
-              <!-- 2. 디스미어 -->
               <tr>
                 <td style="background:#fafafa;"><strong>디스미어</strong></td>
                 <td>
@@ -648,7 +637,6 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
-              <!-- 3. 일반 화학동 -->
               <tr style="background:#f0fdf4;">
                 <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:10px; color:var(--text-secondary);">(72H 주기)</span></td>
                 <td><div id="chem_cell_1">-</div></td>
@@ -659,7 +647,6 @@
                 <td><div id="chem_cell_6">-</div></td>
                 <td><div id="chem_cell_7">-</div></td>
               </tr>
-              <!-- 4. 블랙홀 -->
               <tr style="background:#faf5ff;">
                 <td><strong style="color:var(--purple);">블랙홀</strong><br><span style="font-size:10px; color:var(--text-secondary);">(7일 고정)</span></td>
                 <td><div><span class="badge badge-purple">화12 정기PM</span> <span id="custom_화12"></span></div></td>
@@ -670,7 +657,6 @@
                 <td>-</td>
                 <td>-</td>
               </tr>
-              <!-- 5. 전기동 -->
               <tr>
                 <td style="background:#fafafa;"><strong>전기동</strong></td>
                 <td>
@@ -739,7 +725,6 @@
 </div>
 
 <script>
-// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
   authDomain: "pm1234-3069b.firebaseapp.com",
@@ -753,6 +738,10 @@ const firebaseConfig = {
 
 let db = null;
 let isFirebaseConnected = false;
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 function ensureArray(data, defaultVal) {
   if (!data) return defaultVal;
@@ -787,26 +776,25 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v33')), DEFAULT_CHEM);
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v33')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v33')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v33')));
+let chemList = ensureArray(JSON.parse(localStorage.getItem('chem_data_v34')), DEFAULT_CHEM);
+let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_v34')), DEFAULT_PULSE);
+let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_v34')), DEFAULT_MANUAL_NOTES);
+let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_v34')));
 
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v33')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v33')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v33')));
+let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_v34')));
+let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_v34')));
+let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_v34')));
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
 let currentDateChoice = 'today';
 
-// 1번 수정: 365일 무한 루프 에칭 계산 (2026-09-25 금요일 = '에3.4' 기준 3일 주기 순환)
+// 365일 무한 루프 에칭 계산 (2026-09-25 금 = '에3.4' 기준 3일 주기 순환)
 function getEtchingLine(dateObj) {
   const anchor = new Date('2026-09-25T00:00:00');
   const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   const diffDays = Math.round((d.getTime() - anchor.getTime()) / 86400000);
   const cycle = ['에1.2', '에3.4', '에6'];
-  // anchor(9/25) index = 1 ('에3.4')
   let idx = (1 + diffDays) % 3;
   if (idx < 0) idx += 3;
   return cycle[idx];
@@ -857,13 +845,13 @@ function initFirebase() {
 }
 
 function syncDataToFirebase() {
-  localStorage.setItem('chem_data_v33', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_v33', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_v33', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_v33', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_v33', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_v33', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_v33', JSON.stringify(elecCompletedFlags));
+  localStorage.setItem('chem_data_v34', JSON.stringify(chemList));
+  localStorage.setItem('pulse_data_v34', JSON.stringify(pulseList));
+  localStorage.setItem('manual_notes_v34', JSON.stringify(manualNotes));
+  localStorage.setItem('equip_work_flags_v34', JSON.stringify(equipWorkFlags));
+  localStorage.setItem('elec_dummy_flags_v34', JSON.stringify(elecDummyFlags));
+  localStorage.setItem('pulse_process_flags_v34', JSON.stringify(pulseProcessFlags));
+  localStorage.setItem('elec_completed_flags_v34', JSON.stringify(elecCompletedFlags));
 
   if (db && isFirebaseConnected) {
     db.ref('pm_system_data').set({
@@ -954,7 +942,7 @@ function renderTab1ChemStatus() {
       html += `
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="color: var(--text-primary); font-size: 13.5px;">${line.id}</strong>
+            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}</strong>
             <span class="badge badge-green">PM 진행중</span>
           </div>
           <div style="color: var(--text-secondary); font-size: 11px;">PM 시작 시각:</div>
@@ -968,7 +956,7 @@ function renderTab1ChemStatus() {
       html += `
         <div style="background: ${isOverdue ? '#fffbeb' : '#f8fafc'}; border: 1px solid ${isOverdue ? '#fde68a' : '#e2e8f0'}; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="color: var(--text-primary); font-size: 13.5px;">${line.id}</strong>
+            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}</strong>
             <span class="badge ${isOverdue ? 'badge-yellow' : 'badge-sub'}">${isOverdue ? '주기도래' : '완료'}</span>
           </div>
           <div style="color: var(--text-secondary); font-size: 11px;">차기 PM 예정:</div>
@@ -1056,7 +1044,7 @@ function parseAndApplyKakaoMsg() {
 
   syncDataToFirebase();
   safeRenderAll();
-  alert(`✅ 카톡 공지 메시지 분석 완료!\n중복 없이 총 ${updatedCount}개의 일정이 탭3 주기관리 및 시스템에 실시간 반영되었습니다.`);
+  alert(`✅ 카톡 공지 분석 완료!\n총 ${updatedCount}개의 일정이 실시간 동기화되었습니다.`);
   document.getElementById('kakaoRawInput').value = '';
 }
 
@@ -1152,7 +1140,6 @@ function switchTab(t) {
   else if (t === 'tab4') renderManualNotesList();
 }
 
-// 1번 수정: 주간 매트릭스에 월~일 에칭 3일 주기 무한 루프 계산 렌더링
 function renderWeeklyMatrix() {
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
   const currentDay = targetDate.getDay();
@@ -1182,7 +1169,7 @@ function renderWeeklyMatrix() {
     badge.innerText = `${monday.getMonth()+1}/${monday.getDate()} ~ ${weekDates[6].date.getMonth()+1}/${weekDates[6].date.getDate()}`;
   }
 
-  // 1번 & 2번 수정: 에칭(월~일 순차 무한 루프) + 고압수세/데버링 동시 렌더링
+  // 에칭 365일 무한 루프 + 고압수세/데버링 원복 배치
   for (let i = 0; i < 7; i++) {
     const d = weekDates[i].date;
     const etchLine = getEtchingLine(d);
@@ -1218,7 +1205,7 @@ function renderWeeklyMatrix() {
         const nextDue = new Date(base.getTime() + 72 * 3600000);
         if (formatDateOnly(nextDue) === dStr) {
           const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
-          matches.push(`<strong>${c.id}</strong> <span style="color:var(--accent);">(${timeKr})</span>`);
+          matches.push(`<strong>${escapeHtml(c.id)}</strong> <span style="color:var(--accent);">(${timeKr})</span>`);
         }
       }
     });
@@ -1285,7 +1272,7 @@ function renderManualNotesInMatrix(weekDates) {
 
     if (targetId) {
       const el = document.getElementById(targetId);
-      if (el) el.innerHTML += `<span class="badge badge-custom">${item.text}</span>`;
+      if (el) el.innerHTML += `<span class="badge badge-custom">${escapeHtml(item.text)}</span>`;
     }
   });
 }
@@ -1374,7 +1361,7 @@ function renderManualNotesList() {
   manualNotes.forEach((n, idx) => {
     const chip = document.createElement('span');
     chip.className = 'note-chip';
-    chip.innerHTML = `<strong>${n.date.slice(5)} [${n.line}]</strong>: ${n.text} <button onclick="removeManualNote(${idx})">&times;</button>`;
+    chip.innerHTML = `<strong>${escapeHtml(n.date.slice(5))} [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
     container.appendChild(chip);
   });
 }
@@ -1566,7 +1553,6 @@ function updateLiveTimesOnly(now) {
   });
 }
 
-// 2번 수정: 진척게이지 내 시작/완료 버튼 크기 축소 (.status-step-btn-compact 적용)
 function renderActiveChemGauges(now) {
   const container = document.getElementById('activeChemGaugesContainer');
   if (!container) return;
@@ -1611,10 +1597,10 @@ function renderActiveChemGauges(now) {
         <div class="gauge-box" style="border-left: 4px solid var(--warning); background:#fffbeb;">
           <div class="gauge-top">
             <div>
-              <strong style="font-size:14.5px; color:#b45309;">🔔 ${line.id} PM 예정 시간 도래!</strong>
+              <strong style="font-size:14.5px; color:#b45309;">🔔 ${escapeHtml(line.id)} PM 예정 시간 도래!</strong>
               <span class="badge badge-yellow" style="margin-left:4px;">주기 도래</span>
             </div>
-            <button class="btn btn-sm" style="background:var(--accent); padding:5px 12px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${line.id} PM 시작</button>
+            <button class="btn btn-sm" style="background:var(--accent); padding:5px 12px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${escapeHtml(line.id)} PM 시작</button>
           </div>
           <div style="font-size:12.5px; color:#78350f;">
             직전 완료: <strong>${formatDateTimeKr(startTime)}</strong> ➔ PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong><br>
@@ -1633,11 +1619,10 @@ function renderActiveChemGauges(now) {
       <div class="gauge-box" id="gauge_card_${line.id}">
         <div class="gauge-top">
           <div>
-            <strong style="font-size:15px; color:#0f172a;">${line.id} PM</strong>
-            <span class="badge badge-blue" style="margin-left:4px;">${line.status}</span>
+            <strong style="font-size:15px; color:#0f172a;">${escapeHtml(line.id)} PM</strong>
+            <span class="badge badge-blue" style="margin-left:4px;">${escapeHtml(line.status)}</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
-            <!-- 2번 수정: 단정하고 컴팩트한 시작/완료 버튼 -->
             <div class="status-step-group-compact">
               <button class="status-step-btn-compact active-시작" onclick="setChemStepStatusById('${line.id}', '시작')">시작</button>
               <button class="status-step-btn-compact" onclick="completeChemPM('${line.id}')">완료</button>
@@ -1850,7 +1835,7 @@ function renderElectroGauges(now) {
         <div class="gauge-box">
           <div class="gauge-top">
             <div>
-              <strong>${line.name} <span class="badge badge-purple">펄스 4단계 공정</span></strong>
+              <strong>${escapeHtml(line.name)} <span class="badge badge-purple">펄스 4단계 공정</span></strong>
               <label style="margin-left:6px; font-size:11.5px; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
                 🛠️ 설비(17시)
@@ -1947,7 +1932,7 @@ function renderElectroGauges(now) {
         <div class="gauge-box">
           <div class="gauge-top">
             <div>
-              <strong>${line.name} <span class="badge badge-blue">일반 건욕</span></strong>
+              <strong>${escapeHtml(line.name)} <span class="badge badge-blue">일반 건욕</span></strong>
               <label style="margin-left:6px; font-size:11.5px; cursor:pointer;">
                 <input type="checkbox" ${isEquipWorkActive ? 'checked' : ''} onchange="toggleEquipWork('${line.name}', this.checked)">
                 🛠️ 설비(17시)
@@ -1985,7 +1970,6 @@ function renderElectroGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-// 3번 수정: 탭 3 화학동 관리 내 시작/완료 버튼 크기 축소 (.status-step-btn-compact 적용)
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
@@ -2027,7 +2011,7 @@ function renderChemList() {
 
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-        <strong style="font-size:14.5px;">${c.id} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지</span>' : ''}</strong>
+        <strong style="font-size:14.5px;">${escapeHtml(c.id)} ${isHwa8 ? '<span class="badge badge-yellow">48시간 빌드업 금지</span>' : ''}</strong>
         <div>
           ${statusBtnsHtml}
           <button class="btn btn-sub btn-sm" style="margin-left:4px; padding:4px 8px;" onclick="setChemNow(${idx})">현재시각</button>
@@ -2044,7 +2028,7 @@ function renderChemList() {
           </select>
         </div>
         <div style="flex:1; min-width:120px;">
-          <input type="text" id="note_${idx}" value="${c.note || ''}" placeholder="비고 입력" style="width:100%;" oninput="updateChemNote(${idx}, this.value)">
+          <input type="text" id="note_${idx}" value="${escapeHtml(c.note || '')}" placeholder="비고 입력" style="width:100%;" oninput="updateChemNote(${idx}, this.value)">
         </div>
       </div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -2192,8 +2176,8 @@ function renderPulseTable() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${p.line}</strong></td>
-      <td><input type="date" value="${p.lastDate}" onchange="updatePulseDate(${idx}, this.value)" style="width:130px;"></td>
+      <td><strong>${escapeHtml(p.line)}</strong></td>
+      <td><input type="date" value="${escapeHtml(p.lastDate)}" onchange="updatePulseDate(${idx}, this.value)" style="width:130px;"></td>
       <td><strong>${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]}</strong></td>
       <td>${formatDateTimeKr(d2).split(' ')[0]} ${formatDateTimeKr(d2).split(' ')[1]}</td>
       <td>${formatDateTimeKr(d3).split(' ')[0]} ${formatDateTimeKr(d3).split(' ')[1]}</td>
@@ -2229,11 +2213,10 @@ function updatePulseDate(idx, val) {
   renderPulseTable();
 }
 
-// 1번 수정: 일요일 포함 에칭 365일 무한 루프 계산 연동
 function generateShareText() {
   if (!selectedDateStr) return;
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
-  const day = targetDate.getDay(); // 0:일, 1:월, 2:화, 3:수, 4:목, 5:금, 6:토
+  const day = targetDate.getDay();
   const m = targetDate.getMonth() + 1;
   const d = targetDate.getDate();
   const pass = document.getElementById('passTimeInput') ? document.getElementById('passTimeInput').value : '7시패스';
@@ -2261,7 +2244,6 @@ function generateShareText() {
     debarr = '데2' + getNote('데버링 2');
   }
 
-  // 1번 수정: 일요일 포함 날짜 기반 무한 루프 계산
   const todayEtch = getEtchingLine(targetDate);
   let etching = todayEtch + getNote(todayEtch);
 
