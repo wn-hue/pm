@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="동도금 PM">
-<link rel="icon" type="image/png" href="./apple-touch-icon.png?v=1">
-<link rel="apple-touch-icon" sizes="512x512" href="./apple-touch-icon.png?v=1">
 <title>동도금 PM 일정 & 실시간 통합 모니터링</title>
 
 <!-- Firebase SDK -->
@@ -415,7 +412,7 @@
       <div class="parser-box">
         <div class="parser-header">
           <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
-          <span style="font-size: 11.5px; color: #a16207;">공지 텍스트를 붙여넣으면 화학동 예정시간과 상태가 자동 변경됩니다.</span>
+          <span style="font-size: 11.5px; color: #a16207;">공지 텍스트를 붙여넣으면 화학동 건욕 명칭과 라인별 특이사항이 자동 동기화됩니다.</span>
         </div>
         <textarea id="kakaoRawInput" rows="2" style="width: 100%; font-size: 13.5px; padding: 8px; border-radius: 6px; border: 1px solid #fde047;" placeholder="카카오톡으로 공유된 PM 공지 메시지를 여기에 그대로 붙여넣으세요..."></textarea>
         <div style="text-align: right;">
@@ -496,7 +493,6 @@
       <div style="font-size:12px; color:var(--text-secondary);">
         💡 상태는 <strong>[시작 / 완료]</strong>로 관리되며, 시간은 <strong>0분 / 30분</strong>으로 선택됩니다.
       </div>
-      <!-- 화학동 카드들이 절대 사라지지 않고 무조건 렌더링되는 컨테이너 -->
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
   </div>
@@ -733,7 +729,6 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-// [과거 모든 로컬스토리지 키 자동 스캔 & 복구 함수]
 function recoverChemListFromAllSources() {
   const recoveredMap = {};
   DEFAULT_CHEM.forEach(item => {
@@ -755,7 +750,6 @@ function recoverChemListFromAllSources() {
       if (arr && arr.length > 0) {
         arr.forEach(c => {
           if (c && c.id && REQUIRED_CHEM_IDS.includes(c.id)) {
-            // 저장된 실제 기록이 발견되면 덮어써서 복원
             if (c.lastDone && c.lastDone.length >= 10) {
               recoveredMap[c.id] = {
                 id: c.id,
@@ -773,7 +767,6 @@ function recoverChemListFromAllSources() {
   return REQUIRED_CHEM_IDS.map(id => recoveredMap[id]);
 }
 
-// [화학동 5개 라인 상시 무결성 보장 함수: 빈 배열 방지]
 function ensureChemIntegrity(list) {
   const safeList = ensureArray(list, []);
   const map = {};
@@ -863,7 +856,6 @@ function initFirebase() {
   }
 }
 
-// 영구 마스터 키에 상시 저장
 function syncDataToFirebase() {
   chemList = ensureChemIntegrity(chemList);
   localStorage.setItem('chem_data_master', JSON.stringify(chemList));
@@ -974,10 +966,11 @@ function renderTab1ChemStatus() {
 
     if (isRunning) {
       const startKr = formatDateTimeKr(t);
+      const noteLabel = line.note ? ` [${escapeHtml(line.note)}]` : '';
       html += `
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}</strong>
+            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}${noteLabel}</strong>
             <span class="badge badge-green">PM 진행중</span>
           </div>
           <div style="color: var(--text-secondary); font-size: 11px;">PM 시작 시각:</div>
@@ -990,6 +983,7 @@ function renderTab1ChemStatus() {
       const remainH = (nextDue - now) / 3600000;
       const isOverdue = now >= nextDue;
       const isImminent = !isOverdue && remainH <= 7;
+      const noteLabel = line.note ? ` [${escapeHtml(line.note)}]` : '';
 
       let bg = '#f8fafc';
       let border = '#e2e8f0';
@@ -1009,7 +1003,7 @@ function renderTab1ChemStatus() {
       html += `
         <div style="background: ${bg}; border: 1px solid ${border}; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}</strong>
+            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}${noteLabel}</strong>
             ${badgeHtml}
           </div>
           <div style="color: var(--text-secondary); font-size: 11px;">차기 PM 예정:</div>
@@ -1022,6 +1016,7 @@ function renderTab1ChemStatus() {
   container.innerHTML = html;
 }
 
+// [스마트 파서 고도화: 화학동 건욕 명칭 정확 추출 & 디스미어/전기동 수동 특이사항 자동 등록]
 function parseAndApplyKakaoMsg() {
   const raw = document.getElementById('kakaoRawInput').value.trim();
   if (!raw) {
@@ -1029,9 +1024,11 @@ function parseAndApplyKakaoMsg() {
     return;
   }
 
-  let updatedCount = 0;
+  let updatedChemCount = 0;
+  let updatedNoteCount = 0;
   const processedChems = new Set();
 
+  // 1. 날짜 추출 (예: "9월 26일")
   const dateMatch = raw.match(/(\d{1,2})월\s*(\d{1,2})일/);
   if (dateMatch) {
     const curYear = new Date().getFullYear();
@@ -1044,33 +1041,83 @@ function parseAndApplyKakaoMsg() {
 
     const mD = document.getElementById('manualDayInput');
     if (mD) mD.value = Number(dateMatch[2]);
-    updatedCount++;
   }
 
+  // 2. 패스 기준 시간 추출 (예: "7시패스", "7시 30분패스")
   const passMatch = raw.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
   if (passMatch) {
     const el = document.getElementById('passTimeInput');
     if (el) el.value = passMatch[1].replace(/\s+/g, '');
-    updatedCount++;
   }
 
+  // 3. 줄단위 정밀 분석: 화학동 및 디스미어/전기동/기타 특이사항 추출
   const lines = raw.split('\n');
+
+  // 디스미어 & 전기동 라인 패턴 매핑
+  const nonChemLineMappings = [
+    { key: '디스미어 8', pattern: /(?:디스미어\s*8|디8)(?![0-9])/ },
+    { key: '디스미어 11', pattern: /(?:디스미어\s*11|디11)(?![0-9])/ },
+    { key: '디스미어 15', pattern: /(?:디스미어\s*15|디15)(?![0-9])/ },
+    { key: '디스미어 9', pattern: /(?:디스미어\s*9|디9)(?![0-9])/ },
+    { key: '디스미어 6', pattern: /(?:디스미어\s*6|디6)(?![0-9])/ },
+    { key: '디스미어 12', pattern: /(?:디스미어\s*12|디12)(?![0-9])/ },
+    { key: '디스미어 7', pattern: /(?:디스미어\s*7|디7)(?![0-9])/ },
+    { key: '디스미어 10', pattern: /(?:디스미어\s*10|디10)(?![0-9])/ },
+    { key: '전기동 9', pattern: /(?:전기동\s*9|전9)(?![0-9])/ },
+    { key: '전기동 11', pattern: /(?:전기동\s*11|전11)(?![0-9])/ },
+    { key: '전기동 12', pattern: /(?:전기동\s*12|전12)(?![0-9])/ },
+    { key: '전기동 13', pattern: /(?:전기동\s*13|전13)(?![0-9])/ },
+    { key: '전기동 14', pattern: /(?:전기동\s*14|전14)(?![0-9])/ },
+    { key: '전기동 15', pattern: /(?:전기동\s*15|전15)(?![0-9])/ },
+    { key: '전기동 16', pattern: /(?:전기동\s*16|전16)(?![0-9])/ },
+    { key: '전기동 17', pattern: /(?:전기동\s*17|전17)(?![0-9])/ },
+    { key: '전기동 18', pattern: /(?:전기동\s*18|전18)(?![0-9])/ },
+    { key: '전기동 20', pattern: /(?:전기동\s*20|전20)(?![0-9])/ },
+    { key: '전기동 21', pattern: /(?:전기동\s*21|전21)(?![0-9])/ },
+    { key: '전기동 22', pattern: /(?:전기동\s*22|전22)(?![0-9])/ },
+    { key: 'MSF 전기동', pattern: /MSF/i },
+    { key: '화12', pattern: /화12(?![0-9])/ },
+    { key: '화11', pattern: /화11(?![0-9])/ },
+    { key: '화10', pattern: /화10(?![0-9])/ },
+    { key: '에1.2', pattern: /에1\.?2/ },
+    { key: '에3.4', pattern: /에3\.?4/ },
+    { key: '에6', pattern: /에6(?![0-9])/ },
+    { key: '고압수세 1', pattern: /고압수세\s*1/ },
+    { key: '데버링 2', pattern: /(?:데버링\s*2|데2)(?![0-9])/ },
+    { key: '데버링 3', pattern: /(?:데버링\s*3|데3)(?![0-9])/ }
+  ];
+
+  // 특이사항 태그 검출 규칙
+  const featureTagRules = [
+    { tag: '스웰러 건욕', pattern: /스웰러\s*건욕/ },
+    { tag: '망간 건욕', pattern: /망간\s*건욕/ },
+    { tag: '산탈지.산세.프리딥.박리', pattern: /(?:프리딥|산탈지[\.\s]*산세[\.\s]*프리딥)/ },
+    { tag: '유산동필터 교체', pattern: /유산동\s*필터(?:\s*교체)?/ },
+    { tag: '인써트 교체', pattern: /인써트\s*교체/ },
+    { tag: '전체건욕', pattern: /전체\s*건욕/ },
+    { tag: '설비작업', pattern: /설비\s*작업(?:\s*\(?17시\)?)?/ }
+  ];
+
   lines.forEach(lineText => {
+    const trimmed = lineText.trim();
+    if (!trimmed) return;
+
+    // A. 화학동 (화7, 화8, 화9, 화13, 화14) 파싱
     ['화7', '화8', '화9', '화13', '화14'].forEach(cid => {
       if (processedChems.has(cid)) return;
 
       const regex = new RegExp(`(^|[^가-힣a-zA-Z0-9])${cid}([^가-힣a-zA-Z0-9]|$)`);
-      if (regex.test(lineText)) {
+      if (regex.test(trimmed)) {
         const item = chemList.find(c => c.id === cid);
         if (!item) return;
 
-        const timeMatch = lineText.match(/(\d{1,2})시(?:\s*(\d{1,2})분)?/);
+        const timeMatch = trimmed.match(/(\d{1,2})시(?:\s*(\d{1,2})분)?/);
         if (timeMatch) {
           const hh = timeMatch[1].padStart(2, '0');
           const mm = timeMatch[2] ? (Number(timeMatch[2]) >= 30 ? '30' : '00') : '00';
           
-          const isOngoing = lineText.includes('진행중') || lineText.includes('PM중') || lineText.includes('시작');
-          
+          const isOngoing = /(진행중|PM중|진행|시작)/.test(trimmed);
+
           if (isOngoing) {
             item.status = '시작';
             let targetStart = new Date(`${selectedDateStr}T${hh}:${mm}:00`);
@@ -1096,16 +1143,57 @@ function parseAndApplyKakaoMsg() {
             item.lastDone = `${cY}-${cM}-${cD}T${cH}:${cMin}`;
           }
 
+          // [핵심] 화학동 건욕 명칭 유연 추출: 기본PM 대신 정확한 작업명을 note에 기록!
+          if (/촉매\s*건욕/.test(trimmed)) {
+            item.note = '촉매 건욕';
+          } else if (/화학동\s*건욕/.test(trimmed)) {
+            item.note = '화학동 건욕';
+          } else if (/촉매\s*(?:cs|c\/s)/i.test(trimmed)) {
+            item.note = '촉매cs';
+          } else if (/전체\s*건욕/.test(trimmed)) {
+            item.note = '전체건욕';
+          } else if (/인써트\s*교체/.test(trimmed)) {
+            item.note = '인써트 교체';
+          } else if (/기본\s*PM/i.test(trimmed)) {
+            item.note = '';
+          }
+
           processedChems.add(cid);
-          updatedCount++;
+          updatedChemCount++;
         }
+      }
+    });
+
+    // B. 디스미어, 전기동 등 규칙 라인 및 특이사항 파싱
+    nonChemLineMappings.forEach(mapping => {
+      if (mapping.pattern.test(trimmed)) {
+        featureTagRules.forEach(rule => {
+          if (rule.pattern.test(trimmed)) {
+            // 해당 날짜/라인에 이미 동일한 태그가 등록되어 있는지 검사 (중복 방지)
+            const exists = manualNotes.some(n => n.date === selectedDateStr && n.line === mapping.key && n.text === rule.tag);
+            if (!exists) {
+              manualNotes.push({
+                date: selectedDateStr,
+                line: mapping.key,
+                text: rule.tag
+              });
+              updatedNoteCount++;
+
+              // 전기동 설비작업 플래그 동기화
+              if (rule.tag === '설비작업' && mapping.key.startsWith('전기동')) {
+                equipWorkFlags[mapping.key] = true;
+              }
+            }
+          }
+        });
       }
     });
   });
 
   syncDataToFirebase();
   safeRenderAll();
-  alert(`✅ 카톡 공지 분석 완료!\n총 ${updatedCount}개의 일정이 실시간 동기화되었습니다.`);
+
+  alert(`✅ 카톡 공지 분석 완료!\n- 화학동 PM 일정: ${updatedChemCount}건 반영\n- 디스미어/전기동 특이사항: ${updatedNoteCount}건 자동 등록되었습니다.`);
   document.getElementById('kakaoRawInput').value = '';
 }
 
@@ -1267,7 +1355,8 @@ function renderWeeklyMatrix() {
         const nextDue = new Date(base.getTime() + 72 * 3600000);
         if (formatDateOnly(nextDue) === dStr) {
           const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
-          matches.push(`<strong>${escapeHtml(c.id)}</strong> <span style="color:var(--accent);">(${timeKr})</span>`);
+          const noteText = c.note ? ` (${escapeHtml(c.note)})` : '';
+          matches.push(`<strong>${escapeHtml(c.id)}</strong> <span style="color:var(--accent);">${timeKr}${noteText}</span>`);
         }
       }
     });
@@ -2032,13 +2121,11 @@ function updateElecDummyTimeSelect(lineName, part, val) {
   updateLiveTimesOnly(new Date());
 }
 
-// [핵심] 화학동 5개 라인 카드 렌더링 (데이터 유실 방지 & 무조건 노출)
 function renderChemList() {
   const container = document.getElementById('chemListContainer');
   if (!container) return;
   container.innerHTML = '';
 
-  // 5개 라인이 반드시 존재하는지 상시 확인
   chemList = ensureChemIntegrity(chemList);
 
   const statusList = ['시작', '완료'];
@@ -2204,9 +2291,11 @@ function updateChemRealtimeStatuses() {
       box.style.borderLeftColor = borderCol;
       box.style.background = bgCol;
 
+      const noteText = c.note ? ` [${escapeHtml(c.note)}]` : '';
+
       let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-          <span style="font-size:12.5px; color:var(--text-secondary);">차기 72H PM 주기</span>
+          <span style="font-size:12.5px; color:var(--text-secondary);">차기 72H PM 주기${noteText}</span>
           ${badgeHtml}
         </div>
         <div style="font-size:14px; margin-top:2px;">차기 PM 예정: <strong style="color:${textCol}; font-size:15.5px; font-weight:900;">${formatDayTimeKr(nextDue)}</strong></div>
@@ -2382,13 +2471,15 @@ function generateShareText() {
     electro.push(`전21 산탈지.산세.박리 (${pass})${getNote('전기동 21')}`);
   }
 
+  // [수정] 화학동 건욕 명칭(촉매 건욕 등)을 정확히 반영하여 기본PM 대체
   chemList.forEach(c => {
     const t = new Date(c.lastDone);
     const isRunning = (c.status === '시작');
 
     if (isRunning) {
       const timeKr = formatTimeKr(t.getHours(), t.getMinutes());
-      ongoing.push(`-${c.id} ${timeKr} PM 진행중`);
+      const noteLabel = c.note ? `${c.note} ` : '';
+      ongoing.push(`-${c.id} ${timeKr} ${noteLabel}PM 진행중`);
     } else {
       const nextDue = new Date(t.getTime() + 72 * 3600000);
       const manualChemNote = getNote(c.id);
