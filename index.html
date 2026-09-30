@@ -579,7 +579,7 @@
     <div class="card">
       <div class="card-title">
         <span>🧪 화학동 72시간 주기 & 화8 48시간 빌드업 설정</span>
-        <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
+        <span class="badge badge-blue">변경 시 자동 저장</span>
       </div>
       <div style="font-size:12px; color:var(--text-secondary);">
         시각 정정에서 <strong>일 · 시각</strong>을 입력하고 한 번에 저장하세요. 시작·완료는 실제 현재 시각을 저장합니다.
@@ -1468,6 +1468,7 @@ function switchTab(t) {
 
   if (document.getElementById(btnMap[t])) document.getElementById(btnMap[t]).classList.add('active');
   if (document.getElementById(t)) document.getElementById(t).classList.add('active');
+  window.scrollTo?.({top:0,behavior:'instant'});
 
   const now = new Date();
   if (t === 'tab1') {
@@ -2311,16 +2312,21 @@ function renderActiveChemGauges(now) {
     const nextDue = getChemDue(line);
 
     if (isDuePending) {
+      const dueNow=now>=nextDue;
+      const imminent=!dueNow && (nextDue-now)/3600000<=7;
+      const color=dueNow?'var(--danger)':imminent?'var(--warning)':'var(--accent)';
+      const bg=dueNow?'#fff5f5':imminent?'#fffbeb':'#f0f9ff';
+      const badge=dueNow?'red':imminent?'yellow':'blue';
       html += `
-        <div class="gauge-box" style="border-left: 4px solid var(--warning); background:#fffbeb;">
+        <div class="gauge-box" style="border-left: 4px solid ${color}; background:${bg};">
           <div class="gauge-top">
             <div>
-              <strong style="font-size:14.5px; color:#b45309;">🔔 ${escapeHtml(line.id)} PM 예정 시간 도래!</strong>
-              <span class="badge badge-yellow" style="margin-left:4px;">주기 도래</span>
+              <strong style="font-size:14.5px; color:${color};">${escapeHtml(line.id)} ${dueNow?'PM 예정 시간 도래':'PM 예정'}</strong>
+              <span class="badge badge-${badge}" style="margin-left:4px;">${dueNow?'주기 도래':imminent?'7시간 이내 임박':'예정 시간 전'}</span>
             </div>
             <button class="btn btn-sm" style="background:var(--accent); padding:5px 12px;" onclick="setChemStepStatusById('${line.id}', '시작')">⚡ ${escapeHtml(line.id)} PM 시작</button>
           </div>
-          <div style="font-size:12.5px; color:#78350f;">
+          <div style="font-size:12.5px; color:var(--text-secondary);">
             직전 완료: <strong>${formatDateTimeKr(startTime)}</strong> ➔ PM 예정: <strong>${formatDateTimeKr(nextDue)}</strong><br>
             💡 위 <strong>[PM 시작]</strong> 버튼을 누르면 시작 일시가 <strong>현재 시각</strong>으로 자동 갱신되며 탭3과 연동됩니다.
           </div>

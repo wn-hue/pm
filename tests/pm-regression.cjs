@@ -381,6 +381,13 @@ test('copy gives nonblocking feedback and invalid notices remain available for c
   assert.equal(a.alerts.length,0);
 });
 
+test('tomorrow gauge shows future chemistry as planned rather than already due',()=>{
+  const a=app();a.run("chemList=chemList.map(line=>({...line,status:'완료',lastDone:'2026-09-29T10:00:00+09:00'}));selectQuickDay('tomorrow');renderActiveChemGauges(new Date())");
+  const gauge=a.nodes.get('activeChemGaugesContainer').innerHTML;
+  assert.match(gauge,/화7 PM 예정/);assert.match(gauge,/예정 시간 전/);
+  assert.doesNotMatch(gauge,/주기 도래|예정 시간 도래/);
+});
+
 test('two completed chemistry runs create separate desmear work; repeated completion is ignored',()=>{
   const a=app();a.run("setInlineChemCount('화13',0);setChemStepStatusById('화13','시작');completeChemPM('화13')");
   assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
