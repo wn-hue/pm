@@ -179,6 +179,11 @@
     input, select, textarea { font-size: 13.5px; padding: 6px 10px; }
   }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input[type="checkbox"] { -webkit-appearance: auto; appearance: auto; width: 18px; height: 18px; padding: 0; accent-color: var(--accent); vertical-align: middle; }
+  input, select, textarea, label { touch-action: manipulation; }
+  @media (max-width: 767px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
   
   .btn {
     background: var(--accent);
@@ -491,7 +496,7 @@
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
       <div style="font-size:12px; color:var(--text-secondary);">
-        💡 상태는 <strong>[시작 / 완료]</strong>로 관리되며, 시간은 <strong>0분 / 30분</strong>으로 선택됩니다.
+        💡 상태는 <strong>[시작 / 완료]</strong>로 관리되며, 수동 시간은 <strong>0분 / 30분</strong>으로 선택하며, 시작·완료는 실제 현재 시각을 저장합니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -729,70 +734,214 @@ const ANCHOR_BIWEEK = {
   wash1: new Date('2026-09-28T00:00:00')
 };
 
-function recoverChemListFromAllSources() {
-  const recoveredMap = {};
-  DEFAULT_CHEM.forEach(item => {
-    recoveredMap[item.id] = { ...item };
-  });
-
-  const keysToScan = ['chem_data_master'];
-  for (let v = 45; v >= 18; v--) {
-    keysToScan.push(`chem_data_v${v}`);
-  }
-  keysToScan.push('chem_data', 'chemList');
-
-  for (const k of keysToScan) {
-    try {
-      const raw = localStorage.getItem(k);
-      if (!raw) continue;
-      const parsed = JSON.parse(raw);
-      const arr = Array.isArray(parsed) ? parsed : (typeof parsed === 'object' && parsed !== null ? Object.values(parsed) : null);
-      if (arr && arr.length > 0) {
-        arr.forEach(c => {
-          if (c && c.id && REQUIRED_CHEM_IDS.includes(c.id)) {
-            if (c.lastDone && c.lastDone.length >= 10) {
-              recoveredMap[c.id] = {
-                id: c.id,
-                lastDone: c.lastDone,
-                status: (c.status === '시작' || c.status === '완료') ? c.status : '완료',
-                note: c.note || recoveredMap[c.id].note || ''
-              };
-            }
-          }
-        });
-      }
-    } catch(e) {}
-  }
-
-  return REQUIRED_CHEM_IDS.map(id => recoveredMap[id]);
+function readStored(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch (error) { console.warn('저장 데이터 확인 필요:', key, error); return fallback; }
 }
 
-function ensureChemIntegrity(list) {
-  const safeList = ensureArray(list, []);
-  const map = {};
-  DEFAULT_CHEM.forEach(d => { map[d.id] = { ...d }; });
+function recoverStored(master, legacyPrefix, fallback, valid) {
+  const keys = [master];
+  for (let version = 45; version >= 18; version--) keys.push(`${legacyPrefix}_v${version}`);
+  keys.push(legacyPrefix);
+  for (const key of keys) {
+    const value = readStored(key);
+    if (valid(value)) return value;
+  }
+  return JSON.parse(JSON.stringify(fallback));
+}
 
-  safeList.forEach(c => {
-    if (c && c.id && REQUIRED_CHEM_IDS.includes(c.id)) {
-      map[c.id] = {
-        id: c.id,
-        lastDone: c.lastDone || map[c.id].lastDone,
-        status: (c.status === '시작' || c.status === '완료') ? c.status : '완료',
-        note: c.note || map[c.id].note || ''
-      };
+function validDateTime(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return false;
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const calendar = new Date(year, month - 1, day);
+  return calendar.getFullYear() === year && calendar.getMonth() === month - 1 && calendar.getDate() === day &&
+    Number(value.slice(11, 13)) < 24 && Number(value.slice(14, 16)) < 60 && Number.isFinite(new Date(value).getTime());
+}
+
+function normalizeChem(item, fallback) {
+  const value = item && typeof item === 'object' ? item : {};
+  return {
+    ...fallback, ...value, id: fallback.id,
+    lastDone: validDateTime(value.lastDone) ? value.lastDone : fallback.lastDone,
+    status: ['시작', '대기', '분석'].includes(value.status) ? '시작' :
+      value.status === '완료' ? '완료' : fallback.status,
+    plannedDue: validDateTime(value.plannedDue) ? value.plannedDue : null,
+    note: typeof value.note === 'string' ? value.note : fallback.note
+  };
+}
+
+function recoverChemListFromAllSources() {
+  const recoveredMap = Object.fromEntries(DEFAULT_CHEM.map(item => [item.id, {...item}]));
+  const recoveredFields = {};
+  const keysToScan = ['chem_data_master'];
+  for (let v = 45; v >= 18; v--) keysToScan.push(`chem_data_v${v}`);
+  keysToScan.push('chem_data', 'chemList');
+  for (const key of keysToScan) {
+    for (const item of ensureArray(readStored(key), [])) {
+      if (!item || !REQUIRED_CHEM_IDS.includes(item.id)) continue;
+      const seen = recoveredFields[item.id] || (recoveredFields[item.id] = new Set());
+      const target = recoveredMap[item.id];
+      for (const field of ['lastDone', 'status', 'note', 'plannedDue']) {
+        if (seen.has(field)) continue;
+        const valid = field === 'lastDone' ? validDateTime(item[field]) :
+          field === 'status' ? ['시작','완료','대기','분석'].includes(item[field]) :
+          field === 'plannedDue' ? (item[field] === null || validDateTime(item[field])) : typeof item[field] === 'string';
+        if (valid) { target[field] = item[field]; seen.add(field); }
+      }
     }
-  });
+  }
+  return ensureChemIntegrity(REQUIRED_CHEM_IDS.map(id => recoveredMap[id]));
+}
 
+function ensureChemIntegrity(list, fallback = DEFAULT_CHEM) {
+  const map = Object.fromEntries(DEFAULT_CHEM.map(item => [item.id, {...item}]));
+  for (const item of ensureArray(fallback, [])) {
+    if (item && REQUIRED_CHEM_IDS.includes(item.id)) map[item.id] = normalizeChem(item, map[item.id]);
+  }
+  for (const item of ensureArray(list, [])) {
+    if (item && REQUIRED_CHEM_IDS.includes(item.id)) map[item.id] = normalizeChem(item, map[item.id]);
+  }
   return REQUIRED_CHEM_IDS.map(id => map[id]);
 }
 
-let chemList = ensureChemIntegrity(recoverChemListFromAllSources());
-let pulseList = ensureArray(JSON.parse(localStorage.getItem('pulse_data_master')), DEFAULT_PULSE);
-let manualNotes = ensureArray(JSON.parse(localStorage.getItem('manual_notes_master')), DEFAULT_MANUAL_NOTES);
-let equipWorkFlags = ensureObject(JSON.parse(localStorage.getItem('equip_work_flags_master')));
-let elecDummyFlags = ensureObject(JSON.parse(localStorage.getItem('elec_dummy_flags_master')));
-let pulseProcessFlags = ensureObject(JSON.parse(localStorage.getItem('pulse_process_flags_master')));
-let elecCompletedFlags = ensureObject(JSON.parse(localStorage.getItem('elec_completed_flags_master')));
+function ensurePulseIntegrity(list, fallback = DEFAULT_PULSE) {
+  const map = Object.fromEntries(DEFAULT_PULSE.map(item => [item.line, {...item}]));
+  for (const item of [...ensureArray(fallback, []), ...ensureArray(list, [])]) {
+    if (item && map[item.line] && /^\d{4}-\d{2}-\d{2}$/.test(item.lastDate || '') && validDateTime(item.lastDate + 'T00:00')) {
+      map[item.line] = {...item};
+    }
+  }
+  return DEFAULT_PULSE.map(item => map[item.line]);
+}
+
+function recoverPulseListFromAllSources() {
+  const keys = ['pulse_data_master'];
+  for (let version = 45; version >= 18; version--) keys.push(`pulse_data_v${version}`);
+  keys.push('pulse_data');
+  const found = new Map();
+  for (const key of keys) {
+    for (const item of ensureArray(readStored(key), [])) {
+      if (item && !found.has(item.line) && DEFAULT_PULSE.some(line => line.line === item.line) &&
+          validDateTime(item.lastDate + 'T00:00')) found.set(item.line,item);
+    }
+  }
+  return ensurePulseIntegrity([...found.values()]);
+}
+
+function normalizeNotes(list) {
+  const seen = new Set();
+  return ensureArray(list, []).filter(item => {
+    if (!item || typeof item.line !== 'string' || typeof item.text !== 'string' ||
+        !validDateTime((item.date || '') + 'T00:00')) return false;
+    const key = JSON.stringify([item.date, item.line, item.text]);
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+let chemList = recoverChemListFromAllSources();
+let pulseList = recoverPulseListFromAllSources();
+let manualNotes = normalizeNotes(recoverStored('manual_notes_master','manual_notes',[], value => Array.isArray(value) || (value && typeof value === 'object')));
+const recoverFlags = prefix => ensureObject(recoverStored(prefix + '_master',prefix,{}, value => value && typeof value === 'object' && !Array.isArray(value)));
+let equipWorkFlags = recoverFlags('equip_work_flags');
+let elecDummyFlags = recoverFlags('elec_dummy_flags');
+let pulseProcessFlags = recoverFlags('pulse_process_flags');
+let elecCompletedFlags = recoverFlags('elec_completed_flags');
+
+// Store only user changes for retry. Transactions merge them with the latest server state.
+const STATE_FIELDS = ['chemList','pulseList','manualNotes','equipWorkFlags','elecDummyFlags','pulseProcessFlags','elecCompletedFlags'];
+const MASTER_KEYS = ['chem_data_master','pulse_data_master','manual_notes_master','equip_work_flags_master','elec_dummy_flags_master','pulse_process_flags_master','elec_completed_flags_master'];
+const PENDING_KEY = 'pm_pending_changes_master';
+let pendingChanges = ensureArray(readStored(PENDING_KEY), []).filter(change => change && STATE_FIELDS.includes(change.field) && typeof change.key === 'string');
+let remoteLoaded = false;
+let syncInFlight = false;
+let retrySyncTimer = null;
+function currentState() {
+  return JSON.parse(JSON.stringify({chemList,pulseList,manualNotes,equipWorkFlags,elecDummyFlags,pulseProcessFlags,elecCompletedFlags}));
+}
+let lastLocalState = currentState();
+
+function stateEntries(field, value) {
+  if (field === 'chemList') return Object.fromEntries(ensureArray(value, []).filter(item => item && REQUIRED_CHEM_IDS.includes(item.id)).map(item => [item.id,item]));
+  if (field === 'pulseList') return Object.fromEntries(ensureArray(value, []).filter(item => item && item.line).map(item => [item.line,item]));
+  if (field === 'manualNotes') return Object.fromEntries(normalizeNotes(value).map(item => [JSON.stringify([item.date,item.line,item.text]),item]));
+  return ensureObject(value);
+}
+
+function applyChanges(state, changes) {
+  const result = {...state};
+  for (const field of STATE_FIELDS) {
+    const map = {...stateEntries(field,result[field])};
+    for (const change of changes.filter(item => item.field === field)) {
+      if (change.deleted) delete map[change.key];
+      else if (!change.ifMissing || !(change.key in map)) map[change.key] = change.value;
+    }
+    result[field] = ['chemList','pulseList','manualNotes'].includes(field) ? Object.values(map) : map;
+  }
+  return result;
+}
+
+function persistLocalState() {
+  const state = currentState();
+  try {
+    STATE_FIELDS.forEach((field,index) => localStorage.setItem(MASTER_KEYS[index], JSON.stringify(state[field])));
+    localStorage.setItem(PENDING_KEY,JSON.stringify(pendingChanges));
+    return true;
+  } catch (error) {
+    console.error('로컬 저장 실패:',error);
+    document.getElementById('syncStatus').textContent = '⚠️ 로컬 저장 실패 (저장 공간 확인)';
+    return false;
+  }
+}
+
+function acceptRemoteState(remote) {
+  const base = {...remote,
+    chemList: ensureChemIntegrity(remote.chemList,chemList),
+    pulseList: ensurePulseIntegrity(remote.pulseList,pulseList),
+    manualNotes: normalizeNotes(remote.manualNotes)
+  };
+  const merged = applyChanges(base,pendingChanges);
+  chemList = ensureChemIntegrity(merged.chemList,chemList);
+  pulseList = ensurePulseIntegrity(merged.pulseList,pulseList);
+  manualNotes = normalizeNotes(merged.manualNotes);
+  equipWorkFlags = ensureObject(merged.equipWorkFlags);
+  elecDummyFlags = ensureObject(merged.elecDummyFlags);
+  pulseProcessFlags = ensureObject(merged.pulseProcessFlags);
+  elecCompletedFlags = ensureObject(merged.elecCompletedFlags);
+  lastLocalState = currentState();
+  persistLocalState();
+}
+
+async function flushPendingChanges() {
+  if (!db || !isFirebaseConnected || !remoteLoaded || syncInFlight || !pendingChanges.length) return;
+  syncInFlight = true;
+  const batch = pendingChanges.slice();
+  try {
+    const result = await db.ref('pm_system_data').transaction(remote => {
+      const base = remote || currentState();
+      const merged = applyChanges(base,batch);
+      merged.chemList = ensureChemIntegrity(merged.chemList,chemList);
+      merged.pulseList = ensurePulseIntegrity(merged.pulseList,pulseList);
+      merged.lastUpdated = new Date().toISOString();
+      return merged;
+    }, undefined, false);
+    if (!result.committed) throw new Error('동기화 미완료');
+    pendingChanges.splice(0,batch.length);
+    acceptRemoteState(result.snapshot.val() || {});
+    if (isFirebaseConnected) document.getElementById('syncStatus').textContent = '🟢 실시간 서버 연결됨';
+    safeRenderAll();
+  } catch (error) {
+    console.error('Firebase sync error:',error);
+    document.getElementById('syncStatus').textContent = '⚠️ 서버 저장 실패 · 로컬 변경 보관 중';
+    clearTimeout(retrySyncTimer);
+    retrySyncTimer = setTimeout(() => { retrySyncTimer = null; flushPendingChanges(); },15000);
+  } finally {
+    syncInFlight = false;
+  }
+  if (pendingChanges.length && !retrySyncTimer) flushPendingChanges();
+}
 
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
@@ -810,74 +959,60 @@ function getEtchingLine(dateObj) {
 
 function initFirebase() {
   const statusEl = document.getElementById('syncStatus');
+  persistLocalState();
   try {
-    if (typeof firebase !== 'undefined') {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-      db = firebase.database();
-
-      db.ref('.info/connected').on('value', (snap) => {
-        if (snap.val() === true) {
-          isFirebaseConnected = true;
-          if (statusEl) statusEl.innerHTML = `<span style="color:#16a34a;">🟢 실시간 서버 연결됨</span>`;
-        } else {
-          isFirebaseConnected = false;
-          if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626;">🔴 오프라인 (재연결 시도)</span>`;
-        }
-      });
-
-      db.ref('pm_system_data').on('value', (snapshot) => {
-        const remoteData = snapshot.val();
-        if (remoteData) {
-          if (remoteData.chemList) {
-            chemList = ensureChemIntegrity(remoteData.chemList);
-          } else {
-            chemList = ensureChemIntegrity(chemList);
-          }
-          if (remoteData.pulseList) pulseList = ensureArray(remoteData.pulseList, pulseList);
-          if (remoteData.manualNotes) manualNotes = ensureArray(remoteData.manualNotes, manualNotes);
-          if (remoteData.equipWorkFlags) equipWorkFlags = ensureObject(remoteData.equipWorkFlags);
-          if (remoteData.elecDummyFlags) elecDummyFlags = ensureObject(remoteData.elecDummyFlags);
-          if (remoteData.pulseProcessFlags) pulseProcessFlags = ensureObject(remoteData.pulseProcessFlags);
-          if (remoteData.elecCompletedFlags) elecCompletedFlags = ensureObject(remoteData.elecCompletedFlags);
-
-          safeRenderAll();
-        } else {
-          syncDataToFirebase();
-        }
-      });
-    } else {
-      if (statusEl) statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 저장 모드</span>`;
+    if (typeof firebase === 'undefined') {
+      statusEl.textContent = '⚠️ 로컬 저장 모드'; return;
     }
-  } catch (e) {
-    console.error("Firebase Init Error:", e);
-    if (statusEl) statusEl.innerHTML = `<span style="color:#d97706;">⚠️ 로컬 저장 모드</span>`;
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref('.info/connected').on('value', snap => {
+      isFirebaseConnected = snap.val() === true;
+      statusEl.textContent = isFirebaseConnected ? '🟢 실시간 서버 연결됨' : '🔴 오프라인 · 로컬 변경 보관';
+      if (isFirebaseConnected) { clearTimeout(retrySyncTimer); retrySyncTimer = null; flushPendingChanges(); }
+    });
+    db.ref('pm_system_data').on('value', snapshot => {
+      const remote = snapshot.val();
+      remoteLoaded = true;
+      if (remote) acceptRemoteState(remote);
+      else if (!pendingChanges.length) {
+        const state = currentState();
+        for (const field of STATE_FIELDS) {
+          for (const [key,value] of Object.entries(stateEntries(field,state[field]))) pendingChanges.push({field,key,value,ifMissing:true});
+        }
+        persistLocalState();
+      }
+      migrateLegacyTimers();
+      safeRenderAll();
+      flushPendingChanges();
+    }, error => {
+      remoteLoaded = false;
+      console.error('Firebase read error:',error);
+      statusEl.textContent = '⚠️ 서버 읽기 실패 · 로컬 저장 모드';
+    });
+  } catch (error) {
+    console.error('Firebase Init Error:',error);
+    statusEl.textContent = '⚠️ 로컬 저장 모드';
   }
 }
 
 function syncDataToFirebase() {
-  chemList = ensureChemIntegrity(chemList);
-  localStorage.setItem('chem_data_master', JSON.stringify(chemList));
-  localStorage.setItem('pulse_data_master', JSON.stringify(pulseList));
-  localStorage.setItem('manual_notes_master', JSON.stringify(manualNotes));
-  localStorage.setItem('equip_work_flags_master', JSON.stringify(equipWorkFlags));
-  localStorage.setItem('elec_dummy_flags_master', JSON.stringify(elecDummyFlags));
-  localStorage.setItem('pulse_process_flags_master', JSON.stringify(pulseProcessFlags));
-  localStorage.setItem('elec_completed_flags_master', JSON.stringify(elecCompletedFlags));
-
-  if (db && isFirebaseConnected) {
-    db.ref('pm_system_data').set({
-      chemList: chemList,
-      pulseList: pulseList,
-      manualNotes: manualNotes,
-      equipWorkFlags: equipWorkFlags,
-      elecDummyFlags: elecDummyFlags,
-      pulseProcessFlags: pulseProcessFlags,
-      elecCompletedFlags: elecCompletedFlags,
-      lastUpdated: new Date().toISOString()
-    }).catch(err => console.error("Firebase sync error:", err));
+  chemList = ensureChemIntegrity(chemList,lastLocalState.chemList);
+  pulseList = ensurePulseIntegrity(pulseList,lastLocalState.pulseList);
+  manualNotes = normalizeNotes(manualNotes);
+  const state = currentState();
+  for (const field of STATE_FIELDS) {
+    const before = stateEntries(field,lastLocalState[field]);
+    const after = stateEntries(field,state[field]);
+    for (const key of new Set([...Object.keys(before),...Object.keys(after)])) {
+      if (JSON.stringify(before[key]) === JSON.stringify(after[key])) continue;
+      pendingChanges.push(key in after ? {field,key,value:after[key]} : {field,key,deleted:true});
+    }
   }
+  lastLocalState = state;
+  persistLocalState();
+  clearTimeout(retrySyncTimer); retrySyncTimer = null;
+  flushPendingChanges();
 }
 
 function formatTimeKr(hour, min) {
@@ -978,7 +1113,7 @@ function renderTab1ChemStatus() {
         </div>
       `;
     } else {
-      const nextDue = new Date(t.getTime() + 72 * 3600000);
+      const nextDue = getChemDue(line);
       const dueKr = formatDateTimeKr(nextDue);
       const remainH = (nextDue - now) / 3600000;
       const isOverdue = now >= nextDue;
@@ -1017,196 +1152,122 @@ function renderTab1ChemStatus() {
 }
 
 // [스마트 파서 고도화: 화학동 건욕 명칭 정확 추출 & 디스미어/전기동 수동 특이사항 자동 등록]
+function noticeDate(raw, now) {
+  const match = raw.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (!match) return null;
+  const years = match[1] ? [Number(match[1])] : [now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1];
+  const dates = years.map(year => new Date(year,Number(match[2])-1,Number(match[3])))
+    .filter(date => date.getMonth() === Number(match[2])-1 && date.getDate() === Number(match[3]));
+  dates.sort((a,b) => Math.abs(a-now)-Math.abs(b-now));
+  return dates[0] || null;
+}
+
+function extractNoticeTime(text) {
+  const match = text.match(/(?:^|[^\d])(\d{1,2})(?::(\d{2})|시(?:\s*(\d{1,2})분)?)/);
+  if (!match) return null;
+  const hour = Number(match[1]); const minute = Number(match[2] || match[3] || 0);
+  return hour < 24 && minute < 60 ? {hour,minute} : null;
+}
+
+function extractChemWork(text) {
+  const rules = [
+    ['촉매 건욕',/촉매\s*건욕/], ['화학동 건욕',/화학동\s*건욕/],
+    ['촉매cs',/촉매\s*(?:cs|c\/s)/i], ['전체건욕',/전체\s*건욕/],
+    ['인써트 교체',/인[써서]트\s*교체/], ['설비작업',/설비\s*작업/], ['기본PM',/기본\s*PM/i]
+  ];
+  return rules.filter(([,pattern]) => pattern.test(text)).map(([name]) => name).join(' · ');
+}
+
 function parseAndApplyKakaoMsg() {
-  const raw = document.getElementById('kakaoRawInput').value.trim();
-  if (!raw) {
-    alert('카카오톡 PM 공지 내용을 붙여넣어 주세요.');
-    return;
+  const input = document.getElementById('kakaoRawInput');
+  const raw = input.value.trim();
+  if (!raw) { alert('카카오톡 PM 공지 내용을 붙여넣어 주세요.'); return; }
+  const now = new Date();
+  const headerDate = noticeDate(raw,now);
+  const reference = headerDate || new Date(selectedDateStr + 'T00:00:00');
+  // An announcement can carry a historical date without changing the today/tomorrow screen.
+  if (headerDate) {
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+    if (formatDateOnly(headerDate) === formatDateOnly(now)) selectQuickDay('today');
+    else if (formatDateOnly(headerDate) === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
   }
-
-  let updatedChemCount = 0;
-  let updatedNoteCount = 0;
-  const processedChems = new Set();
-
-  // 1. 날짜 추출 (예: "9월 26일")
-  const dateMatch = raw.match(/(\d{1,2})월\s*(\d{1,2})일/);
-  if (dateMatch) {
-    const curYear = new Date().getFullYear();
-    const m = dateMatch[1].padStart(2, '0');
-    const d = dateMatch[2].padStart(2, '0');
-    selectedDateStr = `${curYear}-${m}-${d}`;
-    const todayStr = formatDateOnly(new Date());
-    currentDateChoice = (selectedDateStr === todayStr) ? 'today' : 'custom';
-    updateDateToggleUI();
-
-    const mD = document.getElementById('manualDayInput');
-    if (mD) mD.value = Number(dateMatch[2]);
-  }
-
-  // 2. 패스 기준 시간 추출 (예: "7시패스", "7시 30분패스")
   const passMatch = raw.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
-  if (passMatch) {
-    const el = document.getElementById('passTimeInput');
-    if (el) el.value = passMatch[1].replace(/\s+/g, '');
-  }
-
-  // 3. 줄단위 정밀 분석: 화학동 및 디스미어/전기동/기타 특이사항 추출
-  const lines = raw.split('\n');
-
-  // 디스미어 & 전기동 라인 패턴 매핑
-  const nonChemLineMappings = [
-    { key: '디스미어 8', pattern: /(?:디스미어\s*8|디8)(?![0-9])/ },
-    { key: '디스미어 11', pattern: /(?:디스미어\s*11|디11)(?![0-9])/ },
-    { key: '디스미어 15', pattern: /(?:디스미어\s*15|디15)(?![0-9])/ },
-    { key: '디스미어 9', pattern: /(?:디스미어\s*9|디9)(?![0-9])/ },
-    { key: '디스미어 6', pattern: /(?:디스미어\s*6|디6)(?![0-9])/ },
-    { key: '디스미어 12', pattern: /(?:디스미어\s*12|디12)(?![0-9])/ },
-    { key: '디스미어 7', pattern: /(?:디스미어\s*7|디7)(?![0-9])/ },
-    { key: '디스미어 10', pattern: /(?:디스미어\s*10|디10)(?![0-9])/ },
-    { key: '전기동 9', pattern: /(?:전기동\s*9|전9)(?![0-9])/ },
-    { key: '전기동 11', pattern: /(?:전기동\s*11|전11)(?![0-9])/ },
-    { key: '전기동 12', pattern: /(?:전기동\s*12|전12)(?![0-9])/ },
-    { key: '전기동 13', pattern: /(?:전기동\s*13|전13)(?![0-9])/ },
-    { key: '전기동 14', pattern: /(?:전기동\s*14|전14)(?![0-9])/ },
-    { key: '전기동 15', pattern: /(?:전기동\s*15|전15)(?![0-9])/ },
-    { key: '전기동 16', pattern: /(?:전기동\s*16|전16)(?![0-9])/ },
-    { key: '전기동 17', pattern: /(?:전기동\s*17|전17)(?![0-9])/ },
-    { key: '전기동 18', pattern: /(?:전기동\s*18|전18)(?![0-9])/ },
-    { key: '전기동 20', pattern: /(?:전기동\s*20|전20)(?![0-9])/ },
-    { key: '전기동 21', pattern: /(?:전기동\s*21|전21)(?![0-9])/ },
-    { key: '전기동 22', pattern: /(?:전기동\s*22|전22)(?![0-9])/ },
-    { key: 'MSF 전기동', pattern: /MSF/i },
-    { key: '화12', pattern: /화12(?![0-9])/ },
-    { key: '화11', pattern: /화11(?![0-9])/ },
-    { key: '화10', pattern: /화10(?![0-9])/ },
-    { key: '에1.2', pattern: /에1\.?2/ },
-    { key: '에3.4', pattern: /에3\.?4/ },
-    { key: '에6', pattern: /에6(?![0-9])/ },
-    { key: '고압수세 1', pattern: /고압수세\s*1/ },
-    { key: '데버링 2', pattern: /(?:데버링\s*2|데2)(?![0-9])/ },
-    { key: '데버링 3', pattern: /(?:데버링\s*3|데3)(?![0-9])/ }
+  if (passMatch && extractNoticeTime(passMatch[1])) document.getElementById('passTimeInput').value = passMatch[1].replace(/\s+/g,'');
+  let updatedChemCount = 0; let updatedNoteCount = 0;
+  const featureRules = [
+    ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
+    ['산탈지.산세.프리딥.박리',/프리딥/], ['유산동필터 교체',/유산동\s*필터(?:\s*교체)?/],
+    ['인써트 교체',/인[써서]트\s*교체/], ['전체건욕',/전체\s*건욕/], ['설비작업',/설비\s*작업/]
   ];
-
-  // 특이사항 태그 검출 규칙
-  const featureTagRules = [
-    { tag: '스웰러 건욕', pattern: /스웰러\s*건욕/ },
-    { tag: '망간 건욕', pattern: /망간\s*건욕/ },
-    { tag: '산탈지.산세.프리딥.박리', pattern: /(?:프리딥|산탈지[\.\s]*산세[\.\s]*프리딥)/ },
-    { tag: '유산동필터 교체', pattern: /유산동\s*필터(?:\s*교체)?/ },
-    { tag: '인써트 교체', pattern: /인써트\s*교체/ },
-    { tag: '전체건욕', pattern: /전체\s*건욕/ },
-    { tag: '설비작업', pattern: /설비\s*작업(?:\s*\(?17시\)?)?/ }
-  ];
-
-  lines.forEach(lineText => {
-    const trimmed = lineText.trim();
-    if (!trimmed) return;
-
-    // A. 화학동 (화7, 화8, 화9, 화13, 화14) 파싱
-    ['화7', '화8', '화9', '화13', '화14'].forEach(cid => {
-      if (processedChems.has(cid)) return;
-
-      const regex = new RegExp(`(^|[^가-힣a-zA-Z0-9])${cid}([^가-힣a-zA-Z0-9]|$)`);
-      if (regex.test(trimmed)) {
-        const item = chemList.find(c => c.id === cid);
-        if (!item) return;
-
-        const timeMatch = trimmed.match(/(\d{1,2})시(?:\s*(\d{1,2})분)?/);
-        if (timeMatch) {
-          const hh = timeMatch[1].padStart(2, '0');
-          const mm = timeMatch[2] ? (Number(timeMatch[2]) >= 30 ? '30' : '00') : '00';
-          
-          const isOngoing = /(진행중|PM중|진행|시작)/.test(trimmed);
-
-          if (isOngoing) {
-            item.status = '시작';
-            let targetStart = new Date(`${selectedDateStr}T${hh}:${mm}:00`);
-            const now = new Date();
-            if (targetStart > now) {
-              targetStart.setDate(targetStart.getDate() - 1);
-            }
-            const sY = targetStart.getFullYear();
-            const sM = String(targetStart.getMonth() + 1).padStart(2, '0');
-            const sD = String(targetStart.getDate()).padStart(2, '0');
-            item.lastDone = `${sY}-${sM}-${sD}T${hh}:${mm}`;
+  const linePattern = /(?:화학동\s*|화\s*)(?:14|13|12|11|10|9|8|7)(?!\d)|(?:디스미어\s*|디\s*)(?:15|12|11|10|9|8|7|6)(?!\d)|(?:전기동\s*|전\s*)(?:22|21|20|18|17|16|15|14|13|12|11|9)(?!\d)|MSF(?:\s*전기동)?|에[13]\s*[.·,]\s*[24]|에6(?!\d)|고압수세\s*1(?!\d)|(?:데버링\s*|데)(?:2|3)(?!\d)/gi;
+  for (const text of raw.split(/\r?\n/)) {
+    const matches = [...text.matchAll(linePattern)].filter(match => match.index === 0 || !/[a-zA-Z0-9가-힣]/.test(text[match.index-1]));
+    for (let index = 0; index < matches.length; index++) {
+      const match = matches[index];
+      let segment = text.slice(match.index,index+1 < matches.length ? matches[index+1].index : text.length);
+      // A bare list such as "화7, 화8 13시 촉매 건욕" shares its final work description.
+      if (index+1 < matches.length && /^[\s,.·/와과및-]*$/.test(segment.slice(match[0].length))) segment += text.slice(matches[matches.length-1].index+matches[matches.length-1][0].length);
+      const token = match[0].replace(/\s+/g,'');
+      const number = token.match(/\d+/)?.[0];
+      const key = /^(화학동|화)/.test(token) ? '화'+number : /^(디스미어|디)/.test(token) ? '디스미어 '+number :
+        /^(전기동|전)/.test(token) ? '전기동 '+number : /^MSF/i.test(token) ? 'MSF 전기동' :
+        /^에/.test(token) ? token.replace(/[·,]/g,'.') : /^고압/.test(token) ? '고압수세 1' : '데버링 '+number;
+      let date = new Date(reference);
+      const explicit = noticeDate(segment,now);
+      const dayOnly = segment.match(/(?:^|[^\d])(\d{1,2})일/);
+      if (explicit) date = explicit;
+      else if (dayOnly) date = resolveDayInput(Number(dayOnly[1]),date) || date;
+      else if (/익일|내일/.test(segment)) date.setDate(date.getDate()+1);
+      const item = chemList.find(chem => chem.id === key);
+      if (item) {
+        const work = extractChemWork(segment);
+        const time = extractNoticeTime(segment);
+        const ongoing = /진행\s*중|PM\s*중|진행|시작/i.test(segment) && !/완료|종료/.test(segment);
+        const completed = /완료|종료/.test(segment) && !/미완료/.test(segment);
+        let changed = false;
+        if (work) { item.note = work === '기본PM' ? '' : work; changed = true; }
+        if (time) {
+          if (ongoing && !headerDate && !explicit && !dayOnly && !/익일|내일/.test(segment)) date = new Date(now);
+          date.setHours(time.hour,time.minute,0,0);
+          if (ongoing || completed) {
+            while (date > now) date.setDate(date.getDate()-1);
+            item.status = ongoing ? '시작' : '완료';
+            item.lastDone = date.toISOString(); delete item.plannedDue;
           } else {
-            item.status = '완료';
-            const scheduledTime = new Date(`${selectedDateStr}T${hh}:${mm}:00`);
-            const calculatedLastDone = new Date(scheduledTime.getTime() - 72 * 3600000);
-            
-            const cY = calculatedLastDone.getFullYear();
-            const cM = String(calculatedLastDone.getMonth() + 1).padStart(2, '0');
-            const cD = String(calculatedLastDone.getDate()).padStart(2, '0');
-            const cH = String(calculatedLastDone.getHours()).padStart(2, '0');
-            const cMin = calculatedLastDone.getMinutes() >= 30 ? '30' : '00';
-            
-            item.lastDone = `${cY}-${cM}-${cD}T${cH}:${cMin}`;
+            // Planned PM is an announcement, not a fabricated completion 72 hours earlier.
+            item.plannedDue = date.toISOString();
           }
-
-          // [핵심] 화학동 건욕 명칭 유연 추출: 기본PM 대신 정확한 작업명을 note에 기록!
-          if (/촉매\s*건욕/.test(trimmed)) {
-            item.note = '촉매 건욕';
-          } else if (/화학동\s*건욕/.test(trimmed)) {
-            item.note = '화학동 건욕';
-          } else if (/촉매\s*(?:cs|c\/s)/i.test(trimmed)) {
-            item.note = '촉매cs';
-          } else if (/전체\s*건욕/.test(trimmed)) {
-            item.note = '전체건욕';
-          } else if (/인써트\s*교체/.test(trimmed)) {
-            item.note = '인써트 교체';
-          } else if (/기본\s*PM/i.test(trimmed)) {
-            item.note = '';
-          }
-
-          processedChems.add(cid);
-          updatedChemCount++;
+          changed = true;
+        }
+        if (changed) updatedChemCount++;
+      } else {
+        for (const [tag,pattern] of featureRules) {
+          if (!pattern.test(segment)) continue;
+          const dateStr = formatDateOnly(date);
+          if (manualNotes.some(note => note.date === dateStr && note.line === key && note.text === tag)) continue;
+          manualNotes.push({date:dateStr,line:key,text:tag}); updatedNoteCount++;
         }
       }
-    });
-
-    // B. 디스미어, 전기동 등 규칙 라인 및 특이사항 파싱
-    nonChemLineMappings.forEach(mapping => {
-      if (mapping.pattern.test(trimmed)) {
-        featureTagRules.forEach(rule => {
-          if (rule.pattern.test(trimmed)) {
-            // 해당 날짜/라인에 이미 동일한 태그가 등록되어 있는지 검사 (중복 방지)
-            const exists = manualNotes.some(n => n.date === selectedDateStr && n.line === mapping.key && n.text === rule.tag);
-            if (!exists) {
-              manualNotes.push({
-                date: selectedDateStr,
-                line: mapping.key,
-                text: rule.tag
-              });
-              updatedNoteCount++;
-
-              // 전기동 설비작업 플래그 동기화
-              if (rule.tag === '설비작업' && mapping.key.startsWith('전기동')) {
-                equipWorkFlags[mapping.key] = true;
-              }
-            }
-          }
-        });
-      }
-    });
-  });
-
-  syncDataToFirebase();
-  safeRenderAll();
-
-  alert(`✅ 카톡 공지 분석 완료!\n- 화학동 PM 일정: ${updatedChemCount}건 반영\n- 디스미어/전기동 특이사항: ${updatedNoteCount}건 자동 등록되었습니다.`);
-  document.getElementById('kakaoRawInput').value = '';
+    }
+  }
+  syncDataToFirebase(); safeRenderAll();
+  if (!updatedChemCount && !updatedNoteCount) {
+    alert('반영할 일정이나 특이사항을 찾지 못했습니다. 라인명과 작업 시각·내용을 확인해주세요.'); return;
+  }
+  alert(`✅ 카톡 공지 분석 완료!\n- 화학동 PM 일정: ${updatedChemCount}건 반영\n- 특이사항: ${updatedNoteCount}건 자동 등록`);
+  input.value = '';
 }
 
 function safeRenderAll() {
-  try { generateShareText(); } catch(e){}
-  try { renderTab1ChemStatus(); } catch(e){}
-  try { renderWeeklyMatrix(); } catch(e){}
-  try { updateManualLineOptions(); } catch(e){}
-  try { renderManualNotesList(); } catch(e){}
-  try { renderChemList(); } catch(e){}
-  try { renderPulseTable(); } catch(e){}
-  try { renderActiveChemGauges(new Date()); } catch(e){}
-  try { renderElectroGauges(new Date()); } catch(e){}
+  try { generateShareText(); } catch(e){ console.error(e); }
+  try { renderTab1ChemStatus(); } catch(e){ console.error(e); }
+  try { renderWeeklyMatrix(); } catch(e){ console.error(e); }
+  try { updateManualLineOptions(); } catch(e){ console.error(e); }
+  try { renderManualNotesList(); } catch(e){ console.error(e); }
+  try { renderChemList(); } catch(e){ console.error(e); }
+  try { renderPulseTable(); } catch(e){ console.error(e); }
+  try { renderActiveChemGauges(new Date()); } catch(e){ console.error(e); }
+  try { renderElectroGauges(new Date()); } catch(e){ console.error(e); }
 }
 
 window.onload = function() {
@@ -1218,6 +1279,7 @@ window.onload = function() {
   const mD = document.getElementById('manualDayInput');
   if (mD) mD.value = today.getDate();
 
+  migrateLegacyTimers();
   initFirebase();
   updateDateToggleUI();
   updateManualLineOptions();
@@ -1233,8 +1295,12 @@ function tick() {
   const clockEl = document.getElementById('liveClock');
   if (clockEl) clockEl.innerText = formatClock(now);
 
-  try { updateLiveTimesOnly(now); } catch(e) {}
-  try { updateChemRealtimeStatuses(); } catch(e) {}
+  try { updateLiveTimesOnly(now); } catch(e) { console.error(e); }
+  try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); } catch(e) { console.error(e); }
+  if (now.getSeconds() === 0) {
+    renderPulseTable();
+    if (!document.querySelector('#tab2 input:focus, #tab2 select:focus')) renderActiveChemGauges(now);
+  }
 
   const currentTodayStr = formatDateOnly(now);
   if (lastCheckedDate !== currentTodayStr) {
@@ -1247,7 +1313,7 @@ function tick() {
       selectedDateStr = formatDateOnly(tmr);
     }
     const mD = document.getElementById('manualDayInput');
-    if (mD) mD.value = now.getDate();
+    if (mD) mD.value = new Date(selectedDateStr + 'T00:00:00').getDate();
     safeRenderAll();
   }
 }
@@ -1310,8 +1376,8 @@ function renderWeeklyMatrix() {
     if (th) {
       th.innerHTML = `${dayNames[i]} <span style="font-size:10.5px; font-weight:normal; opacity:0.85;">(${d.getMonth()+1}/${d.getDate()})</span>`;
       th.className = (dateStr === selectedDateStr) ? 'today-col' : (i === 5 ? 'weekend-sat-th' : (i === 6 ? 'weekend-th' : ''));
-      th.style.cursor = 'pointer';
-      th.onclick = () => selectDayFromMatrix(dateStr);
+      th.style.cursor = 'default';
+      th.onclick = null;
     }
   }
 
@@ -1351,8 +1417,8 @@ function renderWeeklyMatrix() {
 
     chemList.forEach(c => {
       const base = new Date(c.lastDone);
-      if (!isNaN(base.getTime())) {
-        const nextDue = new Date(base.getTime() + 72 * 3600000);
+      if (c.status === '완료' && !isNaN(base.getTime())) {
+        const nextDue = getChemDue(c);
         if (formatDateOnly(nextDue) === dStr) {
           const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
           const noteText = c.note ? ` (${escapeHtml(c.note)})` : '';
@@ -1368,26 +1434,10 @@ function renderWeeklyMatrix() {
 }
 
 function selectDayFromMatrix(dateStr) {
-  selectedDateStr = dateStr;
-  const now = new Date();
-  const tmr = new Date(now);
-  tmr.setDate(tmr.getDate() + 1);
-
-  if (dateStr === formatDateOnly(now)) currentDateChoice = 'today';
-  else if (dateStr === formatDateOnly(tmr)) currentDateChoice = 'tomorrow';
-  else currentDateChoice = 'custom';
-  updateDateToggleUI();
-
-  const d = new Date(dateStr + 'T00:00:00');
-  const mD = document.getElementById('manualDayInput');
-  if (mD) mD.value = d.getDate();
-
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
-  renderTab1ChemStatus();
-  updateManualLineOptions();
-  closeModal('matrixModal');
+  const today = new Date();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  if (dateStr === formatDateOnly(today)) selectQuickDay('today');
+  else if (dateStr === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
 }
 
 function renderManualNotesInMatrix(weekDates) {
@@ -1426,9 +1476,14 @@ function renderManualNotesInMatrix(weekDates) {
     else if (l.includes('화11')) targetId = 'custom_화11';
     else if (l.includes('화10')) targetId = 'custom_화10';
 
+    if (l.startsWith('에')) {
+      const index = weekDates.findIndex(day => day.dateStr === item.date && getEtchingLine(day.date) === l);
+      if (index >= 0) targetId = `custom_etch_${index+1}`;
+    }
     if (targetId) {
       const el = document.getElementById(targetId);
-      if (el) el.innerHTML += `<span class="badge badge-custom">${escapeHtml(item.text)}</span>`;
+      const column = el?.closest('td')?.cellIndex;
+      if (el && weekDates[column-1]?.dateStr === item.date) el.innerHTML += `<span class="badge badge-custom">${escapeHtml(item.text)}</span>`;
     }
   });
 }
@@ -1460,44 +1515,9 @@ function updateManualLineOptions() {
   if (!select) return;
 
   const curVal = select.value;
-  const targetDate = new Date(selectedDateStr + 'T00:00:00');
+  const targetDate = new Date();
+  targetDate.setHours(0,0,0,0);
   const tomorrowDate = new Date(targetDate.getTime() + 86400000);
-
-  const getDayLines = (d) => {
-    const day = d.getDay();
-    const lines = [];
-
-    lines.push(getEtchingLine(d));
-
-    if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1, d)) lines.push('고압수세 1');
-    if (day === 3) lines.push('데버링 3');
-    if (day === 5) lines.push('데버링 2');
-
-    if (day === 1) {
-      lines.push('디스미어 8');
-      if (checkBiWeek(ANCHOR_BIWEEK.des11, d)) {
-        lines.push('디스미어 11', '디스미어 15');
-      }
-    } else if (day === 2) lines.push('디스미어 9', '디스미어 6');
-    else if (day === 3) lines.push('디스미어 12');
-    else if (day === 4) lines.push('디스미어 7');
-    else if (day === 5) lines.push('디스미어 10');
-
-    if (day === 1) lines.push('화12');
-    else if (day === 3) lines.push('화11');
-    else if (day === 5) lines.push('화10');
-
-    if (day === 1) lines.push('전기동 9', '전기동 16');
-    else if (day === 2) lines.push('전기동 18', '전기동 22');
-    else if (day === 3) lines.push('전기동 15', '전기동 20');
-    else if (day === 4) lines.push('전기동 11', '전기동 14', '전기동 17');
-    else if (day === 5) {
-      if (checkBiWeek(ANCHOR_BIWEEK.elec12, d)) lines.push('전기동 12');
-      lines.push('전기동 13', '전기동 21');
-    }
-
-    return lines;
-  };
 
   const todayLines = getDayLines(targetDate);
   const tomorrowLines = getDayLines(tomorrowDate);
@@ -1604,29 +1624,10 @@ function appendQuickTag(tag) {
 }
 
 function addManualNote() {
-  const cur = new Date(selectedDateStr + 'T00:00:00');
-  let y = isNaN(cur.getTime()) ? (new Date()).getFullYear() : cur.getFullYear();
-  let m = isNaN(cur.getTime()) ? (new Date()).getMonth() + 1 : cur.getMonth() + 1;
-  const d = Number(document.getElementById('manualDayInput').value);
+  const parsed = resolveDayInput(Number(document.getElementById('manualDayInput').value),new Date(selectedDateStr + 'T00:00:00'));
+  if (!parsed) { alert('해당 월에 존재하는 일자를 입력해주세요.'); return; }
+  const date = formatDateOnly(parsed);
 
-  if (!d) {
-    alert('일자를 입력해주세요.');
-    return;
-  }
-
-  const prevD = isNaN(cur.getTime()) ? (new Date()).getDate() : cur.getDate();
-  if (prevD >= 25 && d <= 5) {
-    const nextM = new Date(y, m, 1);
-    y = nextM.getFullYear();
-    m = nextM.getMonth() + 1;
-  } else if (prevD <= 5 && d >= 25) {
-    const prevM = new Date(y, m - 2, 1);
-    y = prevM.getFullYear();
-    m = prevM.getMonth() + 1;
-  }
-
-  const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  
   let line = document.getElementById('manualLineSelect').value;
   if (line === 'CUSTOM') {
     line = document.getElementById('manualCustomLineInput').value.trim();
@@ -1643,7 +1644,7 @@ function addManualNote() {
     return;
   }
 
-  manualNotes.push({ date, line, text });
+  if (!manualNotes.some(note => note.date === date && note.line === line && note.text === text)) manualNotes.push({ date, line, text });
   syncDataToFirebase();
   document.getElementById('manualContentInput').value = '';
   renderManualNotesList();
@@ -1672,6 +1673,125 @@ function renderManualNotesList() {
     chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
     container.appendChild(chip);
   });
+}
+
+function getChemDue(line) {
+  return validDateTime(line.plannedDue) ? new Date(line.plannedDue) : new Date(new Date(line.lastDone).getTime()+72*3600000);
+}
+
+function resolveDayInput(day, base, hour = 0, minute = 0) {
+  if (!Number.isInteger(day) || day < 1 || day > 31 || !Number.isInteger(hour) || hour < 0 || hour > 23 ||
+      !Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+  if (!Number.isFinite(base.getTime())) base = new Date();
+  let month = base.getMonth();
+  if (base.getDate() >= 25 && day <= 5) month++;
+  else if (base.getDate() <= 5 && day >= 25) month--;
+  const first = new Date(base.getFullYear(),month,1);
+  const result = new Date(first.getFullYear(),first.getMonth(),day,hour,minute);
+  return result.getMonth() === first.getMonth() && result.getDate() === day ? result : null;
+}
+
+function getElectroLines(dateStr = selectedDateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  const numbers = {1:[9,16],2:[18,22],3:[15,20],4:[11,14,17],5:[13,21]}[date.getDay()] || [];
+  if (date.getDay() === 5 && checkBiWeek(ANCHOR_BIWEEK.elec12,date)) numbers.unshift(12);
+  return numbers.map(number => ({name:`전기동 ${number}라인`,number,dateStr,isPulse:[9,20,21].includes(number)}));
+}
+
+function getDayLines(date) {
+  const day = date.getDay();
+  const lines = [getEtchingLine(date)];
+  if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1,date)) lines.push('고압수세 1');
+  if (day === 3) lines.push('데버링 3');
+  if (day === 5) lines.push('데버링 2');
+  const desmear = {1:[8],2:[9,6],3:[12],4:[7],5:[10]}[day] || [];
+  if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.des11,date)) desmear.push(11,15);
+  lines.push(...desmear.map(number => `디스미어 ${number}`));
+  const blackhole = {1:'화12',3:'화11',5:'화10'}[day];
+  if (blackhole) lines.push(blackhole);
+  lines.push(...getElectroLines(formatDateOnly(date)).map(line => `전기동 ${line.number}`));
+  return lines;
+}
+
+function timerKey(lineName,dateStr = selectedDateStr) { return dateStr + '_' + lineName; }
+function getTimerFlag(flags,lineName,dateStr = selectedDateStr) { return flags[timerKey(lineName,dateStr)]; }
+function timerStart(flag) {
+  if (flag && validDateTime(flag.startedAt)) return new Date(flag.startedAt);
+  const base = new Date(selectedDateStr + 'T00:00:00');
+  base.setHours(flag && flag.h !== undefined ? flag.h : 14,flag && flag.m !== undefined ? flag.m : 0,0,0);
+  return base;
+}
+
+function migrateLegacyTimers() {
+  // Old records carried only hours and minutes. Preserve them once for today's PM.
+  let changed = false;
+  for (const flags of [pulseProcessFlags,elecDummyFlags]) {
+    for (const [key,flag] of Object.entries(flags)) {
+      if (!key.startsWith('전기동 ') || !flag || typeof flag !== 'object') continue;
+      const dateStr = flag.date || formatDateOnly(new Date());
+      const date = new Date(dateStr + 'T00:00:00');
+      date.setHours(flag.h ?? 14,flag.m ?? 0,0,0);
+      const scopedKey = dateStr + '_' + key;
+      if (!flags[scopedKey]) flags[scopedKey] = {...flag,startedAt:date.toISOString()};
+      delete flags[key]; changed = true;
+    }
+  }
+  if (changed) syncDataToFirebase();
+}
+
+function getGaugeElectroLines() {
+  const lines = getElectroLines();
+  const seen = new Set(lines.map(line => timerKey(line.name,line.dateStr)));
+  const today = formatDateOnly(new Date());
+  for (const [flags,isPulse] of [[pulseProcessFlags,true],[elecDummyFlags,false]]) {
+    for (const [key,flag] of Object.entries(flags)) {
+      const match = key.match(/^(\d{4}-\d{2}-\d{2})_(전기동 (\d+)라인)$/);
+      if (!match || seen.has(key) || !flag || !(flag.isStarted || flag.isDummy) ||
+          match[1] > today || elecCompletedFlags[key]) continue;
+      lines.push({dateStr:match[1],name:match[2],number:Number(match[3]),isPulse,carryover:true});
+      seen.add(key);
+    }
+  }
+  return lines;
+}
+
+function renderElectroGauges(now) {
+  const container = document.getElementById('elecGaugesContainer');
+  if (!container) return;
+  const lines = getGaugeElectroLines();
+  const completed = lines.filter(line => elecCompletedFlags[timerKey(line.name,line.dateStr)]);
+  document.getElementById('elecTodayLinesBadge').textContent = lines.length ? lines.map(line => `전${line.number}`).join(' · ') : '정기 PM 없음';
+  document.getElementById('btnRestoreElec').style.display = completed.length ? 'inline-block' : 'none';
+  container.innerHTML = lines.filter(line => !elecCompletedFlags[timerKey(line.name,line.dateStr)]).map(line => {
+    const flags = line.isPulse ? pulseProcessFlags : elecDummyFlags;
+    const flag = getTimerFlag(flags,line.name,line.dateStr);
+    const started = !!(flag && (line.isPulse ? flag.isStarted : flag.isDummy));
+    const prefix = line.isPulse ? 'pulse' : 'elec';
+    const toggle = line.isPulse ? 'togglePulseProcess' : 'toggleElecDummy';
+    const update = line.isPulse ? 'updatePulseProcessTime' : 'updateElecDummyTimeSelect';
+    const start = started ? timerStart(flag) : now;
+    const hours = Array.from({length:24},(_,hour) => `<option value="${hour}" ${hour === start.getHours() ? 'selected' : ''}>${hour}시</option>`).join('');
+    const minute = start.getMinutes();
+    const minutes = [...new Set([0,30,minute])].sort((a,b) => a-b).map(value => `<option value="${value}" ${value === minute ? 'selected' : ''}>${String(value).padStart(2,'0')}분</option>`).join('');
+    const number = line.number;
+    const name = `전${number} ${line.isPulse || number === 14 ? '산탈지.산세.박리' : '산세.박리'}`;
+    const equipment = manualNotes.some(note => note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
+    return `<div class="gauge-box" id="elec_card_${timerKey(line.name,line.dateStr)}">
+      <div class="gauge-top"><strong>${name} ${line.isPulse ? '(펄스)' : ''}${line.carryover ? ` · ${line.dateStr} 미완료` : ''}</strong>
+        <button class="btn btn-sub btn-sm" onclick="completeElecPM('${line.name}','${line.dateStr}')">완료</button></div>
+      ${equipment ? '<span class="badge badge-yellow">설비작업</span>' : ''}
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <label><input type="checkbox" ${started ? 'checked' : ''} onchange="${toggle}('${line.name}',this.checked,'${line.dateStr}')"> ${line.isPulse ? '0.5 DC 시작' : '더미투입'}</label>
+        ${started ? `<span>${formatDateTimeKr(start)}</span><select aria-label="시작 시" onchange="${update}('${line.name}','h',this.value,'${line.dateStr}')">${hours}</select><select aria-label="시작 분" onchange="${update}('${line.name}','m',this.value,'${line.dateStr}')">${minutes}</select>` : ''}
+      </div>
+      ${line.isPulse ? `<div class="progress-track"><div id="pulse_bar_${timerKey(line.name,line.dateStr)}" class="progress-fill" style="width:0%;"></div></div>
+        <span class="badge badge-purple" id="pulse_pct_${timerKey(line.name,line.dateStr)}">0%</span>
+        <div class="pulse-step-container">${['0.5 DC 더미','1.5 DC 더미','펄스대비 패스','펄스 더미'].map((step,index) => `<div class="pulse-step-item" id="pulse_step_${timerKey(line.name,line.dateStr)}_${index+1}">${index+1}. ${step} (1.5H)</div>`).join('')}</div>
+        <div class="status-detail-box" id="pulse_status_detail_${timerKey(line.name,line.dateStr)}">${started ? '' : '0.5 DC 시작 체크 시 4단계 · 총 6시간 자동 타이머가 시작됩니다.'}</div>` :
+        `<div style="font-size:12px;color:var(--text-secondary);">08:30 시작 · 20:30까지 미완료 시 지연 경고 / 더미 1싸이클 1.5H</div><div id="elec_dummy_est_${timerKey(line.name,line.dateStr)}"></div>`}
+    </div>`;
+  }).join('') || `<div class="status-detail-box">${lines.length ? '오늘 전기동 PM 완료' : '선택일의 정기 전기동 PM이 없습니다.'}</div>`;
+  updateLiveTimesOnly(now);
 }
 
 function updateLiveTimesOnly(now) {
@@ -1739,31 +1859,20 @@ function updateLiveTimesOnly(now) {
     }
   });
 
-  const day = new Date(selectedDateStr + 'T00:00:00').getDay();
-  let todayElecLines = [];
-  if (day === 1) todayElecLines = [{ name: '전기동 9라인', isPulse: true }, { name: '전기동 16라인', isPulse: false }];
-  else if (day === 2) todayElecLines = [{ name: '전기동 18라인', isPulse: false }, { name: '전기동 22라인', isPulse: false }];
-  else if (day === 3) todayElecLines = [{ name: '전기동 15라인', isPulse: false }, { name: '전기동 20라인', isPulse: true }];
-  else if (day === 4) todayElecLines = [{ name: '전기동 11라인', isPulse: false }, { name: '전기동 14라인', isPulse: false }, { name: '전기동 17라인', isPulse: false }];
-  else if (day === 5) todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
-  else todayElecLines = [{ name: '전기동 13라인', isPulse: false }, { name: '전기동 21라인', isPulse: true }];
+  const todayElecLines = getGaugeElectroLines();
 
   todayElecLines.forEach(line => {
-    const isCompleted = !!elecCompletedFlags[selectedDateStr + '_' + line.name];
+    const isCompleted = !!elecCompletedFlags[timerKey(line.name,line.dateStr)];
     if (isCompleted) return;
 
     if (line.isPulse) {
-      const pData = pulseProcessFlags[line.name];
-      const box = document.getElementById(`pulse_status_detail_${line.name}`);
-      const bar = document.getElementById(`pulse_bar_${line.name}`);
-      const pctBadge = document.getElementById(`pulse_pct_${line.name}`);
+      const pData = getTimerFlag(pulseProcessFlags,line.name,line.dateStr);
+      const box = document.getElementById(`pulse_status_detail_${timerKey(line.name,line.dateStr)}`);
+      const bar = document.getElementById(`pulse_bar_${timerKey(line.name,line.dateStr)}`);
+      const pctBadge = document.getElementById(`pulse_pct_${timerKey(line.name,line.dateStr)}`);
       if (!box || !bar || !pData || !pData.isStarted) return;
 
-      const curH = pData.h !== undefined ? pData.h : 14;
-      const curM = pData.m !== undefined ? pData.m : 0;
-      
-      const baseD = new Date(selectedDateStr + 'T00:00:00');
-      const t0 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), curH, curM, 0);
+      const t0 = timerStart(pData);
 
       const t1 = new Date(t0.getTime() + 90 * 60000);
       const t2 = new Date(t1.getTime() + 90 * 60000);
@@ -1779,10 +1888,10 @@ function updateLiveTimesOnly(now) {
       let remainMinStep = 0;
       let currentStepName = '';
 
-      const s1 = document.getElementById(`pulse_step_${line.name}_1`);
-      const s2 = document.getElementById(`pulse_step_${line.name}_2`);
-      const s3 = document.getElementById(`pulse_step_${line.name}_3`);
-      const s4 = document.getElementById(`pulse_step_${line.name}_4`);
+      const s1 = document.getElementById(`pulse_step_${timerKey(line.name,line.dateStr)}_1`);
+      const s2 = document.getElementById(`pulse_step_${timerKey(line.name,line.dateStr)}_2`);
+      const s3 = document.getElementById(`pulse_step_${timerKey(line.name,line.dateStr)}_3`);
+      const s4 = document.getElementById(`pulse_step_${timerKey(line.name,line.dateStr)}_4`);
 
       if (now < t0) {
         currentStepName = '0.5 DC 더미 대기 중';
@@ -1825,7 +1934,7 @@ function updateLiveTimesOnly(now) {
         if (s4) s4.className = 'pulse-step-item active';
       } else {
         activeStepIdx = 5;
-        currentStepName = '광 확인 및 양산 가동';
+        currentStepName = '4단계 타이머 종료 · 작업 확인';
         remainMinStep = 0;
         if (s1) s1.className = 'pulse-step-item done';
         if (s2) s2.className = 'pulse-step-item done';
@@ -1836,23 +1945,24 @@ function updateLiveTimesOnly(now) {
       box.innerHTML = `
         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
           <span>현재 진행: <strong style="color:var(--purple);">[${currentStepName}]</strong></span>
-          <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '전체 4단계 완료'}</strong>
+          <strong>${remainMinStep > 0 ? `다음 단계까지 약 ${remainMinStep}분 남음` : '6시간 경과 · 작업 완료 확인 필요'}</strong>
         </div>
         <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">
           ⏱️ <strong>단계별 자동 일정:</strong> 0.5 DC(${formatTimeKr(t1.getHours(), t1.getMinutes())}) ➔ 1.5 DC(${formatTimeKr(t2.getHours(), t2.getMinutes())}) ➔ 펄스패스(${formatTimeKr(t3.getHours(), t3.getMinutes())}) ➔ 펄스더미(${formatTimeKr(t4.getHours(), t4.getMinutes())})
         </div>
         <div style="color:var(--success); font-weight:800; font-size:13px; margin-top:4px;">
-          🎯 [펄스 4단계 완료] 최종 양산 예정: <strong>${formatTimeKr(t4.getHours(), t4.getMinutes())}</strong> (광 상태 확인 후 양산)
+          🎯 [펄스 4단계 ${now >= t4 ? '타이머 종료' : '진행 중'}] 최종 양산 예정: <strong>${formatDayTimeKr(t4)}</strong> (광 상태 확인 후 양산)
         </div>
       `;
     } else {
-      const baseD = new Date(selectedDateStr + 'T00:00:00');
+      const baseD = new Date(line.dateStr + 'T00:00:00');
       const start0830 = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), 8, 30, 0);
       const isOver12H = (now - start0830) >= (12 * 3600000);
 
-      const isDummyChecked = elecDummyFlags[line.name] && elecDummyFlags[line.name].isDummy;
-      const dummyBox = document.getElementById(`elec_dummy_est_${line.name}`);
-      const gaugeCard = document.getElementById(`elec_card_${line.name}`);
+      const dummyFlag = getTimerFlag(elecDummyFlags,line.name,line.dateStr);
+      const isDummyChecked = dummyFlag && dummyFlag.isDummy;
+      const dummyBox = document.getElementById(`elec_dummy_est_${timerKey(line.name,line.dateStr)}`);
+      const gaugeCard = document.getElementById(`elec_card_${timerKey(line.name,line.dateStr)}`);
 
       if (gaugeCard) {
         if (isOver12H) {
@@ -1875,14 +1985,13 @@ function updateLiveTimesOnly(now) {
       }
 
       if (dummyBox && isDummyChecked) {
-        const h = elecDummyFlags[line.name].h !== undefined ? elecDummyFlags[line.name].h : 14;
-        const m = elecDummyFlags[line.name].m !== undefined ? elecDummyFlags[line.name].m : 0;
-        const dStart = new Date(baseD.getFullYear(), baseD.getMonth(), baseD.getDate(), h, m, 0);
+        const dStart = timerStart(dummyFlag);
+
         const targetProd = new Date(dStart.getTime() + 90 * 60000);
         
         let dummyStatusText = '';
         if (now < dStart) {
-          dummyStatusText = `더미 투입 대기 중 (${h}시 ${m}분 시작 예정)`;
+          dummyStatusText = `더미 투입 대기 중 (${formatDateTimeKr(dStart)} 시작 예정)`;
         } else if (now >= dStart && now < targetProd) {
           const rMin = Math.ceil((targetProd - now) / 60000);
           dummyStatusText = `더미 1싸이클 진행 중 (완료까지 약 ${rMin}분 남음)`;
@@ -1919,7 +2028,7 @@ function renderActiveChemGauges(now) {
     if (c.status === '완료') {
       const base = new Date(c.lastDone);
       if (!isNaN(base.getTime())) {
-        const nextDue = new Date(base.getTime() + 72 * 3600000);
+        const nextDue = getChemDue(c);
         return (now >= nextDue || formatDateOnly(nextDue) <= selectedDateStr);
       }
     }
@@ -1947,7 +2056,7 @@ function renderActiveChemGauges(now) {
   activeOrDueChems.forEach(line => {
     const isDuePending = (line.status === '완료');
     const startTime = new Date(line.lastDone);
-    const nextDue = new Date(startTime.getTime() + 72 * 3600000);
+    const nextDue = getChemDue(line);
 
     if (isDuePending) {
       html += `
@@ -2004,28 +2113,14 @@ function renderActiveChemGauges(now) {
   updateLiveTimesOnly(now);
 }
 
-function setChemStepStatusById(lineId, st) {
-  const line = chemList.find(c => c.id === lineId);
+function setChemStepStatusById(lineId,st) {
+  const line = chemList.find(item => item.id === lineId);
   if (!line) return;
-
-  line.status = st;
-
-  if (st === '시작') {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    const d = now.getDate();
-    const h = now.getHours();
-    const min = now.getMinutes() >= 30 ? 30 : 0;
-    line.lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  }
-
-  syncDataToFirebase();
-  renderChemList();
-  renderWeeklyMatrix();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
+  if (st === '완료') { completeChemPM(lineId); return; }
+  if (st !== '시작' || line.status === '시작') return;
+  delete line.plannedDue;
+  line.status = '시작'; line.lastDone = new Date().toISOString();
+  syncDataToFirebase(); safeRenderAll();
 }
 
 function completeChemPM(lineId) {
@@ -2033,6 +2128,7 @@ function completeChemPM(lineId) {
   const line = chemList.find(c => c.id === lineId);
   if (!line) return;
   
+  delete line.plannedDue;
   line.status = '완료';
   line.lastDone = new Date().toISOString();
 
@@ -2044,81 +2140,60 @@ function completeChemPM(lineId) {
   generateShareText();
 }
 
-function togglePulseProcess(lineName, isChecked) {
+function togglePulseProcess(lineName,isChecked,dateStr = selectedDateStr) {
+  const key = timerKey(lineName,dateStr);
   if (isChecked) {
     const now = new Date();
-    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
-    pulseProcessFlags[lineName] = {
-      isStarted: true,
-      h: now.getHours(),
-      m: roundMin
-    };
-  } else {
-    delete pulseProcessFlags[lineName];
-  }
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
+    pulseProcessFlags[key] = {isStarted:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
+  } else delete pulseProcessFlags[key];
+  syncDataToFirebase(); renderElectroGauges(new Date());
 }
 
-function updatePulseProcessTime(lineName, part, val) {
-  if (!pulseProcessFlags[lineName]) return;
-  pulseProcessFlags[lineName][part] = Number(val);
-  syncDataToFirebase();
-  updateLiveTimesOnly(new Date());
+function updatePulseProcessTime(lineName,part,val,dateStr = selectedDateStr) {
+  updateTimerTime(pulseProcessFlags,lineName,part,val,dateStr);
 }
 
-function completeElecPM(lineName) {
+function completeElecPM(lineName,dateStr = selectedDateStr) {
   if (!confirm(`[${lineName}] PM을 완료하시겠습니까?\n진척 게이지 목록에서 제외됩니다.`)) return;
 
-  const key = selectedDateStr + '_' + lineName;
+  const key = timerKey(lineName,dateStr);
   elecCompletedFlags[key] = true;
 
-  delete elecDummyFlags[lineName];
-  delete pulseProcessFlags[lineName];
+  delete elecDummyFlags[key];
+  delete pulseProcessFlags[key];
 
   syncDataToFirebase();
   renderElectroGauges(new Date());
 }
 
 function restoreCompletedElec() {
-  const day = new Date(selectedDateStr + 'T00:00:00').getDay();
-  let todayElecLines = [];
-  if (day === 1) todayElecLines = ['전기동 9라인', '전기동 16라인'];
-  else if (day === 2) todayElecLines = ['전기동 18라인', '전기동 22라인'];
-  else if (day === 3) todayElecLines = ['전기동 15라인', '전기동 20라인'];
-  else if (day === 4) todayElecLines = ['전기동 11라인', '전기동 14라인', '전기동 17라인'];
-  else if (day === 5) todayElecLines = ['전기동 13라인', '전기동 21라인'];
-  else todayElecLines = ['전기동 13라인', '전기동 21라인'];
-
-  todayElecLines.forEach(name => {
-    delete elecCompletedFlags[selectedDateStr + '_' + name];
-  });
-
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
+  getElectroLines().forEach(line => { delete elecCompletedFlags[timerKey(line.name)]; });
+  syncDataToFirebase(); renderElectroGauges(new Date());
 }
 
-function toggleElecDummy(lineName, isChecked) {
+function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
+  const key = timerKey(lineName,dateStr);
   if (isChecked) {
     const now = new Date();
-    const roundMin = now.getMinutes() >= 30 ? 30 : 0;
-    elecDummyFlags[lineName] = {
-      isDummy: true,
-      h: now.getHours(),
-      m: roundMin
-    };
-  } else {
-    delete elecDummyFlags[lineName];
-  }
-  syncDataToFirebase();
-  renderElectroGauges(new Date());
+    elecDummyFlags[key] = {isDummy:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
+  } else delete elecDummyFlags[key];
+  syncDataToFirebase(); renderElectroGauges(new Date());
 }
 
-function updateElecDummyTimeSelect(lineName, part, val) {
-  if (!elecDummyFlags[lineName]) return;
-  elecDummyFlags[lineName][part] = Number(val);
-  syncDataToFirebase();
-  updateLiveTimesOnly(new Date());
+function updateElecDummyTimeSelect(lineName,part,val,dateStr = selectedDateStr) {
+  updateTimerTime(elecDummyFlags,lineName,part,val,dateStr);
+}
+
+function updateTimerTime(flags,lineName,part,val,dateStr = selectedDateStr) {
+  const flag = getTimerFlag(flags,lineName,dateStr);
+  if (!flag || !['h','m'].includes(part)) return;
+  const value = Number(val);
+  if (!Number.isInteger(value) || value < 0 || value > (part === 'h' ? 23 : 59)) return;
+  const start = timerStart(flag);
+  if (part === 'h') start.setHours(value); else start.setMinutes(value);
+  start.setSeconds(0,0);
+  flag.h = start.getHours(); flag.m = start.getMinutes(); flag.startedAt = start.toISOString();
+  syncDataToFirebase(); updateLiveTimesOnly(new Date());
 }
 
 function renderChemList() {
@@ -2154,7 +2229,7 @@ function renderChemList() {
     const curD = isNaN(t.getTime()) ? (new Date().getDate()) : t.getDate();
     const curH = isNaN(t.getTime()) ? 0 : t.getHours();
     const rawMin = isNaN(t.getTime()) ? 0 : t.getMinutes();
-    const curMin = rawMin >= 30 ? 30 : 0;
+    const curMin = rawMin;
 
     let hourOptions = '';
     for (let h = 0; h <= 23; h++) {
@@ -2182,6 +2257,7 @@ function renderChemList() {
           <select id="min_${idx}" onchange="updateChemFromParts(${idx})">
             <option value="0" ${curMin === 0 ? 'selected' : ''}>00분</option>
             <option value="30" ${curMin === 30 ? 'selected' : ''}>30분</option>
+            ${![0,30].includes(curMin) ? `<option value="${curMin}" selected>${String(curMin).padStart(2,'0')}분</option>` : ''}
           </select>
         </div>
       </div>
@@ -2193,54 +2269,16 @@ function renderChemList() {
 }
 
 function updateChemFromParts(idx) {
-  const d = Number(document.getElementById(`d_${idx}`).value);
-  const h = Number(document.getElementById(`h_${idx}`).value);
-  const min = Number(document.getElementById(`min_${idx}`).value);
-
-  let base = new Date(chemList[idx].lastDone);
-  if (isNaN(base.getTime())) base = new Date();
-  
-  let year = base.getFullYear();
-  let month = base.getMonth() + 1;
-
-  const prevD = base.getDate();
-  if (prevD >= 25 && d <= 5) {
-    const nextMonthDate = new Date(year, month, 1);
-    year = nextMonthDate.getFullYear();
-    month = nextMonthDate.getMonth() + 1;
-  } else if (prevD <= 5 && d >= 25) {
-    const prevMonthDate = new Date(year, month - 2, 1);
-    year = prevMonthDate.getFullYear();
-    month = prevMonthDate.getMonth() + 1;
-  }
-
-  chemList[idx].lastDone = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  syncDataToFirebase();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
-  updateChemRealtimeStatuses();
+  const date = resolveDayInput(Number(document.getElementById(`d_${idx}`).value),new Date(chemList[idx].lastDone),
+    Number(document.getElementById(`h_${idx}`).value),Number(document.getElementById(`min_${idx}`).value));
+  if (!date) { alert('해당 월에 존재하는 일자를 입력해주세요.'); renderChemList(); return; }
+  delete chemList[idx].plannedDue;
+  chemList[idx].lastDone = date.toISOString();
+  syncDataToFirebase(); safeRenderAll();
 }
 
-function setChemStepStatus(idx, st) {
-  chemList[idx].status = st;
-
-  if (st === '시작') {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    const d = now.getDate();
-    const h = now.getHours();
-    const min = now.getMinutes() >= 30 ? 30 : 0;
-    chemList[idx].lastDone = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  }
-
-  syncDataToFirebase();
-  renderChemList();
-  renderWeeklyMatrix();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
+function setChemStepStatus(idx,st) {
+  setChemStepStatusById(chemList[idx].id,st);
 }
 
 function updateChemRealtimeStatuses() {
@@ -2256,17 +2294,17 @@ function updateChemRealtimeStatuses() {
     if (isRunning) {
       const elapsedH = (now - t) / 3600000;
       const transferTime = new Date(t.getTime() + 12 * 3600000);
-      box.style.borderLeftColor = 'var(--success)';
-      box.style.background = '#f0fdf4';
+      box.style.borderLeftColor = elapsedH >= 14 ? 'var(--danger)' : 'var(--success)';
+      box.style.background = elapsedH >= 14 ? '#fef2f2' : '#f0fdf4';
       box.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
           <span style="color:#15803d; font-weight:800; font-size:13.5px;">⚡ PM 진행 중 [${c.status}] (${elapsedH.toFixed(1)}H 경과)</span>
           <span style="font-size:12px; color:var(--text-secondary);">시작: ${formatDayTimeKr(t)}</span>
         </div>
-        <div style="font-size:14px; margin-top:3px;">★ 12시간 액이송 예정: <strong style="color:var(--danger); font-size:15px; font-weight:900;">${formatDayTimeKr(transferTime)}</strong></div>
+        <div style="font-size:14px; margin-top:3px;">${elapsedH >= 14 ? '🚨 PM 목표 시간 경과 (미완료 지연)<br>' : ''}★ 12시간 액이송 예정: <strong style="color:var(--danger); font-size:15px; font-weight:900;">${formatDayTimeKr(transferTime)}</strong></div>
       `;
     } else {
-      const nextDue = new Date(t.getTime() + 72 * 3600000);
+      const nextDue = getChemDue(c);
       const remainH = (nextDue - now) / 3600000;
       const isOverdue = now >= nextDue;
       const isImminent = !isOverdue && remainH <= 7;
@@ -2304,7 +2342,7 @@ function updateChemRealtimeStatuses() {
       if (c.id === '화8') {
         const buildupLimit = new Date(t.getTime() + 48 * 3600000);
         const bRemain = (buildupLimit - now) / 3600000;
-        if (bRemain <= 0) {
+        if (bRemain < 0) {
           html += `<div style="color:var(--danger); font-weight:800; font-size:12.5px; margin-top:3px;">⛔ 빌드업 금지 적용 중 (${formatDayTimeKr(buildupLimit)} 경과)</div>`;
         } else {
           html += `<div style="color:var(--success); font-weight:800; font-size:12.5px; margin-top:3px;">✅ 빌드업 가능 (${formatDayTimeKr(buildupLimit)}까지 / ${bRemain.toFixed(1)}H 남음)</div>`;
@@ -2316,25 +2354,9 @@ function updateChemRealtimeStatuses() {
 }
 
 function setChemNow(idx) {
-  const now = new Date();
-  const year = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const d = now.getDate();
-  const h = now.getHours();
-  const min = now.getMinutes() >= 30 ? 30 : 0;
-  chemList[idx].lastDone = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-  
-  const elD = document.getElementById(`d_${idx}`);
-  const elH = document.getElementById(`h_${idx}`);
-  const elMin = document.getElementById(`min_${idx}`);
-  if (elD) elD.value = d;
-  if (elH) elH.value = h;
-  if (elMin) elMin.value = min;
-
-  syncDataToFirebase();
-  renderActiveChemGauges(new Date());
-  renderTab1ChemStatus();
-  generateShareText();
+  delete chemList[idx].plannedDue;
+  chemList[idx].lastDone = new Date().toISOString();
+  syncDataToFirebase(); safeRenderAll();
 }
 
 let activePulseReminds = [];
@@ -2351,14 +2373,16 @@ function renderPulseTable() {
     const d1 = new Date(base.getTime() + 120 * 86400000);
     const d2 = new Date(base.getTime() + 240 * 86400000);
     const d3 = new Date(base.getTime() + 360 * 86400000);
-    const diff = Math.ceil((d1 - now) / 86400000);
+    const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const diff = Math.round((d1 - today) / 86400000);
 
     let badge = '';
-    if (diff <= 28 && diff > 0) {
-      badge = `<span class="badge badge-purple">🔔 D-${diff} (4주 전 리마인드)</span>`;
-      activePulseReminds.push(`${p.line} 4주 전 (${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]} 예정)`);
+    if (diff <= 28 && diff >= 0) {
+      badge = `<span class="badge badge-purple">🔔 ${diff === 0 ? 'D-Day' : 'D-' + diff} (4주 전 리마인드)</span>`;
+      activePulseReminds.push(`${p.line} ${diff === 0 ? 'D-Day' : 'D-' + diff} (${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]} 예정)`);
     } else if (diff < 0) {
       badge = `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`;
+      activePulseReminds.push(`${p.line} D+${Math.abs(diff)} 초과 (${formatDateOnly(d1)} 예정)`);
     } else {
       badge = `<span class="badge badge-green">D-${diff}</span>`;
     }
@@ -2384,7 +2408,7 @@ function checkPulseBannerTrigger() {
   const dismissedKey = 'pulse_banner_dismissed_' + selectedDateStr;
 
   if (activePulseReminds.length > 0 && !sessionStorage.getItem(dismissedKey)) {
-    bannerText.innerHTML = `🔔 <strong>[액퍼내기 4주 전 알림]</strong> ${activePulseReminds.join(' / ')}`;
+    bannerText.innerHTML = `🔔 <strong>[액퍼내기 4주 전 알림]</strong> ${activePulseReminds.map(escapeHtml).join(' / ')}`;
     banner.style.display = 'flex';
   } else {
     banner.style.display = 'none';
@@ -2397,6 +2421,7 @@ function dismissRemindBanner() {
 }
 
 function updatePulseDate(idx, val) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(val) || !validDateTime(val + 'T00:00')) { alert('유효한 작업일을 입력해주세요.'); renderPulseTable(); return; }
   pulseList[idx].lastDate = val;
   syncDataToFirebase();
   renderPulseTable();
@@ -2417,7 +2442,7 @@ function generateShareText() {
   const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
 
   const getNote = (lineKeyword) => {
-    const found = manualNotes.filter(n => n.date === selectedDateStr && n.line.includes(lineKeyword));
+    const found = manualNotes.filter(n => n.date === selectedDateStr && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
     return found.length > 0 ? ` ${found.map(f => f.text).join(' ')}` : '';
   };
 
@@ -2481,9 +2506,9 @@ function generateShareText() {
       const noteLabel = c.note ? `${c.note} ` : '';
       ongoing.push(`-${c.id} ${timeKr} ${noteLabel}PM 진행중`);
     } else {
-      const nextDue = new Date(t.getTime() + 72 * 3600000);
+      const nextDue = getChemDue(c);
       const manualChemNote = getNote(c.id);
-      if (nextDue >= windowStart && nextDue <= windowEnd) {
+      if (nextDue >= windowStart && nextDue < windowEnd) {
         const timeKr = formatTimeKr(nextDue.getHours(), nextDue.getMinutes());
         const prefix = (nextDue.getDate() !== targetDate.getDate()) ? `익일(${nextDue.getDate()}일) ` : '';
         const noteText = manualChemNote || (c.note ? ` ${c.note}` : ' 기본PM');
@@ -2495,6 +2520,10 @@ function generateShareText() {
       }
     }
   });
+
+  const regularLines = new Set(getDayLines(targetDate));
+  const extraNotes = manualNotes.filter(note => note.date === selectedDateStr &&
+    !regularLines.has(note.line) && !REQUIRED_CHEM_IDS.includes(note.line));
 
   let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
   if (debarr) out += `${debarr}\n\n`;
@@ -2516,19 +2545,28 @@ function generateShareText() {
     out += `${ongoing.join('\n')}\n\n`;
   }
 
+  if (extraNotes.length) out += extraNotes.map(note => `${note.line} ${note.text}`).join('\n') + '\n\n';
   out += `이상입니다.`;
   const outEl = document.getElementById('shareTextOutput');
   if (outEl) outEl.value = out;
 }
 
-function copyShareText() {
+async function copyShareText() {
   const el = document.getElementById('shareTextOutput');
   if (!el) return;
-  el.select();
-  navigator.clipboard.writeText(el.value).then(() => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(el.value);
+    else {
+      el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
+      if (!document.execCommand('copy')) throw new Error('copy failed');
+    }
     alert('PM 공유 텍스트가 클립보드에 복사되었습니다.');
-  });
+  } catch (error) {
+    el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
+    alert('자동 복사가 제한되었습니다. 선택된 텍스트를 길게 눌러 복사해주세요.');
+  }
 }
+
 </script>
 </body>
 </html>
