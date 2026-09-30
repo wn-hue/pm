@@ -293,3 +293,102 @@ test('화8 permits exactly 48 hours and prohibits after that boundary',()=>{
   a.setNow('2026-10-01T08:00:01+09:00');a.run('updateChemRealtimeStatuses()');
   assert.match(a.nodes.get('chem_box_1').innerHTML,/빌드업 금지/);
 });
+
+test('legacy chemistry note timestamp is removed while the corrected start time appears once',()=>{
+  const a=app({stored:{chem_data_master:JSON.stringify([{id:'화13',lastDone:'2026-09-30T10:00',status:'시작',note:'13시 촉매건욕'}])}});
+  assert.equal(a.run("chemList.find(line=>line.id==='화13').note"),'촉매 건욕');
+  const line=a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13'));
+  assert.equal(line,'-화13 10시 촉매 건욕 PM 진행중');
+  assert.equal(JSON.parse(a.storage.get('chem_data_master'))[3].note,'촉매 건욕');
+  a.parse('화13 11:20 진행중');
+  const corrected=a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13'));
+  assert.equal(corrected,'-화13 11시 20분 촉매 건욕 PM 진행중');
+  assert.equal(a.run("cleanChemNote('13:00 13시 촉매건욕 PM진행중')"),'촉매 건욕');
+});
+
+test('remote dirty labels and time-only manual corrections cannot reintroduce duplicate clocks',()=>{
+  const a=app();a.run("acceptRemoteState({chemList:[{id:'화13',lastDone:'2026-09-30T13:00',status:'시작',note:'13시 촉매건욕'}]});safeRenderAll()");
+  a.nodes.get('d_3').value='30';a.nodes.get('h_3').value='10';a.nodes.get('min_3').value='0';
+  a.run('updateChemFromParts(3)');
+  assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  const b=app({stored:Object.fromEntries(a.storage)});
+  assert.equal(b.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
+});
+
+test('two completed chemistry runs create separate desmear work; repeated completion is ignored',()=>{
+  const a=app();a.run("setInlineChemCount('화13',0);setChemStepStatusById('화13','시작');completeChemPM('화13')");
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
+  a.run("completeChemPM('화13')");assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
+  a.setNow('2026-10-04T08:00:00+09:00');a.run("selectQuickDay('today');setChemStepStatusById('화13','시작')");
+  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어/);
+  assert.match(a.nodes.get('shareTextOutput').value,/-화13/);
+  a.run("completeChemPM('화13')");assert.equal(a.run("getInlineState('화13').chemPmCount"),2);
+  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 기본PM \[미완료\]/);
+  a.run("completeInlineDesmear('화13')");assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  a.setNow('2026-10-07T08:00:00+09:00');a.run("setChemStepStatusById('화13','시작');completeChemPM('화13')");
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
+});
+
+test('inline counters are independent, survive refresh, and support first baseline selection',()=>{
+  const a=app();a.run("setInlineChemCount('화13',1);setInlineChemCount('화14',0)");
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);assert.equal(a.run("getInlineState('화14').chemPmCount"),0);
+  assert.match(a.run("inlineControlsHtml('화13')"),/화학동 1\/2회/);
+  const b=app({stored:Object.fromEntries(a.storage)});
+  assert.equal(b.run("getInlineState('화13').chemPmCount"),1);assert.equal(b.run("getInlineState('화14').chemPmCount"),0);
+});
+
+test('separate inline work appears in all seven matrix columns without removing existing rows',()=>{
+  const a=app();a.run("chemList[3]={...chemList[3],status:'완료',lastDone:'2026-09-28T12:00'};setInlineChemCount('화13',1)");
+  assert.match(a.nodes.get('inline_cell_4').innerHTML,/디화13 디스미어/);
+  assert.match(a.nodes.get('chem_cell_4').innerHTML,/화13/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 1일 12시 기본PM/);
+  for(let day=1;day<=7;day++) assert.match(html,new RegExp('id="inline_cell_'+day+'"'));
+});
+
+test('inline manual selections get the same five tags as other desmear lines',()=>{
+  const a=app();
+  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="디스미어 13">디화13 디스미어/);
+  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="디스미어 14">디화14 디스미어/);
+  a.nodes.get('dynamicTagsContainer').children=[];a.run("onManualLineChange('디스미어 13')");
+  assert.deepEqual(a.nodes.get('dynamicTagsContainer').children.map(child=>child.innerText),['스웰러 건욕','망간 건욕','인써트 교체','전체건욕','설비작업']);
+  a.nodes.get('manualDayInput').value='1';a.nodes.get('manualLineSelect').value='디스미어 13';a.nodes.get('manualContentInput').value='스웰러 건욕';
+  a.run('addManualNote()');
+  const report=a.nodes.get('shareTextOutput').value;
+  assert.equal(report.split('\n').filter(line=>/디화13 디스미어.*스웰러 건욕/.test(line)).length,1);
+  assert.match(a.nodes.get('inline_cell_4').innerHTML,/스웰러 건욕/);
+});
+
+test('parser keeps inline desmear notices separate from chemistry records and deduplicates tags',()=>{
+  const a=app();const original=a.data('chemList[3]');
+  a.parse('디화13 12:20 디스미어 PM 스웰러 건욕\n디14 13시 망간 건욕');
+  assert.deepEqual(a.data('chemList[3]'),original);
+  assert.equal(a.run("getInlineState('화13').plannedDue !== undefined"),true);
+  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 1일 12시 20분 스웰러 건욕/);
+  a.parse('디화13 12:20 디스미어 PM 스웰러 건욕\n디14 13시 망간 건욕');
+  assert.equal(a.data('manualNotes').length,2);
+  a.parse('디화13 07시 디스미어 PM 완료');
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  assert.equal(a.run("getInlineState('화13').status"),'완료');
+  assert.deepEqual(a.data('chemList[3]'),original);
+});
+
+test('inline chemistry parser aliases count a start-to-complete transition once',()=>{
+  const a=app();a.parse('디화14 06시 화학동 건욕 진행중');
+  assert.equal(a.run('chemList[4].status'),'시작');assert.equal(a.run('chemList[4].note'),'화학동 건욕');
+  a.parse('디화14 07시 화학동 건욕 완료');a.parse('디화14 07시 화학동 건욕 완료');
+  assert.equal(a.run("getInlineState('화14').chemPmCount"),1);
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+});
+
+test('desmear completion before the same chemistry run does not count that run twice',()=>{
+  const a=app();a.run("setInlineChemCount('화14',1);setChemStepStatusById('화14','시작');completeInlineDesmear('화14')");
+  a.setNow('2026-10-01T09:00:00+09:00');a.run("completeChemPM('화14')");
+  assert.equal(a.run("getInlineState('화14').chemPmCount"),0);
+});
+
+test('offline inline state merges with another line state on the server',()=>{
+  const a=app();a.run("setInlineChemCount('화13',1);acceptRemoteState({chemList:chemList,inlineDesmearFlags:{화14:{chemPmCount:2,configured:true}}})");
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);assert.equal(a.run("getInlineState('화14').chemPmCount"),2);
+  assert.equal(JSON.parse(a.storage.get('inline_desmear_flags_master')).화13.chemPmCount,1);
+});

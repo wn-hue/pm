@@ -455,6 +455,8 @@
             <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">* PM 진행 시 시작 시각 표기</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
+          <div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디화13 · 디화14 인라인 디스미어 PM (화학동 2회당 1회)</div>
+          <div id="inlineDesmearStatusContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;"></div>
         </div>
       </div>
     </div>
@@ -592,6 +594,16 @@
                 </td>
                 <td>-</td>
                 <td>-</td>
+              </tr>
+              <tr style="background:#faf5ff;">
+                <td><strong>인라인 디스미어</strong><br><span style="font-size:10px;">화학동 2회당 1회</span></td>
+                <td id="inline_cell_1">-</td>
+                <td id="inline_cell_2">-</td>
+                <td id="inline_cell_3">-</td>
+                <td id="inline_cell_4">-</td>
+                <td id="inline_cell_5">-</td>
+                <td id="inline_cell_6">-</td>
+                <td id="inline_cell_7">-</td>
               </tr>
               <tr style="background:#f0fdf4;">
                 <td><strong style="color:var(--accent);">일반 화학동</strong><br><span style="font-size:10px; color:var(--text-secondary);">(72H 주기)</span></td>
@@ -760,6 +772,15 @@ function validDateTime(value) {
     Number(value.slice(11, 13)) < 24 && Number(value.slice(14, 16)) < 60 && Number.isFinite(new Date(value).getTime());
 }
 
+function cleanChemNote(note) {
+  let text = typeof note === 'string' ? note.trim() : '';
+  // Legacy versions saved "13시 촉매건욕" in note as well as lastDone.
+  text = text.replace(/^(?:(?:\(?\d{1,2}(?::\d{2}|시(?:\s*\d{1,2}분)?)\)?)[\s,·/.-]*)+/,'').trim();
+  text = text.replace(/(?:PM\s*(?:진행\s*중|중)|진행\s*중)\s*$/i,'').trim();
+  text = text.replace(/촉매\s*건욕/g,'촉매 건욕').replace(/화학동\s*건욕/g,'화학동 건욕');
+  return /^(?:기본\s*)?PM$/i.test(text) ? '' : text;
+}
+
 function normalizeChem(item, fallback) {
   const value = item && typeof item === 'object' ? item : {};
   return {
@@ -768,7 +789,7 @@ function normalizeChem(item, fallback) {
     status: ['시작', '대기', '분석'].includes(value.status) ? '시작' :
       value.status === '완료' ? '완료' : fallback.status,
     plannedDue: validDateTime(value.plannedDue) ? value.plannedDue : null,
-    note: typeof value.note === 'string' ? value.note : fallback.note
+    note: cleanChemNote(typeof value.note === 'string' ? value.note : fallback.note)
   };
 }
 
@@ -832,8 +853,8 @@ function recoverPulseListFromAllSources() {
 
 function normalizeNotes(list) {
   const seen = new Set();
-  return ensureArray(list, []).filter(item => {
-    if (!item || typeof item.line !== 'string' || typeof item.text !== 'string' ||
+  return ensureArray(list, []).map(item => item && REQUIRED_CHEM_IDS.includes(item.line) ? {...item,text:cleanChemNote(item.text)} : item).filter(item => {
+    if (!item || typeof item.line !== 'string' || typeof item.text !== 'string' || !item.text.trim() ||
         !validDateTime((item.date || '') + 'T00:00')) return false;
     const key = JSON.stringify([item.date, item.line, item.text]);
     if (seen.has(key)) return false;
@@ -849,17 +870,19 @@ let equipWorkFlags = recoverFlags('equip_work_flags');
 let elecDummyFlags = recoverFlags('elec_dummy_flags');
 let pulseProcessFlags = recoverFlags('pulse_process_flags');
 let elecCompletedFlags = recoverFlags('elec_completed_flags');
+let inlineDesmearFlags = recoverFlags('inline_desmear_flags');
+const INLINE_CHEM_IDS = ['화13','화14'];
 
 // Store only user changes for retry. Transactions merge them with the latest server state.
-const STATE_FIELDS = ['chemList','pulseList','manualNotes','equipWorkFlags','elecDummyFlags','pulseProcessFlags','elecCompletedFlags'];
-const MASTER_KEYS = ['chem_data_master','pulse_data_master','manual_notes_master','equip_work_flags_master','elec_dummy_flags_master','pulse_process_flags_master','elec_completed_flags_master'];
+const STATE_FIELDS = ['chemList','pulseList','manualNotes','equipWorkFlags','elecDummyFlags','pulseProcessFlags','elecCompletedFlags','inlineDesmearFlags'];
+const MASTER_KEYS = ['chem_data_master','pulse_data_master','manual_notes_master','equip_work_flags_master','elec_dummy_flags_master','pulse_process_flags_master','elec_completed_flags_master','inline_desmear_flags_master'];
 const PENDING_KEY = 'pm_pending_changes_master';
 let pendingChanges = ensureArray(readStored(PENDING_KEY), []).filter(change => change && STATE_FIELDS.includes(change.field) && typeof change.key === 'string');
 let remoteLoaded = false;
 let syncInFlight = false;
 let retrySyncTimer = null;
 function currentState() {
-  return JSON.parse(JSON.stringify({chemList,pulseList,manualNotes,equipWorkFlags,elecDummyFlags,pulseProcessFlags,elecCompletedFlags}));
+  return JSON.parse(JSON.stringify({chemList,pulseList,manualNotes,equipWorkFlags,elecDummyFlags,pulseProcessFlags,elecCompletedFlags,inlineDesmearFlags}));
 }
 let lastLocalState = currentState();
 
@@ -910,6 +933,7 @@ function acceptRemoteState(remote) {
   elecDummyFlags = ensureObject(merged.elecDummyFlags);
   pulseProcessFlags = ensureObject(merged.pulseProcessFlags);
   elecCompletedFlags = ensureObject(merged.elecCompletedFlags);
+  inlineDesmearFlags = ensureObject(merged.inlineDesmearFlags);
   lastLocalState = currentState();
   persistLocalState();
 }
@@ -1199,7 +1223,7 @@ function parseAndApplyKakaoMsg() {
     ['산탈지.산세.프리딥.박리',/프리딥/], ['유산동필터 교체',/유산동\s*필터(?:\s*교체)?/],
     ['인써트 교체',/인[써서]트\s*교체/], ['전체건욕',/전체\s*건욕/], ['설비작업',/설비\s*작업/]
   ];
-  const linePattern = /(?:화학동\s*|화\s*)(?:14|13|12|11|10|9|8|7)(?!\d)|(?:디스미어\s*|디\s*)(?:15|12|11|10|9|8|7|6)(?!\d)|(?:전기동\s*|전\s*)(?:22|21|20|18|17|16|15|14|13|12|11|9)(?!\d)|MSF(?:\s*전기동)?|에[13]\s*[.·,]\s*[24]|에6(?!\d)|고압수세\s*1(?!\d)|(?:데버링\s*|데)(?:2|3)(?!\d)/gi;
+  const linePattern = /(?:디화\s*)(?:14|13)(?!\d)|(?:화학동\s*|화\s*)(?:14|13|12|11|10|9|8|7)(?!\d)|(?:디스미어\s*|디\s*)(?:15|14|13|12|11|10|9|8|7|6)(?!\d)|(?:전기동\s*|전\s*)(?:22|21|20|18|17|16|15|14|13|12|11|9)(?!\d)|MSF(?:\s*전기동)?|에[13]\s*[.·,]\s*[24]|에6(?!\d)|고압수세\s*1(?!\d)|(?:데버링\s*|데)(?:2|3)(?!\d)/gi;
   for (const text of raw.split(/\r?\n/)) {
     const matches = [...text.matchAll(linePattern)].filter(match => match.index === 0 || !/[a-zA-Z0-9가-힣]/.test(text[match.index-1]));
     for (let index = 0; index < matches.length; index++) {
@@ -1209,9 +1233,11 @@ function parseAndApplyKakaoMsg() {
       if (index+1 < matches.length && /^[\s,.·/와과및-]*$/.test(segment.slice(match[0].length))) segment += text.slice(matches[matches.length-1].index+matches[matches.length-1][0].length);
       const token = match[0].replace(/\s+/g,'');
       const number = token.match(/\d+/)?.[0];
-      const key = /^(화학동|화)/.test(token) ? '화'+number : /^(디스미어|디)/.test(token) ? '디스미어 '+number :
+      let key = /^(화학동|화)/.test(token) ? '화'+number : /^(디스미어|디)/.test(token) ? '디스미어 '+number :
         /^(전기동|전)/.test(token) ? '전기동 '+number : /^MSF/i.test(token) ? 'MSF 전기동' :
         /^에/.test(token) ? token.replace(/[·,]/g,'.') : /^고압/.test(token) ? '고압수세 1' : '데버링 '+number;
+      if (/^디화/.test(token)) key = /디스미어|스웰러|망간/.test(segment.slice(match[0].length)) ? '디스미어 '+number : '화'+number;
+      if (['화13','화14'].includes(key) && /스웰러|망간|디스미어/.test(segment.slice(match[0].length))) key = '디스미어 '+number;
       let date = new Date(reference);
       const explicit = noticeDate(segment,now);
       const dayOnly = segment.match(/(?:^|[^\d])(\d{1,2})일/);
@@ -1231,8 +1257,11 @@ function parseAndApplyKakaoMsg() {
           date.setHours(time.hour,time.minute,0,0);
           if (ongoing || completed) {
             while (date > now) date.setDate(date.getDate()-1);
+            const wasRunning = item.status === '시작';
+            const previousStart = item.lastDone;
             item.status = ongoing ? '시작' : '완료';
             item.lastDone = date.toISOString(); delete item.plannedDue;
+            if (completed && wasRunning) recordInlineChemCompletion(item.id,item.lastDone,previousStart);
           } else {
             // Planned PM is an announcement, not a fabricated completion 72 hours earlier.
             item.plannedDue = date.toISOString();
@@ -1241,6 +1270,32 @@ function parseAndApplyKakaoMsg() {
         }
         if (changed) updatedChemCount++;
       } else {
+        const inlineId = ['디스미어 13','디스미어 14'].includes(key) ? '화'+number : null;
+        if (inlineId) {
+          const time = extractNoticeTime(segment);
+          const completed = /완료|종료/.test(segment) && !/미완료/.test(segment);
+          const ongoing = /진행\s*중|PM\s*중|시작/i.test(segment) && !completed;
+          const state = getInlineState(inlineId);
+          if (time) {
+            if (ongoing && !headerDate && !explicit && !dayOnly && !/익일|내일/.test(segment)) date = new Date(now);
+            date.setHours(time.hour,time.minute,0,0);
+            if (completed || ongoing) while (date > now) date.setDate(date.getDate()-1);
+            if (completed) finishInlineDesmear(inlineId,date.toISOString());
+            else {
+              state.status = ongoing ? '시작' : '예정';
+              if (ongoing) { state.startedAt = date.toISOString(); delete state.plannedDue; }
+              else state.plannedDue = date.toISOString();
+              inlineDesmearFlags[inlineId] = state;
+            }
+            updatedNoteCount++;
+          }
+          if (!completed && !featureRules.some(([,pattern]) => pattern.test(segment)) && /PM|피엠/i.test(segment)) {
+            const dateStr = formatDateOnly(date);
+            if (!manualNotes.some(note => note.date === dateStr && note.line === key && note.text === '기본PM')) {
+              manualNotes.push({date:dateStr,line:key,text:'기본PM'}); updatedNoteCount++;
+            }
+          }
+        }
         for (const [tag,pattern] of featureRules) {
           if (!pattern.test(segment)) continue;
           const dateStr = formatDateOnly(date);
@@ -1260,7 +1315,7 @@ function parseAndApplyKakaoMsg() {
 
 function safeRenderAll() {
   try { generateShareText(); } catch(e){ console.error(e); }
-  try { renderTab1ChemStatus(); } catch(e){ console.error(e); }
+  try { renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e){ console.error(e); }
   try { renderWeeklyMatrix(); } catch(e){ console.error(e); }
   try { updateManualLineOptions(); } catch(e){ console.error(e); }
   try { renderManualNotesList(); } catch(e){ console.error(e); }
@@ -1296,7 +1351,7 @@ function tick() {
   if (clockEl) clockEl.innerText = formatClock(now);
 
   try { updateLiveTimesOnly(now); } catch(e) { console.error(e); }
-  try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); } catch(e) { console.error(e); }
+  try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e) { console.error(e); }
   if (now.getSeconds() === 0) {
     renderPulseTable();
     if (!document.querySelector('#tab2 input:focus, #tab2 select:focus')) renderActiveChemGauges(now);
@@ -1431,6 +1486,7 @@ function renderWeeklyMatrix() {
   }
 
   renderManualNotesInMatrix(weekDates);
+  renderInlineDesmearMatrix(weekDates);
 }
 
 function selectDayFromMatrix(dateStr) {
@@ -1540,13 +1596,17 @@ function updateManualLineOptions() {
   });
   html += '</optgroup>';
 
+  html += '<optgroup label="인라인 디스미어">';
+  INLINE_CHEM_IDS.forEach(id => { html += `<option value="${inlineDesmearName(id)}">${inlineDisplayName(id)}</option>`; });
+  html += '</optgroup>';
+
   html += '<optgroup label="기타">';
   html += `<option value="CUSTOM">[직접 입력]</option>`;
   html += '</optgroup>';
 
   select.innerHTML = html;
 
-  if (ruleLinesSet.has(curVal) || chemLines.includes(curVal) || curVal === 'CUSTOM') {
+  if (ruleLinesSet.has(curVal) || chemLines.includes(curVal) || INLINE_CHEM_IDS.some(id => inlineDesmearName(id) === curVal) || curVal === 'CUSTOM') {
     select.value = curVal;
   } else {
     select.selectedIndex = 0;
@@ -1673,6 +1733,124 @@ function renderManualNotesList() {
     chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
     container.appendChild(chip);
   });
+}
+
+function inlineDesmearName(id) { return '디스미어 ' + id.slice(1); }
+function inlineDisplayName(id) { return '디화' + id.slice(1) + ' 디스미어'; }
+function getInlineState(id) {
+  const state = ensureObject(inlineDesmearFlags[id]);
+  const count = Number(state.chemPmCount);
+  return {...state,chemPmCount:Number.isInteger(count) ? Math.max(0,Math.min(2,count)) : 0};
+}
+
+function recordInlineChemCompletion(id,completedAt,startedAt) {
+  if (!INLINE_CHEM_IDS.includes(id) || !validDateTime(completedAt)) return;
+  const state = getInlineState(id);
+  if (validDateTime(state.lastChemCompletion) && new Date(completedAt) <= new Date(state.lastChemCompletion)) return;
+  if (state.skipChemStart && state.skipChemStart === startedAt) {
+    delete state.skipChemStart;
+  } else state.chemPmCount = Math.min(2,state.chemPmCount+1);
+  state.lastChemCompletion = completedAt;
+  state.configured = true;
+  inlineDesmearFlags[id] = state;
+}
+
+function setInlineChemCount(id,value) {
+  const count = Number(value);
+  if (!INLINE_CHEM_IDS.includes(id) || !Number.isInteger(count) || count < 0 || count > 2) return;
+  const state = getInlineState(id);
+  state.chemPmCount = count; state.configured = true;
+  delete state.skipChemStart;
+  inlineDesmearFlags[id] = state;
+  syncDataToFirebase(); safeRenderAll();
+}
+
+function finishInlineDesmear(id,completedAt = new Date().toISOString()) {
+  if (!INLINE_CHEM_IDS.includes(id) || !validDateTime(completedAt)) return;
+  const state = getInlineState(id);
+  if (validDateTime(state.lastDone) && new Date(completedAt) <= new Date(state.lastDone)) return;
+  const chem = chemList.find(line => line.id === id);
+  state.chemPmCount = 0; state.status = '완료'; state.lastDone = completedAt; state.configured = true;
+  // If desmear finishes before the same inline chemistry run, that run is not the NEXT cycle.
+  if (chem?.status === '시작') state.skipChemStart = chem.lastDone;
+  delete state.startedAt; delete state.plannedDue;
+  inlineDesmearFlags[id] = state;
+}
+
+function completeInlineDesmear(id) {
+  if (!confirm(`${inlineDisplayName(id)} PM을 완료하시겠습니까?\n화학동 PM 횟수를 0/2로 갱신합니다.`)) return;
+  finishInlineDesmear(id);
+  syncDataToFirebase(); safeRenderAll();
+}
+
+function getInlinePmEntry(id) {
+  const state = getInlineState(id);
+  const chem = chemList.find(line => line.id === id);
+  if (!chem) return null;
+  if (state.status === '시작' && validDateTime(state.startedAt)) return {id,status:'진행중',at:new Date(state.startedAt)};
+  if (validDateTime(state.plannedDue)) return {id,status:'예정',at:new Date(state.plannedDue)};
+  if (state.chemPmCount >= 2) return {id,status:'미완료',at:null};
+  if (state.chemPmCount === 1) return {id,status:chem.status === '시작' ? '차례 · 화학동 진행중' : '예정',
+    at:chem.status === '시작' ? new Date(chem.lastDone) : getChemDue(chem)};
+  return null;
+}
+
+function inlineControlsHtml(id) {
+  const state = getInlineState(id);
+  return `<div style="border-top:1px solid var(--border-light);padding-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+    <strong>${inlineDisplayName(id)} PM</strong><span class="badge badge-purple">화학동 2회당 1회</span>
+    <select aria-label="${inlineDisplayName(id)} 기준 횟수" onchange="setInlineChemCount('${id}',this.value)">
+      <option value="0" ${state.chemPmCount === 0 ? 'selected' : ''}>화학동 0/2회 · 두 번 후 차례</option>
+      <option value="1" ${state.chemPmCount === 1 ? 'selected' : ''}>화학동 1/2회 · 다음 PM 차례</option>
+      <option value="2" ${state.chemPmCount === 2 ? 'selected' : ''}>화학동 2/2회 · 디스미어 미완료</option>
+    </select>
+    <button class="btn btn-sub btn-sm" onclick="completeInlineDesmear('${id}')">디스미어 완료</button>
+    ${state.configured ? '' : '<span style="font-size:12px;color:var(--warning);">최초 횟수를 선택해주세요. 미설정 시 지금부터 0회로 집계합니다.</span>'}
+  </div>`;
+}
+
+function renderInlineDesmearStatus() {
+  const container = document.getElementById('inlineDesmearStatusContainer');
+  if (!container) return;
+  container.innerHTML = INLINE_CHEM_IDS.map(id => {
+    const state = getInlineState(id); const entry = getInlinePmEntry(id);
+    return `<div style="background:#faf5ff;border:1px solid ${state.chemPmCount >= 2 ? 'var(--warning)' : '#ddd6fe'};padding:9px;border-radius:8px;">
+      <strong>${inlineDisplayName(id)}</strong> <span class="badge badge-purple">화학동 ${state.chemPmCount}/2회</span>
+      <div>${entry ? `${entry.status}${entry.at ? ' · ' + formatDateTimeKr(entry.at) : ' · 디스미어 작업 확인 필요'}` : '화학동 PM 두 번마다 진행'}</div>
+      ${state.configured ? '' : '<div style="font-size:12px;color:var(--warning);">탭3에서 현재 횟수 설정</div>'}
+    </div>`;
+  }).join('');
+}
+
+function inlineBriefingLines(dateStr,windowStart,windowEnd) {
+  const result = [];
+  for (const id of INLINE_CHEM_IDS) {
+    const name = inlineDesmearName(id);
+    const notes = manualNotes.filter(note => note.date === dateStr && note.line === name);
+    const entry = getInlinePmEntry(id);
+    const show = entry && (!entry.at || entry.status !== '예정' || (entry.at >= windowStart && entry.at < windowEnd));
+    if (!show && !notes.length) continue;
+    const work = notes.length ? notes.map(note => note.text).join(' ') : '기본PM';
+    const time = show && entry.at ? formatDayTimeKr(entry.at) + ' ' : '';
+    const status = show && entry.status !== '예정' ? ' [' + entry.status + ']' : '';
+    result.push(`${inlineDisplayName(id)} ${time}${work}${status}`);
+  }
+  return result;
+}
+
+function renderInlineDesmearMatrix(weekDates) {
+  for (let index = 0; index < weekDates.length; index++) {
+    const cell = document.getElementById(`inline_cell_${index+1}`);
+    if (!cell) continue;
+    const day = weekDates[index]; const entries = [];
+    for (const id of INLINE_CHEM_IDS) {
+      const entry = getInlinePmEntry(id);
+      const notes = manualNotes.filter(note => note.date === day.dateStr && note.line === inlineDesmearName(id));
+      const match = entry && (entry.at ? formatDateOnly(entry.at) === day.dateStr : day.dateStr === formatDateOnly(new Date()));
+      if (match || notes.length) entries.push(`<strong>${inlineDisplayName(id)}</strong> ${match ? escapeHtml(entry.status) + (entry.at ? ' ' + formatTimeKr(entry.at.getHours(),entry.at.getMinutes()) : '') : ''}<br>${notes.length ? notes.map(note => escapeHtml(note.text)).join(' · ') : '기본PM'}`);
+    }
+    cell.innerHTML = entries.length ? entries.join('<br>') : '-';
+  }
 }
 
 function getChemDue(line) {
@@ -2126,17 +2304,20 @@ function setChemStepStatusById(lineId,st) {
 function completeChemPM(lineId) {
   if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
   const line = chemList.find(c => c.id === lineId);
-  if (!line) return;
+  if (!line || line.status === '완료') return;
+  const startedAt = line.lastDone;
   
   delete line.plannedDue;
   line.status = '완료';
   line.lastDone = new Date().toISOString();
+  recordInlineChemCompletion(lineId,line.lastDone,startedAt);
 
   syncDataToFirebase();
   renderChemList();
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
   renderTab1ChemStatus();
+  renderInlineDesmearStatus();
   generateShareText();
 }
 
@@ -2261,6 +2442,7 @@ function renderChemList() {
           </select>
         </div>
       </div>
+      ${INLINE_CHEM_IDS.includes(c.id) ? inlineControlsHtml(c.id) : ''}
       <div id="chem_box_${idx}" style="font-size:13px; padding:10px 14px; background:#ffffff; border-radius:6px; border-left:5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,0.03);"></div>
     `;
     container.appendChild(card);
@@ -2429,6 +2611,7 @@ function updatePulseDate(idx, val) {
 
 function generateShareText() {
   if (!selectedDateStr) return;
+  chemList = ensureChemIntegrity(chemList);
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
   const day = targetDate.getDay();
   const m = targetDate.getMonth() + 1;
@@ -2521,7 +2704,9 @@ function generateShareText() {
     }
   });
 
-  const regularLines = new Set(getDayLines(targetDate));
+  desmear.push(...inlineBriefingLines(selectedDateStr,windowStart,windowEnd));
+
+  const regularLines = new Set([...getDayLines(targetDate),...INLINE_CHEM_IDS.map(inlineDesmearName)]);
   const extraNotes = manualNotes.filter(note => note.date === selectedDateStr &&
     !regularLines.has(note.line) && !REQUIRED_CHEM_IDS.includes(note.line));
 
