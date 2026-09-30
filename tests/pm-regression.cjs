@@ -12,7 +12,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 
 function app({stored = {}, now = '2026-10-01T08:00:00+09:00', storageError = false} = {}) {
   let clock = new Date(now).getTime();
-  const nodes = new Map(); const logs = []; const alerts = [];
+  const nodes = new Map(); const logs = []; const alerts = []; const timers = [];
   class Element {
     constructor(id = '') { this.id=id; this.style={}; this.value=''; this.children=[]; this.className=''; this._html='';
       this.classList={add(){},remove(){}}; }
@@ -38,11 +38,11 @@ function app({stored = {}, now = '2026-10-01T08:00:00+09:00', storageError = fal
     localStorage,sessionStorage,document:{getElementById:id=>nodes.get(id)||null,createElement:()=>new Element(),
       querySelectorAll:()=>[],querySelector:()=>null,execCommand:()=>true},
     window:{isSecureContext:true},navigator:{clipboard:{writeText:async()=>{}}},
-    alert:text=>alerts.push(text),confirm:()=>true,setTimeout:()=>1,clearTimeout(){},setInterval(){}});
+    alert:text=>alerts.push(text),confirm:()=>true,setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){},setInterval(){}});
   vm.runInContext(code,context);
   const run = text => vm.runInContext(text,context);
   run('window.onload()');
-  return {run,context,nodes,storage,logs,alerts,setNow:value=>{clock=new Date(value).getTime();},
+  return {run,context,nodes,storage,logs,alerts,timers,setNow:value=>{clock=new Date(value).getTime();},
     data:expression=>clone(run(expression)),parse:text=>{nodes.get('kakaoRawInput').value=text;run('parseAndApplyKakaoMsg()');}};
 }
 
@@ -308,12 +308,77 @@ test('legacy chemistry note timestamp is removed while the corrected start time 
 
 test('remote dirty labels and time-only manual corrections cannot reintroduce duplicate clocks',()=>{
   const a=app();a.run("acceptRemoteState({chemList:[{id:'화13',lastDone:'2026-09-30T13:00',status:'시작',note:'13시 촉매건욕'}]});safeRenderAll()");
-  a.nodes.get('d_3').value='30';a.nodes.get('h_3').value='10';a.nodes.get('min_3').value='0';
-  a.run('updateChemFromParts(3)');
+  a.run("openChemTimeEditor('화13')");
+  a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditTime').value='10:00';
+  a.run('saveChemTimeEditor()');
   assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
   assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
   const b=app({stored:Object.fromEntries(a.storage)});
   assert.equal(b.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
+});
+
+test('single-save time editor keeps minutes, month rollover and start status without counting PM',()=>{
+  const a=app({now:'2026-12-31T23:00:00+09:00'});
+  a.run("chemList[3]={id:'화13',lastDone:'2026-12-31T13:00:00+09:00',status:'시작',note:'촉매 건욕'};openChemTimeEditor('화13')");
+  a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditTime').value='00:17';
+  a.run('saveChemTimeEditor()');
+  assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
+  assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),17);
+  assert.equal(a.run('chemList[3].status'),'시작');
+  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  assert.equal(a.nodes.get('chemTimeModal').style.display,'none');
+});
+
+test('time editor refuses invalid input and concurrent remote edits instead of overwriting',()=>{
+  const a=app();a.run("openChemTimeEditor('화13')");
+  const previous=a.run('chemList[3].lastDone');
+  a.nodes.get('chemEditTime').value='25:17';a.run('saveChemTimeEditor()');
+  assert.equal(a.run('chemList[3].lastDone'),previous);
+  assert.match(a.nodes.get('chemTimeError').textContent,/유효/);
+  a.nodes.get('chemEditTime').value='10:17';
+  a.run("chemList[3].note='전체건욕';saveChemTimeEditor()");
+  assert.equal(a.run('chemList[3].lastDone'),previous);
+  assert.match(a.nodes.get('chemTimeError').textContent,/다른 곳/);
+});
+
+test('briefing cards escape manual content and do not diverge from copied report',()=>{
+  const a=app();a.parse('화13 13시 촉매건욕 PM 진행중');
+  a.run("manualNotes.push({date:selectedDateStr,line:'기타',text:'<img src=x onerror=alert(1)>'});generateShareText()");
+  const cards=a.nodes.get('briefingCards').innerHTML;
+  assert.match(cards,/화13 13시 촉매 건욕 PM 진행중/);
+  assert.match(cards,/&lt;img/);assert.doesNotMatch(cards,/<img/);
+  assert.match(a.nodes.get('shareTextOutput').value,/화13 13시 촉매 건욕 PM 진행중/);
+  assert.equal(a.nodes.get('kakaoPanel').open,false);
+  assert.match(a.nodes.get('uiToast').textContent,/반영 완료/);
+});
+
+test('attention summary respects 7-hour and 14-hour boundaries and preferences survive reload',()=>{
+  const a=app();
+  assert.equal(a.run("chemAttention({status:'시작',lastDone:new Date(Date.now()-14*3600000).toISOString()})"),'late');
+  assert.equal(a.run("chemAttention({status:'완료',lastDone:new Date(Date.now()-65*3600000).toISOString()})"),'warn');
+  a.nodes.get('passTimeInput').value='7시30분패스';a.run('savePassPreference()');
+  const b=app({stored:Object.fromEntries(a.storage)});
+  assert.equal(b.nodes.get('passTimeInput').value,'7시30분패스');
+  assert.match(b.nodes.get('shareTextOutput').value,/7시30분패스/);
+});
+
+test('paste parsing waits for native insertion and applies exactly the new notice',()=>{
+  const a=app();a.nodes.get('kakaoRawInput').value='';
+  a.run('queueKakaoPaste()');const apply=a.timers.at(-1);
+  a.nodes.get('kakaoRawInput').value='화13 07:17 촉매건욕 PM 진행중';apply();
+  assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),17);
+  assert.equal(a.run('chemList[3].note'),'촉매 건욕');
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  assert.equal(a.alerts.length,0);
+});
+
+test('copy gives nonblocking feedback and invalid notices remain available for correction',async()=>{
+  const a=app();await a.run('copyShareText()');
+  assert.match(a.nodes.get('uiToast').textContent,/복사 완료/);
+  a.parse('아무 일정 없음');
+  assert.equal(a.nodes.get('kakaoRawInput').value,'아무 일정 없음');
+  assert.match(a.nodes.get('uiToast').textContent,/찾지 못/);
+  assert.equal(a.alerts.length,0);
 });
 
 test('two completed chemistry runs create separate desmear work; repeated completion is ignored',()=>{

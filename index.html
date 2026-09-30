@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>동도금 PM 일정 & 실시간 통합 모니터링</title>
@@ -367,6 +367,91 @@
     .pulse-step-container { grid-template-columns: repeat(2, 1fr); }
     .nav-btn { font-size: 12.5px; padding: 9px 4px; }
   }
+
+  /* 근무 중 한눈에 확인하고 한 손으로 조작하는 화면 */
+  :root { --accent:#0369a1; --bg-base:#eef3f8; }
+  .container { max-width:1120px; gap:16px; }
+  header { border:0; padding:18px 20px; box-shadow:none; }
+  .header-top h1 { color:var(--text-primary); font-size:22px; letter-spacing:-.6px; }
+  .header-top-buttons .btn { background:#edf4fa; color:var(--accent); }
+  .header-bottom-bar { border:0; padding:8px 0 0; background:transparent; }
+  .main-nav { position:sticky; top:0; z-index:30; border:0; padding:6px; background:#fff; border-radius:14px; box-shadow:0 3px 12px #0f172a08; }
+  .nav-btn,.nav-btn.active { border:0; margin:0; border-radius:9px; background:transparent; min-height:46px; }
+  .nav-btn.active { background:var(--accent-light); }
+  .nav-icon { margin-right:6px; }
+  .card { border-color:#dfe7f0; border-radius:16px; padding:20px; box-shadow:none; }
+  .btn,.status-step-btn-compact { min-height:44px; }
+  .btn:focus-visible,summary:focus-visible,.nav-btn:focus-visible { outline:3px solid #7dd3fc; outline-offset:2px; }
+  button:disabled { opacity:.55; cursor:default; }
+  summary { cursor:pointer; font-weight:700; min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  summary::after { content:'＋'; color:var(--accent); }
+  details[open]>summary::after { content:'−'; }
+  details>summary { list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  .parser-box { background:#fff; border-color:#dfe7f0; padding:10px 18px; }
+  .parser-content { display:grid; gap:10px; padding:6px 0 8px; }
+  .helper { color:var(--text-secondary); font-size:12px; }
+  .brief-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .day-switch { display:flex; gap:4px; background:#edf2f7; padding:4px; border-radius:12px; }
+  .day-switch .btn { min-width:70px; }
+  .day-switch .btn-sub { background:transparent; color:var(--text-secondary); }
+  .brief-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .brief-section { background:#f7f9fc; border:1px solid var(--border-light); padding:14px; border-radius:12px; min-width:0; }
+  .brief-section h3 { font-size:12px; color:var(--text-secondary); margin-bottom:8px; }
+  .brief-line { padding:5px 0; overflow-wrap:anywhere; font-weight:600; }
+  .brief-section.running { background:#effaf5; border-color:#bbf7d0; }
+  .focus-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .focus-pill { background:#fff; border:1px solid var(--border-light); border-radius:12px; padding:12px; text-align:left; color:var(--text-primary); cursor:pointer; }
+  .focus-pill strong { display:block; font-size:24px; line-height:1.2; }
+  .focus-pill span { font-size:12px; color:var(--text-secondary); }
+  .focus-pill.warn strong { color:var(--warning); }
+  .focus-pill.late strong { color:var(--danger); }
+  #tab1ChemStatusContainer { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  .chem-overview { padding:14px; border:1px solid var(--border-light); border-left:4px solid var(--accent); background:#fff; border-radius:12px; min-width:0; }
+  .chem-overview.running { border-left-color:var(--success); }
+  .chem-overview.warn { border-left-color:var(--warning); background:#fffbeb; }
+  .chem-overview.late { border-left-color:var(--danger); background:#fff5f5; }
+  .chem-overview-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .chem-overview-head strong { font-size:18px; }
+  .chem-work { color:var(--text-secondary); font-size:12px; margin-bottom:8px; overflow-wrap:anywhere; }
+  .chem-time { font-weight:800; font-size:16px; margin:4px 0 10px; }
+  .chem-actions { display:flex; gap:6px; }
+  .chem-actions .btn { flex:1; padding:6px 8px; }
+  .report-area { min-height:240px; height:320px; margin-top:8px; font-family:inherit; }
+  .note-chip { font-size:13px; padding:8px 10px; border-radius:9px; }
+  .note-chip button { min-width:32px; min-height:32px; }
+  #dynamicTagsContainer .btn-sub { background:#edf4fa; color:var(--accent); white-space:normal; }
+  .time-editor { max-width:420px; }
+  .time-fields { display:grid; grid-template-columns:90px 1fr; gap:12px; }
+  .time-fields label { display:grid; gap:6px; font-size:13px; font-weight:700; }
+  .time-fields input { width:100%; min-height:48px; font-size:18px; }
+  .time-editor .modal-body { display:grid; gap:16px; }
+  #uiToast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; padding:12px 18px; border-radius:12px; z-index:10001; width:max-content; max-width:calc(100% - 24px); display:none; box-shadow:0 8px 30px #0f172a25; }
+  .table-responsive { overflow-x:auto; }
+  .table-responsive table { min-width:760px; }
+  .settings-inline { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:8px 0; }
+  @media(max-width:767px) {
+    body { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+    header { padding:16px; }
+    .header-top h1 { font-size:20px; }
+    .header-top-buttons { width:100%; }
+    .header-top-buttons .btn { flex:1; }
+    .live-clock-box,.sync-status-badge { font-size:11.5px; }
+    .main-nav { position:fixed; top:auto; bottom:0; left:0; right:0; border-radius:16px 16px 0 0; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); border-top:1px solid var(--border-light); box-shadow:0 -4px 20px #0f172a08; }
+    .nav-btn { font-size:11px; padding:5px 2px; }
+    .nav-icon { display:block; font-size:20px; margin:0 0 2px; }
+    .nav-btn .nav-full { display:none; }
+    .card { padding:16px; }
+    .brief-grid,#tab1ChemStatusContainer { grid-template-columns:1fr !important; }
+    .chem-overview { position:relative; }
+    .chem-actions { max-width:260px; }
+    .modal-overlay { align-items:flex-end; padding:0; }
+    .modal-content { border-radius:18px 18px 0 0; max-height:90dvh; padding-bottom:env(safe-area-inset-bottom); }
+    .time-editor { max-width:none; }
+    #uiToast { bottom:calc(82px + env(safe-area-inset-bottom)); }
+  }
+  @media(min-width:768px) { .nav-short { display:none; } }
+
 </style>
 </head>
 <body>
@@ -397,16 +482,16 @@
 
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
-      📋 오늘 브리핑
+      <span class="nav-icon">📋</span><span class="nav-full">오늘 브리핑</span><span class="nav-short">브리핑</span>
     </button>
     <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
-      ⚡ 진척 게이지
+      <span class="nav-icon">⚡</span><span class="nav-full">진척 게이지</span><span class="nav-short">진척</span>
     </button>
     <button class="nav-btn" id="tabBtn3" onclick="switchTab('tab3')">
-      🧪 화학동 관리
+      <span class="nav-icon">🧪</span><span class="nav-full">화학동 관리</span><span class="nav-short">화학동</span>
     </button>
     <button class="nav-btn" id="tabBtn4" onclick="switchTab('tab4')">
-      ✏️ 특이사항 수동
+      <span class="nav-icon">✏️</span><span class="nav-full">특이사항 수동</span><span class="nav-short">특이사항</span>
     </button>
   </div>
 
@@ -414,16 +499,15 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
-      <div class="parser-box">
-        <div class="parser-header">
-          <strong style="color: #854d0e; font-size: 14px;">📲 카톡 PM 내용 붙여넣기 자동 반영</strong>
-          <span style="font-size: 11.5px; color: #a16207;">공지 텍스트를 붙여넣으면 화학동 건욕 명칭과 라인별 특이사항이 자동 동기화됩니다.</span>
+      <div id="focusSummary" class="focus-grid" aria-label="현재 화학동 상태 요약"></div>
+      <details id="kakaoPanel" class="parser-box">
+        <summary>📲 카톡 공지 반영 <span class="helper">붙여넣으면 자동 반영</span></summary>
+        <div class="parser-content">
+          <p class="helper">시각·건욕 명칭·특이사항을 자동 반영합니다. 직접 수정한 내용은 반영 버튼을 누르세요.</p>
+          <textarea id="kakaoRawInput" rows="4" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 여기에 붙여넣으세요" onpaste="queueKakaoPaste()"></textarea>
+          <button class="btn" onclick="parseAndApplyKakaoMsg()">공지 반영</button>
         </div>
-        <textarea id="kakaoRawInput" rows="2" style="width: 100%; font-size: 13.5px; padding: 8px; border-radius: 6px; border: 1px solid #fde047;" placeholder="카카오톡으로 공유된 PM 공지 메시지를 여기에 그대로 붙여넣으세요..."></textarea>
-        <div style="text-align: right;">
-          <button class="btn btn-sm" style="background: #eab308; color: #713f12;" onclick="parseAndApplyKakaoMsg()">⚡ 자동 분석 및 실시간 반영</button>
-        </div>
-      </div>
+      </details>
 
       <div class="card">
         <div class="card-title">
@@ -431,28 +515,28 @@
           <span class="badge badge-blue">익일 08:30 이전 취합</span>
         </div>
 
-        <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <div style="display:flex; align-items:center; gap:6px;">
+        <div class="brief-toolbar">
+          <div class="day-switch" aria-label="브리핑 날짜">
             <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
             <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
           </div>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <span style="font-size:12px; color:var(--text-secondary);">패스 기준:</span>
-            <input type="text" id="passTimeInput" value="7시패스" style="width:85px; padding:5px 8px;" oninput="generateShareText()">
-          </div>
-          <div style="display:flex; gap:6px;">
-            <button class="btn btn-sub btn-sm" onclick="generateShareText()">새로고침</button>
-            <button class="btn btn-sm" onclick="copyShareText()">텍스트 복사</button>
-          </div>
+          <button class="btn" onclick="copyShareText()">📋 공지 복사</button>
         </div>
-
-        <textarea id="shareTextOutput" class="report-area" readonly></textarea>
+        <div id="briefingCards" class="brief-grid" aria-label="공정별 PM 일정"></div>
+        <details>
+          <summary>공유 원문 · 패스 기준</summary>
+          <div class="settings-inline">
+            <label for="passTimeInput">패스 기준</label>
+            <input type="text" id="passTimeInput" value="7시패스" style="width:120px;" oninput="savePassPreference();generateShareText()">
+          </div>
+          <textarea id="shareTextOutput" class="report-area" aria-label="공유할 공지 원문" readonly></textarea>
+        </details>
 
         <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🧪 일반 화학동 PM 현황 (화7, 화8, 화9, 화13, 화14)</span>
-            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">* PM 진행 시 시작 시각 표기</span>
+            <span>🧪 화학동 현재 상태</span>
+            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시각 정정 · 시작/완료 바로 처리</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
           <div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디화13 · 디화14 인라인 디스미어 PM (화학동 2회당 1회)</div>
@@ -498,7 +582,7 @@
         <button class="btn btn-sub btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
       </div>
       <div style="font-size:12px; color:var(--text-secondary);">
-        💡 상태는 <strong>[시작 / 완료]</strong>로 관리되며, 수동 시간은 <strong>0분 / 30분</strong>으로 선택하며, 시작·완료는 실제 현재 시각을 저장합니다.
+        시각 정정에서 <strong>일 · 시각</strong>을 입력하고 한 번에 저장하세요. 시작·완료는 실제 현재 시각을 저장합니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -514,16 +598,16 @@
       
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <div style="display:flex; align-items:center; gap:2px;">
-          <input type="number" id="manualDayInput" min="1" max="31" style="width:52px; text-align:center;">일
+          <input type="number" id="manualDayInput" aria-label="특이사항 일" inputmode="numeric" min="1" max="31" style="width:52px; text-align:center;">일
         </div>
         
         <div>
-          <select id="manualLineSelect" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
+          <select id="manualLineSelect" aria-label="특이사항 라인" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
           <input type="text" id="manualCustomLineInput" placeholder="라인명 직접입력" style="display:none; width:120px; margin-left:4px;">
         </div>
 
         <div style="flex:1; min-width:160px;">
-          <input type="text" id="manualContentInput" placeholder="특이사항 직접 입력 또는 아래 전용 태그 클릭" style="width:100%;">
+          <input type="text" id="manualContentInput" aria-label="특이사항 내용" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="특이사항 직접 입력 또는 아래 전용 태그 클릭" style="width:100%;">
         </div>
         <div>
           <button class="btn" onclick="addManualNote()">등록</button>
@@ -691,6 +775,20 @@
   </div>
 
 </div>
+
+
+<div id="chemTimeModal" class="modal-overlay" onclick="if(event.target===this) closeModal('chemTimeModal')">
+  <section class="modal-content time-editor" role="dialog" aria-modal="true" aria-labelledby="chemTimeTitle" onkeydown="handleTimeEditorKey(event)">
+    <div class="modal-header"><strong id="chemTimeTitle">화학동 시각 정정</strong><button class="btn btn-sub" onclick="closeModal('chemTimeModal')" aria-label="시각 정정 닫기">닫기</button></div>
+    <div class="modal-body">
+      <p id="chemTimeHint" class="helper"></p>
+      <div class="time-fields"><label>일<input id="chemEditDay" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<input id="chemEditTime" type="time" step="60"></label></div>
+      <p id="chemTimeError" role="alert" style="color:var(--danger)"></p>
+      <button class="btn" onclick="saveChemTimeEditor()">시각 저장</button>
+    </div>
+  </section>
+</div>
+<div id="uiToast" role="status" aria-live="polite"></div>
 
 <script>
 const firebaseConfig = {
@@ -1076,6 +1174,7 @@ function openModal(id) {
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'none';
+  if(id==='chemTimeModal' && editorReturnFocus?.isConnected) editorReturnFocus.focus();
 }
 
 function updateDateToggleUI() {
@@ -1107,72 +1206,42 @@ function selectQuickDay(choice) {
   safeRenderAll();
 }
 
+function chemAttention(line, now = new Date()) {
+  if (line.status === '시작') return (now-new Date(line.lastDone))/3600000 >= 14 ? 'late' : 'running';
+  const remaining = (getChemDue(line)-now)/3600000;
+  return remaining <= 0 ? 'late' : remaining <= 7 ? 'warn' : 'normal';
+}
+
+function renderFocusSummary() {
+  const el = document.getElementById('focusSummary');
+  if (!el) return;
+  const counts = {running:0,warn:0,late:0};
+  chemList.forEach(line => { const state=chemAttention(line); if (line.status==='시작') counts.running++; if (state==='warn'||state==='late') counts[state]++; });
+  const html = [['running','진행 중'],['warn','7시간 이내 임박'],['late','지연 · 주기 초과']].map(([key,label])=>
+    `<button class="focus-pill ${key}" onclick="switchTab('tab2')" aria-label="화학동 ${label} ${counts[key]}개, 진척 보기"><strong>${counts[key]}<small style="font-size:12px;font-weight:500">개</small></strong><span>${label}</span></button>`).join('');
+  if(el.innerHTML!==html) el.innerHTML=html;
+}
+
 function renderTab1ChemStatus() {
   const container = document.getElementById('tab1ChemStatusContainer');
   if (!container) return;
-
   chemList = ensureChemIntegrity(chemList);
-  const targetIds = ['화7', '화8', '화9', '화13', '화14'];
-  let html = '';
-  const now = new Date();
-
-  targetIds.forEach(id => {
-    const line = chemList.find(c => c.id === id);
-    if (!line) return;
-
-    const t = new Date(line.lastDone);
-    const isRunning = (line.status === '시작');
-
-    if (isRunning) {
-      const startKr = formatDateTimeKr(t);
-      const noteLabel = line.note ? ` [${escapeHtml(line.note)}]` : '';
-      html += `
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}${noteLabel}</strong>
-            <span class="badge badge-green">PM 진행중</span>
-          </div>
-          <div style="color: var(--text-secondary); font-size: 11px;">PM 시작 시각:</div>
-          <div style="font-weight: 800; color: #15803d; font-size: 12px; margin-top: 1px;">${startKr}</div>
-        </div>
-      `;
-    } else {
-      const nextDue = getChemDue(line);
-      const dueKr = formatDateTimeKr(nextDue);
-      const remainH = (nextDue - now) / 3600000;
-      const isOverdue = now >= nextDue;
-      const isImminent = !isOverdue && remainH <= 7;
-      const noteLabel = line.note ? ` [${escapeHtml(line.note)}]` : '';
-
-      let bg = '#f8fafc';
-      let border = '#e2e8f0';
-      let badgeHtml = `<span class="badge badge-blue">${remainH.toFixed(1)}H 남음</span>`;
-      let textCol = 'var(--accent)';
-
-      if (isOverdue) {
-        bg = '#fef2f2'; border = '#fecaca';
-        badgeHtml = `<span class="badge badge-red">주기 초과</span>`;
-        textCol = 'var(--danger)';
-      } else if (isImminent) {
-        bg = '#fffbeb'; border = '#fde68a';
-        badgeHtml = `<span class="badge badge-yellow">⚠️ 7H 이내 임박</span>`;
-        textCol = 'var(--warning)';
-      }
-
-      html += `
-        <div style="background: ${bg}; border: 1px solid ${border}; border-radius: 6px; padding: 9px 10px; font-size: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="color: var(--text-primary); font-size: 13.5px;">${escapeHtml(line.id)}${noteLabel}</strong>
-            ${badgeHtml}
-          </div>
-          <div style="color: var(--text-secondary); font-size: 11px;">차기 PM 예정:</div>
-          <div style="font-weight: 800; color: ${textCol}; font-size: 12px; margin-top: 1px;">${dueKr}</div>
-        </div>
-      `;
-    }
-  });
-
-  container.innerHTML = html;
+  const now=new Date();
+  const html=chemList.map(line=>{
+    const running=line.status==='시작', state=chemAttention(line,now);
+    const date=running?new Date(line.lastDone):getChemDue(line);
+    const remaining=(date-now)/3600000;
+    const label=state==='late'?(running?'미완료 지연':'주기 초과'):running?'PM 진행 중':state==='warn'?'7시간 이내 임박':`${remaining.toFixed(1)}H 남음`;
+    const badge=state==='late'?'red':state==='warn'?'yellow':running?'green':'blue';
+    const buildup=line.id==='화8'&&!running&&(now-new Date(line.lastDone))/3600000>48?'<div class="helper" style="color:var(--danger);margin-bottom:8px">⛔ 빌드업 금지</div>':'';
+    return `<article class="chem-overview ${state}"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-${badge}">${label}</span></div>
+      <div class="chem-work">${escapeHtml(line.note||'기본PM')}</div><div class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</div>
+      <div class="chem-time">${formatDateTimeKr(date)}</div>${buildup}<div class="chem-actions">
+      <button class="btn ${running?'btn-sub':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')">${running?'PM 완료':'PM 시작'}</button>
+      <button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')">시각 정정</button></div></article>`;
+  }).join('');
+  if(container.innerHTML!==html) container.innerHTML=html;
+  renderFocusSummary();
 }
 
 // [스마트 파서 고도화: 화학동 건욕 명칭 정확 추출 & 디스미어/전기동 수동 특이사항 자동 등록]
@@ -1205,7 +1274,7 @@ function extractChemWork(text) {
 function parseAndApplyKakaoMsg() {
   const input = document.getElementById('kakaoRawInput');
   const raw = input.value.trim();
-  if (!raw) { alert('카카오톡 PM 공지 내용을 붙여넣어 주세요.'); return; }
+  if (!raw) { showToast('카톡 공지를 붙여넣어 주세요.'); return; }
   const now = new Date();
   const headerDate = noticeDate(raw,now);
   const reference = headerDate || new Date(selectedDateStr + 'T00:00:00');
@@ -1307,10 +1376,12 @@ function parseAndApplyKakaoMsg() {
   }
   syncDataToFirebase(); safeRenderAll();
   if (!updatedChemCount && !updatedNoteCount) {
-    alert('반영할 일정이나 특이사항을 찾지 못했습니다. 라인명과 작업 시각·내용을 확인해주세요.'); return;
+    showToast('반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
   }
-  alert(`✅ 카톡 공지 분석 완료!\n- 화학동 PM 일정: ${updatedChemCount}건 반영\n- 특이사항: ${updatedNoteCount}건 자동 등록`);
+  showToast(`공지 반영 완료 · 일정 ${updatedChemCount}건 · 특이사항 ${updatedNoteCount}건`);
+  savePassPreference();
   input.value = '';
+  document.getElementById('kakaoPanel').open = false;
 }
 
 function safeRenderAll() {
@@ -1330,6 +1401,8 @@ window.onload = function() {
   selectedDateStr = formatDateOnly(today);
   lastCheckedDate = selectedDateStr;
   currentDateChoice = 'today';
+  const savedPass=readStored('pm_ui_preferences_master');
+  if (savedPass && typeof savedPass.pass==='string') document.getElementById('passTimeInput').value=savedPass.pass;
   
   const mD = document.getElementById('manualDayInput');
   if (mD) mD.value = today.getDate();
@@ -1706,6 +1779,7 @@ function addManualNote() {
 
   if (!manualNotes.some(note => note.date === date && note.line === line && note.text === text)) manualNotes.push({ date, line, text });
   syncDataToFirebase();
+  showToast(`${line} 특이사항 등록 완료`);
   document.getElementById('manualContentInput').value = '';
   renderManualNotesList();
   renderWeeklyMatrix();
@@ -2299,6 +2373,7 @@ function setChemStepStatusById(lineId,st) {
   delete line.plannedDue;
   line.status = '시작'; line.lastDone = new Date().toISOString();
   syncDataToFirebase(); safeRenderAll();
+  showToast(`${lineId} PM 시작 시각 저장 완료`);
 }
 
 function completeChemPM(lineId) {
@@ -2407,16 +2482,6 @@ function renderChemList() {
     statusBtnsHtml += `</div>`;
 
     const t = new Date(c.lastDone);
-    const curD = isNaN(t.getTime()) ? (new Date().getDate()) : t.getDate();
-    const curH = isNaN(t.getTime()) ? 0 : t.getHours();
-    const rawMin = isNaN(t.getTime()) ? 0 : t.getMinutes();
-    const curMin = rawMin;
-
-    let hourOptions = '';
-    for (let h = 0; h <= 23; h++) {
-      hourOptions += `<option value="${h}" ${h === curH ? 'selected' : ''}>${h}시</option>`;
-    }
-
     const pmTagBadge = c.note ? `<span class="badge badge-blue">${escapeHtml(c.note)}</span>` : `<span class="badge badge-sub">기본PM</span>`;
 
     card.innerHTML = `
@@ -2431,16 +2496,9 @@ function renderChemList() {
           <button class="btn btn-sub btn-sm" style="margin-left:4px; padding:4px 8px;" onclick="setChemNow(${idx})">현재시각</button>
         </div>
       </div>
-      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:3px;">
-          <input type="number" id="d_${idx}" value="${curD}" min="1" max="31" style="width:52px; text-align:center;" onchange="updateChemFromParts(${idx})">일
-          <select id="h_${idx}" onchange="updateChemFromParts(${idx})">${hourOptions}</select>
-          <select id="min_${idx}" onchange="updateChemFromParts(${idx})">
-            <option value="0" ${curMin === 0 ? 'selected' : ''}>00분</option>
-            <option value="30" ${curMin === 30 ? 'selected' : ''}>30분</option>
-            ${![0,30].includes(curMin) ? `<option value="${curMin}" selected>${String(curMin).padStart(2,'0')}분</option>` : ''}
-          </select>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="helper">${c.status==='시작'?'시작':'직전 완료'} ${formatDateTimeKr(t)}</span>
+        <button class="btn btn-sub btn-sm" onclick="openChemTimeEditor('${c.id}')">시각 정정</button>
       </div>
       ${INLINE_CHEM_IDS.includes(c.id) ? inlineControlsHtml(c.id) : ''}
       <div id="chem_box_${idx}" style="font-size:13px; padding:10px 14px; background:#ffffff; border-radius:6px; border-left:5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,0.03);"></div>
@@ -2448,15 +2506,6 @@ function renderChemList() {
     container.appendChild(card);
   });
   updateChemRealtimeStatuses();
-}
-
-function updateChemFromParts(idx) {
-  const date = resolveDayInput(Number(document.getElementById(`d_${idx}`).value),new Date(chemList[idx].lastDone),
-    Number(document.getElementById(`h_${idx}`).value),Number(document.getElementById(`min_${idx}`).value));
-  if (!date) { alert('해당 월에 존재하는 일자를 입력해주세요.'); renderChemList(); return; }
-  delete chemList[idx].plannedDue;
-  chemList[idx].lastDone = date.toISOString();
-  syncDataToFirebase(); safeRenderAll();
 }
 
 function setChemStepStatus(idx,st) {
@@ -2734,6 +2783,7 @@ function generateShareText() {
   out += `이상입니다.`;
   const outEl = document.getElementById('shareTextOutput');
   if (outEl) outEl.value = out;
+  renderBriefingCards({equipment:[debarr,wash,etching].filter(Boolean),desmear,chemical:[blackhole,...chems].filter(Boolean),electro,ongoing,extra:extraNotes.map(note=>`${note.line} ${note.text}`)});
 }
 
 async function copyShareText() {
@@ -2745,11 +2795,77 @@ async function copyShareText() {
       el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
       if (!document.execCommand('copy')) throw new Error('copy failed');
     }
-    alert('PM 공유 텍스트가 클립보드에 복사되었습니다.');
+    showToast('공지 복사 완료 · 카톡에 붙여넣으세요.');
   } catch (error) {
+    el.parentElement.open=true;
     el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
-    alert('자동 복사가 제한되었습니다. 선택된 텍스트를 길게 눌러 복사해주세요.');
+    showToast('자동 복사가 제한되었습니다. 선택된 원문을 길게 눌러 복사해주세요.');
   }
+}
+
+let toastTimer = null;
+function showToast(message) {
+  const el=document.getElementById('uiToast');
+  if (!el) return;
+  el.textContent=message; el.style.display='block';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.style.display='none';},4500);
+}
+
+let kakaoPasteTimer=null;
+function queueKakaoPaste() {
+  clearTimeout(kakaoPasteTimer);
+  kakaoPasteTimer=setTimeout(()=>{ if(document.getElementById('kakaoRawInput').value.trim()) parseAndApplyKakaoMsg(); },0);
+}
+
+function savePassPreference() {
+  try { localStorage.setItem('pm_ui_preferences_master',JSON.stringify({pass:document.getElementById('passTimeInput').value})); } catch(error) { /* PM storage remains independent. */ }
+}
+
+function renderBriefingCards(groups) {
+  const el=document.getElementById('briefingCards'); if(!el) return;
+  const titles={equipment:'에칭 · 데버링 · 고압수세',desmear:'디스미어',chemical:'화학동 · 블랙홀',electro:'전기동',ongoing:'현재 진행 중',extra:'추가 특이사항'};
+  el.innerHTML=Object.entries(titles).filter(([key])=>groups[key].length).map(([key,title])=>
+    `<section class="brief-section ${key==='ongoing'?'running':''}"><h3>${title}</h3>${groups[key].map(line=>`<div class="brief-line">${escapeHtml(line.replace(/^-/,''))}</div>`).join('')}</section>`).join('');
+}
+
+function handleTimeEditorKey(event) {
+  if(event.key==='Escape') {event.preventDefault();closeModal('chemTimeModal');return;}
+  if(event.key!=='Tab') return;
+  const buttons=Array.from(document.getElementById('chemTimeModal').querySelectorAll('button,input'));
+  const first=buttons[0],last=buttons[buttons.length-1];
+  if(event.shiftKey && document.activeElement===first) {event.preventDefault();last.focus();}
+  else if(!event.shiftKey && document.activeElement===last) {event.preventDefault();first.focus();}
+}
+let editingChemId=null;
+let editingChemBaseline=null;
+let editorReturnFocus=null;
+function openChemTimeEditor(id) {
+  const line=chemList.find(item=>item.id===id); if(!line) return;
+  editingChemId=id;
+  editingChemBaseline=JSON.stringify(line);
+  editorReturnFocus=document.activeElement;
+  const t=new Date(line.lastDone);
+  document.getElementById('chemTimeTitle').textContent=`${id} ${line.status==='시작'?'시작':'직전 완료'} 시각 정정`;
+  document.getElementById('chemTimeHint').textContent=line.status==='시작'?'시작 시각을 정정합니다. 진행 시간과 브리핑에 함께 반영됩니다.':'직전 완료 시각을 정정합니다. 차기 예정은 이 시각에서 72시간 후로 계산됩니다.';
+  document.getElementById('chemEditDay').value=t.getDate();
+  document.getElementById('chemEditTime').value=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+  document.getElementById('chemTimeError').textContent='';
+  openModal('chemTimeModal');
+  document.getElementById('chemEditDay').focus();
+}
+
+function saveChemTimeEditor() {
+  const line=chemList.find(item=>item.id===editingChemId); if(!line) return;
+  const error=document.getElementById('chemTimeError');
+  if(JSON.stringify(line)!==editingChemBaseline) {error.textContent='다른 곳에서 이 라인이 변경되었습니다. 닫고 다시 열어 최신 시각을 확인해주세요.';return;}
+  const clock=document.getElementById('chemEditTime').value;
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock)) {error.textContent='유효한 시각을 입력해주세요.';return;}
+  const [hour,minute]=clock.split(':').map(Number);
+  const date=resolveDayInput(Number(document.getElementById('chemEditDay').value),new Date(line.lastDone),hour,minute);
+  if(!date) {error.textContent='유효한 일자를 입력해주세요.';return;}
+  delete line.plannedDue; line.lastDone=date.toISOString();
+  syncDataToFirebase(); safeRenderAll(); closeModal('chemTimeModal');
+  showToast(`${line.id} 시각 정정 완료`);
 }
 
 </script>
