@@ -17,7 +17,7 @@ function app({stored = {}, now = '2026-10-01T08:00:00+09:00', storageError = fal
     constructor(id = '') { this.id=id; this.style={}; this.value=''; this.children=[]; this.className=''; this._html='';
       this.classList={add(){},remove(){}}; }
     set innerHTML(value) {
-      this._html=value;
+      this._html=value; this.children=[];
       for (const match of value.matchAll(/id="([^"]+)"/g)) nodes.set(match[1],new Element(match[1]));
     }
     get innerHTML(){return this._html;}
@@ -312,7 +312,7 @@ test('remote dirty labels and time-only manual corrections cannot reintroduce du
   a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditTime').value='10:00';
   a.run('saveChemTimeEditor()');
   assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  assert.deepEqual(a.data('inlineDesmearFlags'),{});
   const b=app({stored:Object.fromEntries(a.storage)});
   assert.equal(b.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
 });
@@ -325,7 +325,7 @@ test('single-save time editor keeps minutes, month rollover and start status wit
   assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
   assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),17);
   assert.equal(a.run('chemList[3].status'),'시작');
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  assert.deepEqual(a.data('inlineDesmearFlags'),{});
   assert.equal(a.nodes.get('chemTimeModal').style.display,'none');
 });
 
@@ -388,79 +388,77 @@ test('tomorrow gauge shows future chemistry as planned rather than already due',
   assert.doesNotMatch(gauge,/주기 도래|예정 시간 도래/);
 });
 
-test('two completed chemistry runs create separate desmear work; repeated completion is ignored',()=>{
-  const a=app();a.run("setInlineChemCount('화13',0);setChemStepStatusById('화13','시작');completeChemPM('화13')");
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
-  a.run("completeChemPM('화13')");assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
-  a.setNow('2026-10-04T08:00:00+09:00');a.run("selectQuickDay('today');setChemStepStatusById('화13','시작')");
-  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어/);
-  assert.match(a.nodes.get('shareTextOutput').value,/-화13/);
-  a.run("completeChemPM('화13')");assert.equal(a.run("getInlineState('화13').chemPmCount"),2);
-  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 기본PM \[미완료\]/);
-  a.run("completeInlineDesmear('화13')");assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
-  a.setNow('2026-10-07T08:00:00+09:00');a.run("setChemStepStatusById('화13','시작');completeChemPM('화13')");
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);
-});
-
-test('inline counters are independent, survive refresh, and support first baseline selection',()=>{
-  const a=app();a.run("setInlineChemCount('화13',1);setInlineChemCount('화14',0)");
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);assert.equal(a.run("getInlineState('화14').chemPmCount"),0);
-  assert.match(a.run("inlineControlsHtml('화13')"),/화학동 1\/2회/);
+test('chemistry completions never generate inline desmear, even with legacy counters',()=>{
+  const legacy={화13:{chemPmCount:2,configured:true},화14:{chemPmCount:1,configured:true}};
+  const a=app({stored:{inline_desmear_flags_master:JSON.stringify(legacy)}});
+  a.run("setChemStepStatusById('화13','시작');completeChemPM('화13')");
+  a.setNow('2026-10-04T08:00:00+09:00');
+  a.run("selectQuickDay('today');setChemStepStatusById('화13','시작');completeChemPM('화13');setChemStepStatusById('화14','시작');completeChemPM('화14')");
+  assert.deepEqual(a.data('inlineDesmearFlags'),legacy);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13|디화14/);
+  assert.doesNotMatch(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/2회|0\/2|1\/2|2\/2|미완료/);
   const b=app({stored:Object.fromEntries(a.storage)});
-  assert.equal(b.run("getInlineState('화13').chemPmCount"),1);assert.equal(b.run("getInlineState('화14').chemPmCount"),0);
+  assert.deepEqual(b.data('inlineDesmearFlags'),legacy);
+  assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디화13|디화14/);
 });
 
-test('separate inline work appears in all seven matrix columns without removing existing rows',()=>{
-  const a=app();a.run("chemList[3]={...chemList[3],status:'완료',lastDone:'2026-09-28T12:00'};setInlineChemCount('화13',1)");
-  assert.match(a.nodes.get('inline_cell_4').innerHTML,/디화13 디스미어/);
-  assert.match(a.nodes.get('chem_cell_4').innerHTML,/화13/);
-  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 1일 12시 기본PM/);
+test('inline entry shortcut selects line and default PM without saving anything',()=>{
+  const a=app();a.run("openInlineManualEntry('화14')");
+  assert.equal(a.nodes.get('manualLineSelect').value,'디스미어 14');
+  assert.equal(a.nodes.get('manualDayInput').value,1);
+  assert.equal(a.nodes.get('manualContentInput').value,'기본PM');
+  assert.deepEqual(a.data('manualNotes'),[]);
+  assert.match(a.run("inlineControlsHtml('화14')"),/디스미어 PM 입력/);
+  assert.doesNotMatch(a.run("inlineControlsHtml('화14')"),/select|횟수/);
+});
+
+test('manually registered inline PM appears only on entered date and survives reload',()=>{
+  const a=app();a.run("openInlineManualEntry('화13')");
+  a.nodes.get('manualDayInput').value='2';a.nodes.get('manualContentInput').value='10시 스웰러 건욕';
+  const chemistry=a.data('chemList');a.run('addManualNote()');
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13/);
+  assert.match(a.nodes.get('inline_cell_5').innerHTML,/디화13 디스미어.*<br>10시 스웰러 건욕/);
+  assert.deepEqual(a.data('chemList'),chemistry);
+  a.run("selectQuickDay('tomorrow')");
+  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 10시 스웰러 건욕/);
+  assert.match(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/10시 스웰러 건욕/);
+  const b=app({stored:Object.fromEntries(a.storage)});b.run("selectQuickDay('tomorrow')");
+  assert.match(b.nodes.get('shareTextOutput').value,/디화13 디스미어 10시 스웰러 건욕/);
+  b.run('removeManualNote(0)');
+  assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디화13/);
+  assert.equal(b.nodes.get('inline_cell_5').innerHTML,'-');
   for(let day=1;day<=7;day++) assert.match(html,new RegExp('id="inline_cell_'+day+'"'));
 });
 
-test('inline manual selections get the same five tags as other desmear lines',()=>{
-  const a=app();
-  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="디스미어 13">디화13 디스미어/);
-  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="디스미어 14">디화14 디스미어/);
-  a.nodes.get('dynamicTagsContainer').children=[];a.run("onManualLineChange('디스미어 13')");
-  assert.deepEqual(a.nodes.get('dynamicTagsContainer').children.map(child=>child.innerText),['스웰러 건욕','망간 건욕','인써트 교체','전체건욕','설비작업']);
-  a.nodes.get('manualDayInput').value='1';a.nodes.get('manualLineSelect').value='디스미어 13';a.nodes.get('manualContentInput').value='스웰러 건욕';
-  a.run('addManualNote()');
-  const report=a.nodes.get('shareTextOutput').value;
-  assert.equal(report.split('\n').filter(line=>/디화13 디스미어.*스웰러 건욕/.test(line)).length,1);
-  assert.match(a.nodes.get('inline_cell_4').innerHTML,/스웰러 건욕/);
+test('inline manual tags include basic PM and the existing five desmear tags, and deduplicate',()=>{
+  const a=app();a.nodes.get('dynamicTagsContainer').children=[];
+  a.run("openInlineManualEntry('화13')");
+  assert.deepEqual(a.nodes.get('dynamicTagsContainer').children.map(child=>child.innerText),['기본PM','스웰러 건욕','망간 건욕','인써트 교체','전체건욕','설비작업']);
+  a.run('addManualNote()');a.nodes.get('manualContentInput').value='기본PM';a.run('addManualNote()');
+  assert.equal(a.data('manualNotes').length,1);
+  assert.equal(a.nodes.get('shareTextOutput').value.split('디화13 디스미어').length-1,1);
+  assert.match(a.nodes.get('inline_cell_4').innerHTML,/기본PM/);
 });
 
-test('parser keeps inline desmear notices separate from chemistry records and deduplicates tags',()=>{
-  const a=app();const original=a.data('chemList[3]');
+test('Kakao desmear notices require manual registration while chemistry aliases still update',()=>{
+  const a=app();const original=a.data('chemList');
   a.parse('디화13 12:20 디스미어 PM 스웰러 건욕\n디14 13시 망간 건욕');
-  assert.deepEqual(a.data('chemList[3]'),original);
-  assert.equal(a.run("getInlineState('화13').plannedDue !== undefined"),true);
-  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 1일 12시 20분 스웰러 건욕/);
-  a.parse('디화13 12:20 디스미어 PM 스웰러 건욕\n디14 13시 망간 건욕');
-  assert.equal(a.data('manualNotes').length,2);
-  a.parse('디화13 07시 디스미어 PM 완료');
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
-  assert.equal(a.run("getInlineState('화13').status"),'완료');
-  assert.deepEqual(a.data('chemList[3]'),original);
-});
-
-test('inline chemistry parser aliases count a start-to-complete transition once',()=>{
-  const a=app();a.parse('디화14 06시 화학동 건욕 진행중');
+  assert.deepEqual(a.data('chemList'),original);assert.deepEqual(a.data('manualNotes'),[]);
+  assert.deepEqual(a.data('inlineDesmearFlags'),{});
+  assert.match(a.nodes.get('uiToast').textContent,/수동/);
+  a.parse('디화14 06시 화학동 건욕 진행중');
   assert.equal(a.run('chemList[4].status'),'시작');assert.equal(a.run('chemList[4].note'),'화학동 건욕');
-  a.parse('디화14 07시 화학동 건욕 완료');a.parse('디화14 07시 화학동 건욕 완료');
-  assert.equal(a.run("getInlineState('화14').chemPmCount"),1);
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),0);
+  a.parse('디화14 07시 화학동 건욕 완료');
+  assert.deepEqual(a.data('inlineDesmearFlags'),{});
+  a.parse('디화13 스웰러 건욕\n디7 망간 건욕');
+  assert.equal(a.data('manualNotes').length,1);assert.equal(a.data('manualNotes')[0].line,'디스미어 7');
 });
 
-test('desmear completion before the same chemistry run does not count that run twice',()=>{
-  const a=app();a.run("setInlineChemCount('화14',1);setChemStepStatusById('화14','시작');completeInlineDesmear('화14')");
-  a.setNow('2026-10-01T09:00:00+09:00');a.run("completeChemPM('화14')");
-  assert.equal(a.run("getInlineState('화14').chemPmCount"),0);
-});
-
-test('offline inline state merges with another line state on the server',()=>{
-  const a=app();a.run("setInlineChemCount('화13',1);acceptRemoteState({chemList:chemList,inlineDesmearFlags:{화14:{chemPmCount:2,configured:true}}})");
-  assert.equal(a.run("getInlineState('화13').chemPmCount"),1);assert.equal(a.run("getInlineState('화14').chemPmCount"),2);
-  assert.equal(JSON.parse(a.storage.get('inline_desmear_flags_master')).화13.chemPmCount,1);
+test('legacy inline metadata stays stored while remote manual registrations still merge',()=>{
+  const legacy={화13:{chemPmCount:2,status:'시작',startedAt:'2026-10-01T05:00:00+09:00'}};
+  const a=app({stored:{inline_desmear_flags_master:JSON.stringify(legacy)}});
+  a.run("acceptRemoteState({chemList,inlineDesmearFlags,manualNotes:[{date:selectedDateStr,line:'디스미어 14',text:'망간 건욕'}]});safeRenderAll()");
+  assert.deepEqual(JSON.parse(a.storage.get('inline_desmear_flags_master')),legacy);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디화14 디스미어 망간 건욕/);
 });
