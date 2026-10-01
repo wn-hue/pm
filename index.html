@@ -424,6 +424,8 @@
   .time-editor { max-width:420px; }
   .time-fields { display:grid; grid-template-columns:90px 1fr; gap:12px; }
   .time-fields label { display:grid; gap:6px; font-size:13px; font-weight:700; }
+  .clock-selects { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .time-fields select { width:100%;min-height:48px;font-size:16px; }
   .time-fields input { width:100%; min-height:48px; font-size:18px; }
   .time-editor .modal-body { display:grid; gap:16px; }
   #uiToast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; padding:12px 18px; border-radius:12px; z-index:10001; width:max-content; max-width:calc(100% - 24px); display:none; box-shadow:0 8px 30px #0f172a25; }
@@ -782,7 +784,7 @@
     <div class="modal-header"><strong id="chemTimeTitle">화학동 시각 정정</strong><button class="btn btn-sub" onclick="closeModal('chemTimeModal')" aria-label="시각 정정 닫기">닫기</button></div>
     <div class="modal-body">
       <p id="chemTimeHint" class="helper"></p>
-      <div class="time-fields"><label>일<input id="chemEditDay" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<input id="chemEditTime" type="time" step="60"></label></div>
+      <div class="time-fields"><label>일<input id="chemEditDay" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<span class="clock-selects"><select id="chemEditHour" aria-label="PM 시"></select><select id="chemEditMinute" aria-label="PM 분"></select></span></label></div>
       <p id="chemTimeError" role="alert" style="color:var(--danger)"></p>
       <button class="btn" onclick="saveChemTimeEditor()">시각 저장</button>
     </div>
@@ -1934,7 +1936,7 @@ function renderElectroGauges(now) {
     const start = started ? timerStart(flag) : now;
     const hours = Array.from({length:24},(_,hour) => `<option value="${hour}" ${hour === start.getHours() ? 'selected' : ''}>${hour}시</option>`).join('');
     const minute = start.getMinutes();
-    const minutes = [...new Set([0,30,minute])].sort((a,b) => a-b).map(value => `<option value="${value}" ${value === minute ? 'selected' : ''}>${String(value).padStart(2,'0')}분</option>`).join('');
+    const minutes = halfHourMinuteOptions(minute);
     const number = line.number;
     const name = `전${number} ${line.isPulse || number === 14 ? '산탈지.산세.박리' : '산세.박리'}`;
     const equipment = manualNotes.some(note => note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
@@ -2357,7 +2359,7 @@ function updateTimerTime(flags,lineName,part,val,dateStr = selectedDateStr) {
   const flag = getTimerFlag(flags,lineName,dateStr);
   if (!flag || !['h','m'].includes(part)) return;
   const value = Number(val);
-  if (!Number.isInteger(value) || value < 0 || value > (part === 'h' ? 23 : 59)) return;
+  if (!Number.isInteger(value) || value < 0 || value > (part === 'h' ? 23 : 59) || (part==='m' && ![0,30].includes(value))) return;
   const start = timerStart(flag);
   if (part === 'h') start.setHours(value); else start.setMinutes(value);
   start.setSeconds(0,0);
@@ -2741,10 +2743,15 @@ function renderBriefingCards(groups) {
     `<section class="brief-section ${key==='ongoing'?'running':''}"><h3>${title}</h3>${groups[key].map(line=>`<div class="brief-line">${escapeHtml(line.replace(/^-/,''))}</div>`).join('')}</section>`).join('');
 }
 
+function halfHourMinuteOptions(minute) {
+  const placeholder=[0,30].includes(minute)?'':`<option value="" disabled selected>분 선택</option>`;
+  return placeholder+[0,30].map(value=>`<option value="${value}" ${value===minute?'selected':''}>${String(value).padStart(2,'0')}분</option>`).join('');
+}
+
 function handleTimeEditorKey(event) {
   if(event.key==='Escape') {event.preventDefault();closeModal('chemTimeModal');return;}
   if(event.key!=='Tab') return;
-  const buttons=Array.from(document.getElementById('chemTimeModal').querySelectorAll('button,input'));
+  const buttons=Array.from(document.getElementById('chemTimeModal').querySelectorAll('button,input,select'));
   const first=buttons[0],last=buttons[buttons.length-1];
   if(event.shiftKey && document.activeElement===first) {event.preventDefault();last.focus();}
   else if(!event.shiftKey && document.activeElement===last) {event.preventDefault();first.focus();}
@@ -2761,7 +2768,11 @@ function openChemTimeEditor(id) {
   document.getElementById('chemTimeTitle').textContent=`${id} ${line.status==='시작'?'시작':'직전 완료'} 시각 정정`;
   document.getElementById('chemTimeHint').textContent=line.status==='시작'?'시작 시각을 정정합니다. 진행 시간과 브리핑에 함께 반영됩니다.':'직전 완료 시각을 정정합니다. 차기 예정은 이 시각에서 72시간 후로 계산됩니다.';
   document.getElementById('chemEditDay').value=t.getDate();
-  document.getElementById('chemEditTime').value=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+  document.getElementById('chemEditHour').innerHTML=Array.from({length:24},(_,hour)=>`<option value="${hour}" ${hour===t.getHours()?'selected':''}>${hour}시</option>`).join('');
+  document.getElementById('chemEditHour').value=String(t.getHours());
+  document.getElementById('chemEditMinute').innerHTML=halfHourMinuteOptions(t.getMinutes());
+  document.getElementById('chemEditMinute').value=[0,30].includes(t.getMinutes())?String(t.getMinutes()):'';
+  if(![0,30].includes(t.getMinutes())) document.getElementById('chemTimeHint').textContent+=` 현재 저장 시각은 ${formatTimeKr(t.getHours(),t.getMinutes())}입니다. 정정하려면 00분 또는 30분을 선택해주세요.`;
   document.getElementById('chemTimeError').textContent='';
   openModal('chemTimeModal');
   document.getElementById('chemEditDay').focus();
@@ -2771,9 +2782,10 @@ function saveChemTimeEditor() {
   const line=chemList.find(item=>item.id===editingChemId); if(!line) return;
   const error=document.getElementById('chemTimeError');
   if(JSON.stringify(line)!==editingChemBaseline) {error.textContent='다른 곳에서 이 라인이 변경되었습니다. 닫고 다시 열어 최신 시각을 확인해주세요.';return;}
-  const clock=document.getElementById('chemEditTime').value;
-  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock)) {error.textContent='유효한 시각을 입력해주세요.';return;}
-  const [hour,minute]=clock.split(':').map(Number);
+  const hourValue=document.getElementById('chemEditHour').value;
+  const minuteValue=document.getElementById('chemEditMinute').value;
+  if(!/^(?:[0-9]|1[0-9]|2[0-3])$/.test(hourValue) || !['0','30'].includes(minuteValue)) {error.textContent='시와 분(00분 또는 30분)을 선택해주세요.';return;}
+  const hour=Number(hourValue),minute=Number(minuteValue);
   const date=resolveDayInput(Number(document.getElementById('chemEditDay').value),new Date(line.lastDone),hour,minute);
   if(!date) {error.textContent='유효한 일자를 입력해주세요.';return;}
   delete line.plannedDue; line.lastDone=date.toISOString();
