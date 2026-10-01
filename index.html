@@ -176,7 +176,7 @@
     -webkit-appearance: none;
   }
   @media(min-width: 768px) {
-    input, select, textarea { font-size: 13.5px; padding: 6px 10px; }
+    input, select, textarea { font-size: 16px; padding: 6px 10px; }
   }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
   input[type="checkbox"] { -webkit-appearance: auto; appearance: auto; width: 18px; height: 18px; padding: 0; accent-color: var(--accent); vertical-align: middle; }
@@ -421,12 +421,15 @@
   .note-chip { font-size:13px; padding:8px 10px; border-radius:9px; }
   .note-chip button { min-width:32px; min-height:32px; }
   #dynamicTagsContainer .btn-sub { background:#edf4fa; color:var(--accent); white-space:normal; }
-  .time-editor { max-width:420px; }
-  .time-fields { display:grid; grid-template-columns:90px 1fr; gap:12px; }
-  .time-fields label { display:grid; gap:6px; font-size:13px; font-weight:700; }
-  .clock-selects { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
-  .time-fields select { width:100%;min-height:48px;font-size:16px; }
-  .time-fields input { width:100%; min-height:48px; font-size:18px; }
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  .time-editor { max-width:420px; min-width:0; }
+  #chemTimeModal { overflow:hidden; overscroll-behavior:none; }
+  #chemTimeModal .modal-body { overscroll-behavior:contain; }
+  .time-fields { display:grid; grid-template-columns:80px minmax(0,1fr); gap:12px; }
+  .time-fields label { min-width:0; display:grid; gap:6px; font-size:13px; font-weight:700; }
+  .clock-selects { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px; }
+  .time-fields select { min-width:0; width:100%;min-height:48px;font-size:16px; }
+  .time-fields input { min-width:0; width:100%; min-height:48px; font-size:18px; }
   .time-editor .modal-body { display:grid; gap:16px; }
   #uiToast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; padding:12px 18px; border-radius:12px; z-index:10001; width:max-content; max-width:calc(100% - 24px); display:none; box-shadow:0 8px 30px #0f172a25; }
   .table-responsive { overflow-x:auto; }
@@ -449,7 +452,10 @@
     .chem-actions { max-width:260px; }
     .modal-overlay { align-items:flex-end; padding:0; }
     .modal-content { border-radius:18px 18px 0 0; max-height:90dvh; padding-bottom:env(safe-area-inset-bottom); }
-    .time-editor { max-width:none; }
+    .time-editor { max-width:none; max-height:calc(100dvh - env(safe-area-inset-top) - 12px); }
+    #chemTimeModal .modal-header { gap:8px; }
+    #chemTimeModal .modal-header strong { min-width:0; overflow-wrap:anywhere; }
+    #chemTimeModal .modal-header .btn { flex-shrink:0; }
     #uiToast { bottom:calc(82px + env(safe-area-inset-bottom)); }
   }
   @media(min-width:768px) { .nav-short { display:none; } }
@@ -538,7 +544,7 @@
         <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
             <span>🧪 화학동 현재 상태</span>
-            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시각 정정 · 시작/완료 바로 처리</span>
+            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시간정정 · 시작/완료 바로 처리</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
           <div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디화13 · 디화14 디스미어 PM · 수동 등록</div>
@@ -584,7 +590,7 @@
         <span class="badge badge-blue">변경 시 자동 저장</span>
       </div>
       <div style="font-size:12px; color:var(--text-secondary);">
-        시각 정정에서 <strong>일 · 시각</strong>을 입력하고 한 번에 저장하세요. 시작·완료는 실제 현재 시각을 저장합니다.
+        시간정정에서 <strong>일 · 시각</strong>을 입력하고 한 번에 저장하세요. 시작·완료는 실제 현재 시각을 저장합니다.
       </div>
       <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
@@ -781,12 +787,12 @@
 
 <div id="chemTimeModal" class="modal-overlay" onclick="if(event.target===this) closeModal('chemTimeModal')">
   <section class="modal-content time-editor" role="dialog" aria-modal="true" aria-labelledby="chemTimeTitle" onkeydown="handleTimeEditorKey(event)">
-    <div class="modal-header"><strong id="chemTimeTitle">화학동 시각 정정</strong><button class="btn btn-sub" onclick="closeModal('chemTimeModal')" aria-label="시각 정정 닫기">닫기</button></div>
+    <div class="modal-header"><strong id="chemTimeTitle" tabindex="-1">화학동 시간정정</strong><button class="btn btn-sub" onclick="closeModal('chemTimeModal')" aria-label="시간정정 닫기">닫기</button></div>
     <div class="modal-body">
       <p id="chemTimeHint" class="helper"></p>
       <div class="time-fields"><label>일<input id="chemEditDay" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<span class="clock-selects"><select id="chemEditHour" aria-label="PM 시"></select><select id="chemEditMinute" aria-label="PM 분"></select></span></label></div>
       <p id="chemTimeError" role="alert" style="color:var(--danger)"></p>
-      <button class="btn" onclick="saveChemTimeEditor()">시각 저장</button>
+      <button class="btn" onclick="saveChemTimeEditor()">시간 저장</button>
     </div>
   </section>
 </div>
@@ -1169,14 +1175,28 @@ function formatDateOnly(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+let timeEditorScrollState=null;
 function openModal(id) {
+  if(id==='chemTimeModal' && !timeEditorScrollState) {
+    const style=document.body.style;
+    timeEditorScrollState={y:window.scrollY,position:style.position,top:style.top,width:style.width,overflow:style.overflow};
+    style.position='fixed'; style.top=`-${window.scrollY}px`; style.width='100%'; style.overflow='hidden';
+  }
   const el = document.getElementById(id);
   if (el) el.style.display = 'flex';
 }
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'none';
-  if(id==='chemTimeModal' && editorReturnFocus?.isConnected) editorReturnFocus.focus();
+  if(id==='chemTimeModal') {
+    document.activeElement?.blur();
+    if(timeEditorScrollState) {
+      const {y,...styles}=timeEditorScrollState;
+      Object.assign(document.body.style,styles); timeEditorScrollState=null;
+      window.scrollTo(0,y);
+    }
+    if(editorReturnFocus?.isConnected) editorReturnFocus.focus({preventScroll:true});
+  }
 }
 
 function updateDateToggleUI() {
@@ -1240,7 +1260,7 @@ function renderTab1ChemStatus() {
       <div class="chem-work">${escapeHtml(line.note||'기본PM')}</div><div class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</div>
       <div class="chem-time">${formatDateTimeKr(date)}</div>${buildup}<div class="chem-actions">
       <button class="btn ${running?'btn-sub':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')">${running?'PM 완료':'PM 시작'}</button>
-      <button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')">시각 정정</button></div></article>`;
+      <button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')">시간정정</button></div></article>`;
   }).join('');
   if(container.innerHTML!==html) container.innerHTML=html;
   renderFocusSummary();
@@ -2290,7 +2310,7 @@ function setChemStepStatusById(lineId,st) {
   delete line.plannedDue;
   line.status = '시작'; line.lastDone = new Date().toISOString();
   syncDataToFirebase(); safeRenderAll();
-  showToast(`${lineId} PM 시작 시각 저장 완료`);
+  showToast(`${lineId} PM 시작 시간 저장 완료`);
 }
 
 function completeChemPM(lineId) {
@@ -2413,7 +2433,7 @@ function renderChemList() {
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="helper">${c.status==='시작'?'시작':'직전 완료'} ${formatDateTimeKr(t)}</span>
-        <button class="btn btn-sub btn-sm" onclick="openChemTimeEditor('${c.id}')">시각 정정</button>
+        <button class="btn btn-sub btn-sm" onclick="openChemTimeEditor('${c.id}')">시간정정</button>
       </div>
       ${INLINE_CHEM_IDS.includes(c.id) ? inlineControlsHtml(c.id) : ''}
       <div id="chem_box_${idx}" style="font-size:13px; padding:10px 14px; background:#ffffff; border-radius:6px; border-left:5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,0.03);"></div>
@@ -2765,7 +2785,7 @@ function openChemTimeEditor(id) {
   editingChemBaseline=JSON.stringify(line);
   editorReturnFocus=document.activeElement;
   const t=new Date(line.lastDone);
-  document.getElementById('chemTimeTitle').textContent=`${id} ${line.status==='시작'?'시작':'직전 완료'} 시각 정정`;
+  document.getElementById('chemTimeTitle').textContent=`${id} ${line.status==='시작'?'시작':'직전 완료'} 시간정정`;
   document.getElementById('chemTimeHint').textContent=line.status==='시작'?'시작 시각을 정정합니다. 진행 시간과 브리핑에 함께 반영됩니다.':'직전 완료 시각을 정정합니다. 차기 예정은 이 시각에서 72시간 후로 계산됩니다.';
   document.getElementById('chemEditDay').value=t.getDate();
   document.getElementById('chemEditHour').innerHTML=Array.from({length:24},(_,hour)=>`<option value="${hour}" ${hour===t.getHours()?'selected':''}>${hour}시</option>`).join('');
@@ -2775,7 +2795,7 @@ function openChemTimeEditor(id) {
   if(![0,30].includes(t.getMinutes())) document.getElementById('chemTimeHint').textContent+=` 현재 저장 시각은 ${formatTimeKr(t.getHours(),t.getMinutes())}입니다. 정정하려면 00분 또는 30분을 선택해주세요.`;
   document.getElementById('chemTimeError').textContent='';
   openModal('chemTimeModal');
-  document.getElementById('chemEditDay').focus();
+  document.getElementById('chemTimeTitle').focus({preventScroll:true});
 }
 
 function saveChemTimeEditor() {
@@ -2790,7 +2810,7 @@ function saveChemTimeEditor() {
   if(!date) {error.textContent='유효한 일자를 입력해주세요.';return;}
   delete line.plannedDue; line.lastDone=date.toISOString();
   syncDataToFirebase(); safeRenderAll(); closeModal('chemTimeModal');
-  showToast(`${line.id} 시각 정정 완료`);
+  showToast(`${line.id} 시간정정 완료`);
 }
 
 </script>
