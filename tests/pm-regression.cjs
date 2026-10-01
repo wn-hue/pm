@@ -22,7 +22,7 @@ function app({stored = {}, now = '2026-10-01T08:00:00+09:00', storageError = fal
     }
     get innerHTML(){return this._html;}
     appendChild(child){this.children.push(child);}
-    focus(){} select(){} setSelectionRange(){} closest(){return null;}
+    focus(){} blur(){} select(){} setSelectionRange(){} closest(){return null;}
   }
   for (const match of html.matchAll(/id="([^"]+)"/g)) nodes.set(match[1],new Element(match[1]));
   nodes.get('passTimeInput').value='7시패스';
@@ -35,9 +35,9 @@ function app({stored = {}, now = '2026-10-01T08:00:00+09:00', storageError = fal
     static now(){return clock;}
   }
   const context = vm.createContext({Date:ClockDate, console:{error:(...args)=>logs.push(args),warn(){}},
-    localStorage,sessionStorage,document:{getElementById:id=>nodes.get(id)||null,createElement:()=>new Element(),
+    localStorage,sessionStorage,document:{body:new Element('body'),getElementById:id=>nodes.get(id)||null,createElement:()=>new Element(),
       querySelectorAll:()=>[],querySelector:()=>null,execCommand:()=>true},
-    window:{isSecureContext:true},navigator:{clipboard:{writeText:async()=>{}}},
+    window:{isSecureContext:true,scrollY:320,scrollTo(){}},navigator:{clipboard:{writeText:async()=>{}}},
     alert:text=>alerts.push(text),confirm:()=>true,setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){},setInterval(){}});
   vm.runInContext(code,context);
   const run = text => vm.runInContext(text,context);
@@ -483,4 +483,25 @@ test('electric manual minute correction rejects non-half-hours and preserves abs
   a.run("updatePulseProcessTime('전기동 21라인','m','30')");
   assert.equal(a.run("new Date(pulseProcessFlags[timerKey('전기동 21라인')].startedAt).getMinutes()"),30);
   assert.equal(a.run("formatDateOnly(new Date(pulseProcessFlags[timerKey('전기동 21라인')].startedAt))"),'2026-10-01');
+});
+
+test('time editor focuses the title without opening a keyboard and restores background scroll',()=>{
+  const a=app();const doc=a.context.document;
+  const trigger={isConnected:true,focus:options=>{trigger.options=options;},blur(){}};
+  doc.activeElement=trigger;
+  let titleFocus=null,restoredY=null;
+  a.nodes.get('chemTimeTitle').focus=options=>{titleFocus=options;};
+  a.nodes.get('chemEditDay').focus=()=>assert.fail('Opening must not focus the numeric input');
+  a.context.window.scrollTo=(x,y)=>{restoredY=y;};
+  Object.assign(doc.body.style,{position:'',top:'',width:'',overflow:''});
+  a.run("openChemTimeEditor('화13')");
+  assert.equal(titleFocus.preventScroll,true);
+  assert.equal(doc.body.style.position,'fixed');
+  assert.equal(doc.body.style.top,'-320px');
+  a.context.window.scrollY=0;
+  a.run("openModal('chemTimeModal');closeModal('chemTimeModal')");
+  assert.equal(restoredY,320);
+  assert.equal(doc.body.style.position,'');
+  assert.equal(doc.body.style.overflow,'');
+  assert.equal(trigger.options.preventScroll,true);
 });
