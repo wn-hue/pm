@@ -309,7 +309,7 @@ test('legacy chemistry note timestamp is removed while the corrected start time 
 test('remote dirty labels and time-only manual corrections cannot reintroduce duplicate clocks',()=>{
   const a=app();a.run("acceptRemoteState({chemList:[{id:'화13',lastDone:'2026-09-30T13:00',status:'시작',note:'13시 촉매건욕'}]});safeRenderAll()");
   a.run("openChemTimeEditor('화13')");
-  a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditTime').value='10:00';
+  a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditHour').value='10';a.nodes.get('chemEditMinute').value='0';
   a.run('saveChemTimeEditor()');
   assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
   assert.deepEqual(a.data('inlineDesmearFlags'),{});
@@ -317,13 +317,13 @@ test('remote dirty labels and time-only manual corrections cannot reintroduce du
   assert.equal(b.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 촉매 건욕 PM 진행중');
 });
 
-test('single-save time editor keeps minutes, month rollover and start status without counting PM',()=>{
+test('single-save time editor saves half-hour minutes, month rollover and start status without counting PM',()=>{
   const a=app({now:'2026-12-31T23:00:00+09:00'});
   a.run("chemList[3]={id:'화13',lastDone:'2026-12-31T13:00:00+09:00',status:'시작',note:'촉매 건욕'};openChemTimeEditor('화13')");
-  a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditTime').value='00:17';
+  a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditHour').value='0';a.nodes.get('chemEditMinute').value='30';
   a.run('saveChemTimeEditor()');
   assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
-  assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),17);
+  assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),30);
   assert.equal(a.run('chemList[3].status'),'시작');
   assert.deepEqual(a.data('inlineDesmearFlags'),{});
   assert.equal(a.nodes.get('chemTimeModal').style.display,'none');
@@ -332,10 +332,10 @@ test('single-save time editor keeps minutes, month rollover and start status wit
 test('time editor refuses invalid input and concurrent remote edits instead of overwriting',()=>{
   const a=app();a.run("openChemTimeEditor('화13')");
   const previous=a.run('chemList[3].lastDone');
-  a.nodes.get('chemEditTime').value='25:17';a.run('saveChemTimeEditor()');
+  a.nodes.get('chemEditHour').value='25';a.nodes.get('chemEditMinute').value='30';a.run('saveChemTimeEditor()');
   assert.equal(a.run('chemList[3].lastDone'),previous);
-  assert.match(a.nodes.get('chemTimeError').textContent,/유효/);
-  a.nodes.get('chemEditTime').value='10:17';
+  assert.match(a.nodes.get('chemTimeError').textContent,/선택/);
+  a.nodes.get('chemEditHour').value='10';a.nodes.get('chemEditMinute').value='30';
   a.run("chemList[3].note='전체건욕';saveChemTimeEditor()");
   assert.equal(a.run('chemList[3].lastDone'),previous);
   assert.match(a.nodes.get('chemTimeError').textContent,/다른 곳/);
@@ -461,4 +461,26 @@ test('legacy inline metadata stays stored while remote manual registrations stil
   assert.deepEqual(JSON.parse(a.storage.get('inline_desmear_flags_master')),legacy);
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13/);
   assert.match(a.nodes.get('shareTextOutput').value,/디화14 디스미어 망간 건욕/);
+});
+
+test('manual PM minute controls allow only 00/30 and do not round stored precision on opening',()=>{
+  const a=app();a.run("chemList[0].lastDone='2026-10-01T07:17:00+09:00';openChemTimeEditor('화7')");
+  const previous=a.run('chemList[0].lastDone');
+  assert.equal(a.nodes.get('chemEditMinute').value,'');
+  assert.match(a.nodes.get('chemEditMinute').innerHTML,/value="0"/);
+  assert.match(a.nodes.get('chemEditMinute').innerHTML,/value="30"/);
+  assert.doesNotMatch(a.nodes.get('chemEditMinute').innerHTML,/value="17"/);
+  a.run('saveChemTimeEditor()');assert.equal(a.run('chemList[0].lastDone'),previous);
+  a.nodes.get('chemEditMinute').value='17';a.run('saveChemTimeEditor()');assert.equal(a.run('chemList[0].lastDone'),previous);
+  a.nodes.get('chemEditMinute').value='0';a.run('saveChemTimeEditor()');
+  assert.equal(a.run('new Date(chemList[0].lastDone).getMinutes()'),0);
+});
+
+test('electric manual minute correction rejects non-half-hours and preserves absolute timer dates',()=>{
+  const a=app();a.run("togglePulseProcess('전기동 21라인',true);pulseProcessFlags[timerKey('전기동 21라인')].startedAt='2026-10-01T07:17:00+09:00'");
+  a.run("updatePulseProcessTime('전기동 21라인','m','17')");
+  assert.equal(a.run("new Date(pulseProcessFlags[timerKey('전기동 21라인')].startedAt).getMinutes()"),17);
+  a.run("updatePulseProcessTime('전기동 21라인','m','30')");
+  assert.equal(a.run("new Date(pulseProcessFlags[timerKey('전기동 21라인')].startedAt).getMinutes()"),30);
+  assert.equal(a.run("formatDateOnly(new Date(pulseProcessFlags[timerKey('전기동 21라인')].startedAt))"),'2026-10-01');
 });
