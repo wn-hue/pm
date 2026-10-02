@@ -1958,7 +1958,7 @@ function renderElectroGauges(now) {
     const minute = start.getMinutes();
     const minutes = halfHourMinuteOptions(minute);
     const number = line.number;
-    const name = `전${number} ${line.isPulse || number === 14 ? '산탈지.산세.박리' : '산세.박리'}`;
+    const name = `전${number} ${line.isPulse || number === 12 || number === 14 ? '산탈지.산세.박리' : '산세.박리'}`;
     const equipment = manualNotes.some(note => note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
     return `<div class="gauge-box" id="elec_card_${timerKey(line.name,line.dateStr)}">
       <div class="gauge-top"><strong>${name} ${line.isPulse ? '(펄스)' : ''}${line.carryover ? ` · ${line.dateStr} 미완료` : ''}</strong>
@@ -2658,7 +2658,7 @@ function generateShareText() {
   } else if (day === 5) {
     desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
     blackhole = `화10 정기PM${getNote('화10')}`;
-    if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 산세.박리 (${pass})${getNote('전기동 12')}`);
+    if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 산탈지.산세.박리 (${pass})${getNote('전기동 12')}`);
     electro.push(`전13 산세.박리 (${pass})${getNote('전기동 13')}`);
     electro.push(`전21 산탈지.산세.박리 (${pass})${getNote('전기동 21')}`);
   }
