@@ -395,11 +395,11 @@ test('unseeded chemistry completions never generate inline desmear from legacy c
   a.setNow('2026-10-04T08:00:00+09:00');
   a.run("selectQuickDay('today');setChemStepStatusById('화13','시작');completeChemPM('화13');setChemStepStatusById('화14','시작');completeChemPM('화14')");
   assert.deepEqual(a.data('inlineDesmearFlags'),legacy);
-  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13|디화14/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 13|디스미어 14/);
   assert.doesNotMatch(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/2회|0\/2|1\/2|2\/2|미완료/);
   const b=app({stored:Object.fromEntries(a.storage)});
   assert.deepEqual(b.data('inlineDesmearFlags'),legacy);
-  assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디화13|디화14/);
+  assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디스미어 13|디스미어 14/);
 });
 
 test('one manual anchor enables an inline PM on every second chemistry cycle including next-day cutoff',()=>{
@@ -415,13 +415,13 @@ test('one manual anchor enables an inline PM on every second chemistry cycle inc
   a.run("selectedDateStr='2026-10-04';safeRenderAll()");
   const share=a.nodes.get('shareTextOutput').value;
   assert.match(share,/화14 익일\(5일\) 7시 30분/);
-  assert.match(share,/디화14 디스미어 익일\(5일\) 7시 30분 PM · 화학동 분리 요청/);
-  assert.equal(share.split('디화14 디스미어').length-1,1);
-  assert.match(a.nodes.get('briefingCards').innerHTML,/디화14 디스미어/);
+  assert.match(share,/디스미어 14 5일 기본PM/);
+  assert.equal(share.split('디스미어 14').length-1,1);
+  assert.match(a.nodes.get('briefingCards').innerHTML,/디스미어 14 5일 기본PM/);
   assert.match(a.run("inlineControlsHtml('화14')"),/2회마다 1회/);
   const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-04T12:00:00+09:00'});
   assert.equal(b.run("getInlineCycle('화14').count"),1);
-  assert.match(b.nodes.get('shareTextOutput').value,/디화14 디스미어 익일\(5일\)/);
+  assert.match(b.nodes.get('shareTextOutput').value,/디스미어 14 5일 기본PM/);
   b.setNow('2026-10-05T07:30:00+09:00');
   b.run("setChemStepStatusById('화14','시작');completeChemPM('화14');selectQuickDay('today')");
   assert.equal(b.run("getInlineCycle('화14').count"),2);
@@ -447,15 +447,28 @@ test('13 and 14 count separately; time edits and planned notices do not count PM
   assert.equal(a.run("getInlineCycle('화13').count"),1);
 });
 
+test('briefing uses the requested desmear wording and includes next-morning manual PM',()=>{
+  const a=app({now:'2026-10-04T12:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-04',line:'디스미어 13',text:'망간 건욕'},{date:'2026-10-05',line:'디스미어 14',text:'기본PM'}];chemList[4].plannedDue='2026-10-05T07:30:00+09:00';safeRenderAll()");
+  assert.deepEqual(a.data("inlineBriefingLines('2026-10-04')"),['디스미어 13 망간건욕','디스미어 14 5일 기본PM']);
+  assert.match(a.nodes.get('briefingCards').innerHTML,/디스미어 13 망간건욕/);
+  assert.match(a.nodes.get('briefingCards').innerHTML,/디스미어 14 5일 기본PM/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화|화학동 분리 요청/);
+  a.run("chemList[4].plannedDue='2026-10-05T08:30:00+09:00';safeRenderAll()");
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 14/);
+  a.run("chemList[4].plannedDue='2026-10-05T07:30:00+09:00';manualNotes[1].text='10시 기본PM';safeRenderAll()");
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 14/);
+});
+
 test('inline follow-up honors 08:30 cutoff and matrix calendar date',()=>{
   const a=app({now:'2026-10-04T12:00:00+09:00'});
   a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 14',text:'기본PM'}];inlineDesmearFlags={'completion:test':{version:2,lineId:'화14',completedAt:'2026-10-02T07:30:00+09:00'}};chemList[4].status='완료';chemList[4].plannedDue='2026-10-05T08:30:00+09:00';safeRenderAll()");
-  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화14/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 14/);
   a.run("chemList[4].plannedDue='2026-10-05T08:00:00+09:00';safeRenderAll()");
-  assert.match(a.nodes.get('shareTextOutput').value,/디화14 디스미어 익일\(5일\) 8시/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디스미어 14 5일 기본PM/);
   a.run("renderInlineDesmearMatrix([{dateStr:'2026-10-04'},{dateStr:'2026-10-05'}])");
   assert.equal(a.nodes.get('inline_cell_1').innerHTML,'-');
-  assert.match(a.nodes.get('inline_cell_2').innerHTML,/디화14 디스미어.*<br>8시 PM/);
+  assert.match(a.nodes.get('inline_cell_2').innerHTML,/디스미어 14.*<br>8시 기본PM/);
 });
 
 test('parsed chemistry completion records only an actual started PM once',()=>{
@@ -508,16 +521,16 @@ test('manually registered inline PM appears only on entered date and survives re
   const a=app();a.run("openInlineManualEntry('화13')");
   a.nodes.get('manualDayInput').value='2';a.nodes.get('manualContentInput').value='10시 스웰러 건욕';
   const chemistry=a.data('chemList');a.run('addManualNote()');
-  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13/);
-  assert.match(a.nodes.get('inline_cell_5').innerHTML,/디화13 디스미어.*<br>10시 스웰러 건욕/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 13/);
+  assert.match(a.nodes.get('inline_cell_5').innerHTML,/디스미어 13.*<br>10시 스웰러 건욕/);
   assert.deepEqual(a.data('chemList'),chemistry);
   a.run("selectQuickDay('tomorrow')");
-  assert.match(a.nodes.get('shareTextOutput').value,/디화13 디스미어 10시 스웰러 건욕/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디스미어 13 10시 스웰러 건욕/);
   assert.match(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/10시 스웰러 건욕/);
   const b=app({stored:Object.fromEntries(a.storage)});b.run("selectQuickDay('tomorrow')");
-  assert.match(b.nodes.get('shareTextOutput').value,/디화13 디스미어 10시 스웰러 건욕/);
+  assert.match(b.nodes.get('shareTextOutput').value,/디스미어 13 10시 스웰러 건욕/);
   b.run('removeManualNote(0)');
-  assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디화13/);
+  assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디스미어 13/);
   assert.equal(b.nodes.get('inline_cell_5').innerHTML,'-');
   for(let day=1;day<=7;day++) assert.match(html,new RegExp('id="inline_cell_'+day+'"'));
 });
@@ -528,7 +541,7 @@ test('inline manual tags include basic PM and the existing five desmear tags, an
   assert.deepEqual(a.nodes.get('dynamicTagsContainer').children.map(child=>child.innerText),['기본PM','스웰러 건욕','망간 건욕','인써트 교체','전체건욕','설비작업']);
   a.run('addManualNote()');a.nodes.get('manualContentInput').value='기본PM';a.run('addManualNote()');
   assert.equal(a.data('manualNotes').length,1);
-  assert.equal(a.nodes.get('shareTextOutput').value.split('디화13 디스미어').length-1,1);
+  assert.equal(a.nodes.get('shareTextOutput').value.split('디스미어 13').length-1,1);
   assert.match(a.nodes.get('inline_cell_4').innerHTML,/기본PM/);
 });
 
@@ -551,8 +564,8 @@ test('legacy inline metadata stays stored while remote manual registrations stil
   const a=app({stored:{inline_desmear_flags_master:JSON.stringify(legacy)}});
   a.run("acceptRemoteState({chemList,inlineDesmearFlags,manualNotes:[{date:selectedDateStr,line:'디스미어 14',text:'망간 건욕'}]});safeRenderAll()");
   assert.deepEqual(JSON.parse(a.storage.get('inline_desmear_flags_master')),legacy);
-  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화13/);
-  assert.match(a.nodes.get('shareTextOutput').value,/디화14 디스미어 망간 건욕/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 13/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디스미어 14 망간건욕/);
 });
 
 test('manual PM minute controls allow only 00/30 and do not round stored precision on opening',()=>{
