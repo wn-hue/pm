@@ -46,6 +46,97 @@ function app({stored = {}, now = '2026-10-01T08:00:00+09:00', storageError = fal
     data:expression=>clone(run(expression)),parse:text=>{nodes.get('kakaoRawInput').value=text;run('parseAndApplyKakaoMsg()');}};
 }
 
+test('backlight PM starts only marked lines and production restarts 72 hours at message time',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n[작업자] [오후 10:27] 22시 빽라이트 입니다\n화7 D10\n화8 PM\n화9 D10\n화13 D10\n화14 D10\n이상입니다');
+  assert.equal(a.run("chemList[1].status"),'시작');
+  assert.equal(a.run("new Date(chemList[1].lastDone).getHours()"),22);
+  assert.equal(a.run("new Date(chemList[1].lastDone).getMinutes()"),0);
+  const other=a.data('chemList[2]');
+  a.parse('2026년 10월 3일\n[작업자] [오전 10:20] 화학동 8라인 양산 진행하겠습니다.');
+  assert.equal(a.run("chemList[1].status"),'완료');
+  assert.equal(a.run("new Date(getChemDue(chemList[1])).toISOString()"),'2026-10-06T01:20:00.000Z');
+  assert.deepEqual(a.data('chemList[2]'),other);
+});
+
+test('repeated backlight PM, repeated completion and old replay do not move the cycle',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n22시 백라이트 입니다\n화9 PM\n이상입니다');
+  const start=a.run('chemList[2].lastDone');
+  a.parse('2026년 10월 3일\n1시 빽라이트 입니다\n화9 PM\n이상입니다');
+  assert.equal(a.run('chemList[2].lastDone'),start);
+  a.parse('2026년 10월 3일\n[작업자] [오전 10:20] 화학동9 액수위 입니다.');
+  const done=a.run('chemList[2].lastDone');
+  a.parse('2026년 10월 3일\n[작업자] [오전 11:20] 화9 양산하겠습니다');
+  assert.equal(a.run('chemList[2].lastDone'),done);
+  a.parse('2026년 10월 2일\n22시 백라이트 입니다\n화9 PM\n이상입니다');
+  assert.equal(a.run('chemList[2].status'),'완료');
+  assert.equal(a.run('chemList[2].lastDone'),done);
+});
+
+test('PM evidence survives reload; completion requires time and retains input for correction',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n22시 빽라이트 입니다\n화13 PM\n이상입니다');
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-03T12:00:00+09:00'});
+  b.parse('화학동13 액수위입니다');
+  assert.equal(b.run('chemList[3].status'),'시작');
+  assert.equal(b.nodes.get('kakaoRawInput').value,'화학동13 액수위입니다');
+  b.nodes.get('kakaoMessageTime').value='2026-10-03T10:20';
+  b.run('parseAndApplyKakaoMsg()');
+  assert.equal(b.run('chemList[3].status'),'완료');
+  assert.equal(b.run('new Date(chemList[3].lastDone).getMinutes()'),20);
+});
+
+test('ordinary water reports and negative or planned production do not complete PM',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  const before=a.data('chemList[1]');
+  a.parse('화8 10:20 액수위입니다');
+  assert.deepEqual(a.data('chemList[1]'),before);
+  a.parse('2026년 10월 2일\n22시 빽라이트 입니다\n화8 PM\n이상입니다');
+  const running=a.data('chemList[1]');
+  for(const report of ['아직 양산 진행하겠습니다','양산 진행 못 하겠습니다','양산 시작 예정입니다','액수위 정상 아닙니다','액수위입니다. 양산 대기']) {
+    a.parse('화8 10:20 '+report);
+    assert.deepEqual(a.data('chemList[1]'),running);
+  }
+});
+
+test('completion older than PM or dated in the future cannot update the schedule',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n22시 빽라이트 입니다\n화14 PM\n이상입니다');
+  const running=a.data('chemList[4]');
+  a.parse('2026년 10월 2일\n[작업자] [오후 9:00] 화14 양산하겠습니다');
+  assert.deepEqual(a.data('chemList[4]'),running);
+  a.parse('2026년 10월 4일\n[작업자] [오전 10:20] 화14 양산하겠습니다');
+  assert.deepEqual(a.data('chemList[4]'),running);
+});
+
+test('PC export date and AM/PM times distinguish midnight and noon across messages',()=>{
+  const a=app({now:'2026-10-03T13:00:00+09:00'});
+  a.parse('2026. 10. 2. 오후 10:27, 작업자 : 22시 빽라이트 입니다\n화8 PM\n화9 PM\n이상입니다\n2026. 10. 3. 오전 12:20, 작업자 : 화학동8 액수위입니다\n2026. 10. 3. 오후 12:20, 작업자 : 화학동 9라인 양산 하겠습니다');
+  assert.equal(a.run('new Date(chemList[1].lastDone).getHours()'),0);
+  assert.equal(a.run('new Date(chemList[2].lastDone).getHours()'),12);
+  assert.equal(a.run('chemList[1].status'),'완료');
+  assert.equal(a.run('chemList[2].status'),'완료');
+});
+
+test('completion needs a calendar date and uses manual time when copied date is missing',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n22시 빽라이트 입니다\n화8 PM\n이상입니다');
+  a.parse('[작업자] [오전 10:20] 화8 액수위입니다');
+  assert.equal(a.run('chemList[1].status'),'시작');
+  a.nodes.get('kakaoMessageTime').value='2026-10-03T10:20';
+  a.run('parseAndApplyKakaoMsg()');
+  assert.equal(a.run('chemList[1].lastDone'),'2026-10-03T01:20:00.000Z');
+});
+
+test('exported backlight uses report hour and completion uses posting time, not mentioned PM hour',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026. 10. 2. 오후 10:27, 화7 담당자 : 22시 빽라이트 입니다\n화8 PM\n이상입니다');
+  assert.equal(a.run('new Date(chemList[1].lastDone).getMinutes()'),0);
+  a.parse('2026년 10월 3일\n[작업자] [오전 10:20] 화8 22시 PM 후 액수위입니다');
+  assert.equal(a.run('chemList[1].lastDone'),'2026-10-03T01:20:00.000Z');
+});
+
 test('all tabs and both full modal tables render without swallowed runtime errors',()=>{
   const a=app();
   for(const tab of ['tab1','tab2','tab3','tab4']) a.run(`switchTab('${tab}')`);
