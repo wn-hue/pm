@@ -513,6 +513,7 @@
         <div class="parser-content">
           <p class="helper">시각·건욕 명칭·특이사항을 자동 반영합니다. 직접 수정한 내용은 반영 버튼을 누르세요.</p>
           <textarea id="kakaoRawInput" rows="4" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 여기에 붙여넣으세요" onpaste="queueKakaoPaste()"></textarea>
+          <label>완료 메시지 시각<input id="kakaoMessageTime" type="datetime-local" aria-label="완료 메시지 시각"></label>
           <button class="btn" onclick="parseAndApplyKakaoMsg()">공지 반영</button>
         </div>
       </details>
@@ -895,6 +896,7 @@ function normalizeChem(item, fallback) {
     status: ['시작', '대기', '분석'].includes(value.status) ? '시작' :
       value.status === '완료' ? '완료' : fallback.status,
     plannedDue: validDateTime(value.plannedDue) ? value.plannedDue : null,
+    backlightPmAt: validDateTime(value.backlightPmAt) ? value.backlightPmAt : null,
     note: cleanChemNote(typeof value.note === 'string' ? value.note : fallback.note)
   };
 }
@@ -910,11 +912,11 @@ function recoverChemListFromAllSources() {
       if (!item || !REQUIRED_CHEM_IDS.includes(item.id)) continue;
       const seen = recoveredFields[item.id] || (recoveredFields[item.id] = new Set());
       const target = recoveredMap[item.id];
-      for (const field of ['lastDone', 'status', 'note', 'plannedDue']) {
+      for (const field of ['lastDone', 'status', 'note', 'plannedDue', 'backlightPmAt']) {
         if (seen.has(field)) continue;
         const valid = field === 'lastDone' ? validDateTime(item[field]) :
           field === 'status' ? ['시작','완료','대기','분석'].includes(item[field]) :
-          field === 'plannedDue' ? (item[field] === null || validDateTime(item[field])) : typeof item[field] === 'string';
+          ['plannedDue','backlightPmAt'].includes(field) ? (item[field] === null || validDateTime(item[field])) : typeof item[field] === 'string';
         if (valid) { target[field] = item[field]; seen.add(field); }
       }
     }
@@ -1293,6 +1295,37 @@ function extractChemWork(text) {
   return rules.filter(([,pattern]) => pattern.test(text)).map(([name]) => name).join(' · ');
 }
 
+function kakaoClock(text) {
+  const match = text.match(/(오전|오후)\s*(\d{1,2})(?::(\d{2})|시(?:\s*(\d{1,2})분)?)/);
+  if (!match) return extractNoticeTime(text);
+  const hour = Number(match[2]), minute = Number(match[3] || match[4] || 0);
+  if (hour < 1 || hour > 12 || minute > 59) return null;
+  return {hour:hour % 12 + (match[1] === '오후' ? 12 : 0),minute};
+}
+
+function kakaoRows(raw, reference, now) {
+  let date = new Date(reference), dated = false, messageTime = null, backlightTime = null;
+  return raw.split(/\r?\n/).map(text => {
+    const rowDate = noticeDate(text,now);
+    const numericDate = text.match(/^(\d{4})[.\/-]\s*(\d{1,2})[.\/-]\s*(\d{1,2})(?:\D|$)/);
+    if (rowDate || numericDate) {
+      const candidate = rowDate || new Date(Number(numericDate[1]),Number(numericDate[2])-1,Number(numericDate[3]));
+      if (rowDate || (candidate.getMonth() === Number(numericDate[2])-1 && candidate.getDate() === Number(numericDate[3]))) { date = candidate; dated = true; }
+      messageTime = null; backlightTime = null;
+    }
+    const chatHeader = text.match(/^\[[^\]]+\]\s*\[((?:오전|오후)\s*\d{1,2}:\d{2})\]/) ||
+      text.match(/^\d{4}[.\/-]\s*\d{1,2}[.\/-]\s*\d{1,2}.*?((?:오전|오후)\s*\d{1,2}:\d{2})\s*,[^:]+:/);
+    if (chatHeader) { messageTime = kakaoClock(chatHeader[1]); backlightTime = null; }
+    const content = chatHeader ? text.slice(chatHeader[0].length).trimStart() : text;
+    if (/백\s*라이트|빽\s*라이트|back\s*li(?:gh|ng)t/i.test(content)) {
+      backlightTime = kakaoClock(content) || messageTime;
+    }
+    const row = {text:content,date:new Date(date),dated,messageTime,backlightTime};
+    if (/이상\s*입니다/.test(text)) { backlightTime = null; messageTime = null; }
+    return row;
+  });
+}
+
 function parseAndApplyKakaoMsg() {
   const input = document.getElementById('kakaoRawInput');
   const raw = input.value.trim();
@@ -1308,14 +1341,16 @@ function parseAndApplyKakaoMsg() {
   }
   const passMatch = raw.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
   if (passMatch && extractNoticeTime(passMatch[1])) document.getElementById('passTimeInput').value = passMatch[1].replace(/\s+/g,'');
-  let updatedChemCount = 0; let updatedNoteCount = 0; let skippedInlineCount = 0;
+  let updatedChemCount = 0; let updatedNoteCount = 0; let skippedInlineCount = 0; let missingTimeCount = 0;
+  const manualTime = document.getElementById('kakaoMessageTime').value;
   const featureRules = [
     ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
     ['산탈지.산세.프리딥.박리',/프리딥/], ['유산동필터 교체',/유산동\s*필터(?:\s*교체)?/],
     ['인써트 교체',/인[써서]트\s*교체/], ['전체건욕',/전체\s*건욕/], ['설비작업',/설비\s*작업/]
   ];
   const linePattern = /(?:디화\s*)(?:14|13)(?!\d)|(?:화학동\s*|화\s*)(?:14|13|12|11|10|9|8|7)(?!\d)|(?:디스미어\s*|디\s*)(?:15|14|13|12|11|10|9|8|7|6)(?!\d)|(?:전기동\s*|전\s*)(?:22|21|20|18|17|16|15|14|13|12|11|9)(?!\d)|MSF(?:\s*전기동)?|에[13]\s*[.·,]\s*[24]|에6(?!\d)|고압수세\s*1(?!\d)|(?:데버링\s*|데)(?:2|3)(?!\d)/gi;
-  for (const text of raw.split(/\r?\n/)) {
+  for (const row of kakaoRows(raw,reference,now)) {
+    const text = row.text;
     const matches = [...text.matchAll(linePattern)].filter(match => match.index === 0 || !/[a-zA-Z0-9가-힣]/.test(text[match.index-1]));
     for (let index = 0; index < matches.length; index++) {
       const match = matches[index];
@@ -1331,7 +1366,7 @@ function parseAndApplyKakaoMsg() {
       if (['화13','화14'].includes(key) && /스웰러|망간|디스미어/.test(segment.slice(match[0].length))) key = '디스미어 '+number;
       // Inline desmear schedules are entered only through the manual form.
       if (['디스미어 13','디스미어 14'].includes(key)) { skippedInlineCount++; continue; }
-      let date = new Date(reference);
+      let date = new Date(row.date);
       const explicit = noticeDate(segment,now);
       const dayOnly = segment.match(/(?:^|[^\d])(\d{1,2})일/);
       if (explicit) date = explicit;
@@ -1339,6 +1374,37 @@ function parseAndApplyKakaoMsg() {
       else if (/익일|내일/.test(segment)) date.setDate(date.getDate()+1);
       const item = chemList.find(chem => chem.id === key);
       if (item) {
+        const backlightPm = row.backlightTime && /(?:^|[^a-z])PM(?:$|[^a-z])/i.test(segment) && !/PM\s*후|완료|종료|예정|취소|미실시|양산|액\s*수위/.test(segment);
+        const productionReport = /양산\s*(?:진행\s*)?(?:하겠습니다|시작|합니다)|액\s*수위\s*(?:입니다|확인|정상)/.test(segment) &&
+          !/아직|불가|미완료|예정|대기|취소|하지\s*않|진행\s*않|못|아닙|아니|않았/.test(segment);
+        if (backlightPm || productionReport) {
+          if (productionReport && (item.status !== '시작' || !validDateTime(item.backlightPmAt))) continue;
+          const clock = backlightPm ? row.backlightTime : row.messageTime || kakaoClock(segment);
+          let eventDate = new Date(date);
+          if (productionReport && !row.dated && !explicit && !dayOnly) {
+            if (!validDateTime(manualTime)) { missingTimeCount++; continue; }
+            eventDate = new Date(manualTime);
+          }
+          else if (clock) eventDate.setHours(clock.hour,clock.minute,0,0);
+          else if (validDateTime(manualTime)) eventDate = new Date(manualTime);
+          else { missingTimeCount++; continue; }
+          if (eventDate > now) { missingTimeCount++; continue; }
+          if (backlightPm) {
+            // Repeated PM rows must not restart a running timer or replay a completed cycle.
+            if (item.status === '완료' && eventDate <= new Date(item.lastDone)) continue;
+            if (item.status !== '시작') { item.status = '시작'; item.lastDone = eventDate.toISOString(); }
+            if (validDateTime(item.backlightPmAt)) continue;
+            item.backlightPmAt = eventDate.toISOString();
+          } else {
+            if (eventDate < new Date(item.backlightPmAt) || eventDate < new Date(item.lastDone)) continue;
+            item.status = '완료'; item.lastDone = eventDate.toISOString(); item.backlightPmAt = null;
+          }
+          delete item.plannedDue;
+          updatedChemCount++; continue;
+        }
+        // Backlight measurements such as D10 are not a planned PM or completion.
+        if (row.backlightTime) continue;
+        if (/양산|액\s*수위/.test(segment)) continue;
         const work = extractChemWork(segment);
         const time = extractNoticeTime(segment);
         const ongoing = /진행\s*중|PM\s*중|진행|시작/i.test(segment) && !/완료|종료/.test(segment);
@@ -1351,6 +1417,7 @@ function parseAndApplyKakaoMsg() {
           if (ongoing || completed) {
             while (date > now) date.setDate(date.getDate()-1);
             item.status = ongoing ? '시작' : '완료';
+            item.backlightPmAt = null;
             item.lastDone = date.toISOString(); delete item.plannedDue;
           } else {
             // Planned PM is an announcement, not a fabricated completion 72 hours earlier.
@@ -1371,11 +1438,13 @@ function parseAndApplyKakaoMsg() {
   }
   syncDataToFirebase(); safeRenderAll();
   if (!updatedChemCount && !updatedNoteCount) {
-    showToast(skippedInlineCount ? '디화13·14 디스미어 PM은 특이사항 수동에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
+    showToast(missingTimeCount ? '완료 메시지의 날짜·시각을 확인하고 입력해주세요.' : skippedInlineCount ? '디화13·14 디스미어 PM은 특이사항 수동에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
   }
   showToast(`공지 반영 완료 · 일정 ${updatedChemCount}건 · 특이사항 ${updatedNoteCount}건${skippedInlineCount ? ' · 디화 디스미어는 수동 등록' : ''}`);
   savePassPreference();
+  if (missingTimeCount) { showToast(`일정 ${updatedChemCount}건 반영 · ${missingTimeCount}건은 메시지 날짜·시각을 확인해주세요.`); return; }
   input.value = '';
+  document.getElementById('kakaoMessageTime').value = '';
   document.getElementById('kakaoPanel').open = false;
 }
 
@@ -2309,6 +2378,7 @@ function setChemStepStatusById(lineId,st) {
   if (st !== '시작' || line.status === '시작') return;
   delete line.plannedDue;
   line.status = '시작'; line.lastDone = new Date().toISOString();
+  line.backlightPmAt = null;
   syncDataToFirebase(); safeRenderAll();
   showToast(`${lineId} PM 시작 시간 저장 완료`);
 }
@@ -2320,6 +2390,7 @@ function completeChemPM(lineId) {
   
   delete line.plannedDue;
   line.status = '완료';
+  line.backlightPmAt = null;
   line.lastDone = new Date().toISOString();
 
   syncDataToFirebase();
