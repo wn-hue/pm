@@ -547,7 +547,7 @@
             <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시간정정 · 시작/완료 바로 처리</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
-          <div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디화13 · 디화14 디스미어 PM · 수동 등록</div>
+          <div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디화13 · 디화14 디스미어 PM · 화학동 2회마다 1회</div>
           <div id="inlineDesmearStatusContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;"></div>
         </div>
       </div>
@@ -1130,6 +1130,10 @@ function syncDataToFirebase() {
   chemList = ensureChemIntegrity(chemList,lastLocalState.chemList);
   pulseList = ensurePulseIntegrity(pulseList,lastLocalState.pulseList);
   manualNotes = normalizeNotes(manualNotes);
+  for (const line of chemList.filter(item=>item.status==='완료')) {
+    const previous=lastLocalState.chemList.find(item=>item.id===line.id);
+    if (previous) recordInlineChemCompletion(previous,new Date(line.lastDone));
+  }
   const state = currentState();
   for (const field of STATE_FIELDS) {
     const before = stateEntries(field,lastLocalState[field]);
@@ -1350,6 +1354,7 @@ function parseAndApplyKakaoMsg() {
           date.setHours(time.hour,time.minute,0,0);
           if (ongoing || completed) {
             while (date > now) date.setDate(date.getDate()-1);
+            if (completed) recordInlineChemCompletion(item,date);
             item.status = ongoing ? '시작' : '완료';
             item.lastDone = date.toISOString(); delete item.plannedDue;
           } else {
@@ -1810,7 +1815,37 @@ function renderManualNotesList() {
 
 function inlineDesmearName(id) { return '디스미어 ' + id.slice(1); }
 function inlineDisplayName(id) { return '디화' + id.slice(1) + ' 디스미어'; }
-// Legacy inline flags stay stored for data preservation, but never generate PM dates.
+
+function getInlineCycle(id) {
+  const anchors = manualNotes.filter(note=>note.line===inlineDesmearName(id)).sort((a,b)=>b.date.localeCompare(a.date));
+  if (!anchors.length) return null;
+  const date = anchors[0].date;
+  const events = Object.values(inlineDesmearFlags).filter(event=>event && event.version===2 && event.lineId===id &&
+    validDateTime(event.completedAt) && formatDateOnly(new Date(event.completedAt))>date);
+  return {date,count:events.length};
+}
+
+function recordInlineChemCompletion(line, completedAt) {
+  if (!INLINE_CHEM_IDS.includes(line.id) || line.status!=='시작' || !validDateTime(line.lastDone)) return;
+  const cycle = getInlineCycle(line.id);
+  if (!cycle || completedAt<new Date(line.lastDone) || formatDateOnly(completedAt)<=cycle.date) return;
+  // One immutable record per started PM keeps retries and concurrent browser saves from double-counting.
+  const key = `completion:${line.id}:${new Date(line.lastDone).toISOString()}`;
+  if (!inlineDesmearFlags[key]) inlineDesmearFlags[key] = {version:2,lineId:line.id,completedAt:completedAt.toISOString()};
+}
+
+function getInlineDue(id) {
+  const cycle = getInlineCycle(id);
+  if (!cycle || cycle.count%2!==1) return null;
+  const line = chemList.find(item=>item.id===id);
+  const due = line.status==='시작' ? new Date(line.lastDone) : getChemDue(line);
+  return formatDateOnly(due)>cycle.date ? due : null;
+}
+
+function inlineScheduledText(id, due, targetDate) {
+  const prefix = formatDateOnly(due)!==formatDateOnly(targetDate) ? `익일(${due.getDate()}일) ` : '';
+  return `${inlineDisplayName(id)} ${prefix}${formatTimeKr(due.getHours(),due.getMinutes())} PM · 화학동 분리 요청`;
+}
 function openInlineManualEntry(id) {
   if (!INLINE_CHEM_IDS.includes(id)) return;
   switchTab('tab4');
@@ -1823,7 +1858,7 @@ function openInlineManualEntry(id) {
 
 function inlineControlsHtml(id) {
   return `<div style="border-top:1px solid var(--border-light);padding-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <strong>${inlineDisplayName(id)} PM</strong><span class="badge badge-purple">수동 등록</span>
+    <strong>${inlineDisplayName(id)} PM</strong><span class="badge badge-purple">화학동 2회마다 1회</span>
     <button class="btn btn-sub btn-sm" onclick="openInlineManualEntry('${id}')">디스미어 PM 입력</button>
   </div>`;
 }
@@ -1833,9 +1868,12 @@ function renderInlineDesmearStatus() {
   if (!container) return;
   const html=INLINE_CHEM_IDS.map(id => {
     const notes=manualNotes.filter(note=>note.date===selectedDateStr && note.line===inlineDesmearName(id));
+    const cycle=getInlineCycle(id), due=getInlineDue(id);
+    const cycleText=cycle ? `기준 ${escapeHtml(cycle.date)} · 화학동 ${cycle.count%2}/2회${due ? `<br>${escapeHtml(formatDateTimeKr(due))} · 화학동 분리 요청` : ''}` : '디스미어 PM 기준일 미등록';
     return `<div style="background:#faf5ff;border:1px solid #ddd6fe;padding:12px;border-radius:10px;">
-      <strong>${inlineDisplayName(id)}</strong> <span class="badge badge-purple">수동 등록</span>
+      <strong>${inlineDisplayName(id)}</strong> <span class="badge badge-purple">${cycle ? '2회 주기' : '수동 등록'}</span>
       <div style="margin:8px 0">${notes.length ? notes.map(note=>escapeHtml(note.text)).join(' · ') : '선택한 날짜에 등록된 PM 없음'}</div>
+      <div class="helper">${cycleText}</div>
       <button class="btn btn-sub btn-sm" onclick="openInlineManualEntry('${id}')">PM 입력</button>
     </div>`;
   }).join('');
@@ -1843,9 +1881,13 @@ function renderInlineDesmearStatus() {
 }
 
 function inlineBriefingLines(dateStr) {
+  const targetDate=new Date(dateStr+'T00:00:00');
+  const windowStart=new Date(targetDate.getTime()+8.5*3600000), windowEnd=new Date(targetDate.getTime()+32.5*3600000);
   return INLINE_CHEM_IDS.flatMap(id=>{
     const notes=manualNotes.filter(note=>note.date===dateStr && note.line===inlineDesmearName(id));
-    return notes.length ? [`${inlineDisplayName(id)} ${notes.map(note=>note.text).join(' ')}`] : [];
+    if (notes.length) return [`${inlineDisplayName(id)} ${notes.map(note=>note.text).join(' ')} · 화학동 분리 요청`];
+    const due=getInlineDue(id);
+    return due && due>=windowStart && due<windowEnd ? [inlineScheduledText(id,due,targetDate)] : [];
   });
 }
 
@@ -1854,7 +1896,9 @@ function renderInlineDesmearMatrix(weekDates) {
     const cell=document.getElementById(`inline_cell_${index+1}`); if(!cell) return;
     cell.innerHTML=INLINE_CHEM_IDS.flatMap(id=>{
       const notes=manualNotes.filter(note=>note.date===day.dateStr && note.line===inlineDesmearName(id));
-      return notes.length ? [`<strong>${inlineDisplayName(id)}</strong><br>${notes.map(note=>escapeHtml(note.text)).join(' · ')}`] : [];
+      if(notes.length) return [`<strong>${inlineDisplayName(id)}</strong><br>${notes.map(note=>escapeHtml(note.text)).join(' · ')} · 화학동 분리 요청`];
+      const due=getInlineDue(id);
+      return due && formatDateOnly(due)===day.dateStr ? [`<strong>${inlineDisplayName(id)}</strong><br>${escapeHtml(formatTimeKr(due.getHours(),due.getMinutes()))} PM · 화학동 분리 요청`] : [];
     }).join('<br>') || '-';
   });
 }
@@ -2317,6 +2361,8 @@ function completeChemPM(lineId) {
   if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
   const line = chemList.find(c => c.id === lineId);
   if (!line || line.status === '완료') return;
+
+  recordInlineChemCompletion(line,new Date());
   
   delete line.plannedDue;
   line.status = '완료';
