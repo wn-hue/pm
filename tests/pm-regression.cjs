@@ -388,7 +388,7 @@ test('tomorrow gauge shows future chemistry as planned rather than already due',
   assert.doesNotMatch(gauge,/주기 도래|예정 시간 도래/);
 });
 
-test('chemistry completions never generate inline desmear, even with legacy counters',()=>{
+test('unseeded chemistry completions never generate inline desmear from legacy counters',()=>{
   const legacy={화13:{chemPmCount:2,configured:true},화14:{chemPmCount:1,configured:true}};
   const a=app({stored:{inline_desmear_flags_master:JSON.stringify(legacy)}});
   a.run("setChemStepStatusById('화13','시작');completeChemPM('화13')");
@@ -400,6 +400,98 @@ test('chemistry completions never generate inline desmear, even with legacy coun
   const b=app({stored:Object.fromEntries(a.storage)});
   assert.deepEqual(b.data('inlineDesmearFlags'),legacy);
   assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/디화13|디화14/);
+});
+
+test('one manual anchor enables an inline PM on every second chemistry cycle including next-day cutoff',()=>{
+  const a=app({now:'2026-10-01T12:00:00+09:00'});
+  a.run("openInlineManualEntry('화14');addManualNote()");
+  assert.deepEqual(a.data("getInlineCycle('화14')"),{date:'2026-10-01',count:0});
+  // Chemistry on the same day as the manually registered inline PM belongs to the anchor cycle.
+  a.run("setChemStepStatusById('화14','시작');completeChemPM('화14')");
+  assert.equal(a.run("getInlineCycle('화14').count"),0);
+  a.setNow('2026-10-02T07:30:00+09:00');
+  a.run("setChemStepStatusById('화14','시작');completeChemPM('화14');selectQuickDay('tomorrow')");
+  assert.equal(a.run("getInlineCycle('화14').count"),1);
+  a.run("selectedDateStr='2026-10-04';safeRenderAll()");
+  const share=a.nodes.get('shareTextOutput').value;
+  assert.match(share,/화14 익일\(5일\) 7시 30분/);
+  assert.match(share,/디화14 디스미어 익일\(5일\) 7시 30분 PM · 화학동 분리 요청/);
+  assert.equal(share.split('디화14 디스미어').length-1,1);
+  assert.match(a.nodes.get('briefingCards').innerHTML,/디화14 디스미어/);
+  assert.match(a.run("inlineControlsHtml('화14')"),/2회마다 1회/);
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-04T12:00:00+09:00'});
+  assert.equal(b.run("getInlineCycle('화14').count"),1);
+  assert.match(b.nodes.get('shareTextOutput').value,/디화14 디스미어 익일\(5일\)/);
+  b.setNow('2026-10-05T07:30:00+09:00');
+  b.run("setChemStepStatusById('화14','시작');completeChemPM('화14');selectQuickDay('today')");
+  assert.equal(b.run("getInlineCycle('화14').count"),2);
+  assert.equal(b.run("getInlineDue('화14')"),null);
+  b.run("completeChemPM('화14')");assert.equal(b.run("getInlineCycle('화14').count"),2);
+  b.setNow('2026-10-08T07:30:00+09:00');
+  b.run("setChemStepStatusById('화14','시작');completeChemPM('화14')");
+  assert.equal(b.run("getInlineCycle('화14').count"),3);
+  assert.equal(b.run("formatDateOnly(getInlineDue('화14'))"),'2026-10-11');
+});
+
+test('13 and 14 count separately; time edits and planned notices do not count PM',()=>{
+  const a=app({now:'2026-10-02T12:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'},{date:'2026-10-01',line:'디스미어 14',text:'망간 건욕'}]");
+  a.run("setChemStepStatusById('화13','시작');completeChemPM('화13')");
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+  assert.equal(a.run("getInlineCycle('화14').count"),0);
+  a.parse('화14 5일 07:30 화학동 건욕');
+  assert.equal(a.run("getInlineCycle('화14').count"),0);
+  a.run("openChemTimeEditor('화13')");
+  a.nodes.get('chemEditDay').value='2';a.nodes.get('chemEditHour').value='11';a.nodes.get('chemEditMinute').value='30';
+  a.run('saveChemTimeEditor()');
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+});
+
+test('inline follow-up honors 08:30 cutoff and matrix calendar date',()=>{
+  const a=app({now:'2026-10-04T12:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 14',text:'기본PM'}];inlineDesmearFlags={'completion:test':{version:2,lineId:'화14',completedAt:'2026-10-02T07:30:00+09:00'}};chemList[4].status='완료';chemList[4].plannedDue='2026-10-05T08:30:00+09:00';safeRenderAll()");
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화14/);
+  a.run("chemList[4].plannedDue='2026-10-05T08:00:00+09:00';safeRenderAll()");
+  assert.match(a.nodes.get('shareTextOutput').value,/디화14 디스미어 익일\(5일\) 8시/);
+  a.run("renderInlineDesmearMatrix([{dateStr:'2026-10-04'},{dateStr:'2026-10-05'}])");
+  assert.equal(a.nodes.get('inline_cell_1').innerHTML,'-');
+  assert.match(a.nodes.get('inline_cell_2').innerHTML,/디화14 디스미어.*<br>8시 PM/);
+});
+
+test('parsed chemistry completion records only an actual started PM once',()=>{
+  const a=app({now:'2026-10-02T12:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'}]");
+  a.parse('화13 08:00 PM 시작');a.parse('화13 10:30 PM 완료');
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+  a.parse('화13 10:30 PM 완료');
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+  assert.equal(a.run("formatDateOnly(getInlineDue('화13'))"),'2026-10-05');
+});
+
+test('new manual anchor resets the cycle; deleting the only anchor disables automatic PM',()=>{
+  const a=app({now:'2026-10-04T12:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'}];setChemStepStatusById('화13','시작');completeChemPM('화13')");
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+  a.run("openInlineManualEntry('화13');addManualNote()");
+  assert.equal(a.run("getInlineCycle('화13').count"),0);
+  assert.equal(a.run("getInlineDue('화13')"),null);
+  a.run("removeManualNote(1);removeManualNote(0)");
+  assert.equal(a.run("getInlineCycle('화13')"),null);
+});
+
+test('concurrent completion records merge without losing lines or double-counting one started PM',()=>{
+  const a=app({now:'2026-10-02T12:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'},{date:'2026-10-01',line:'디스미어 14',text:'기본PM'}];setChemStepStatusById('화13','시작');setChemStepStatusById('화14','시작')");
+  const remote=a.data('currentState()');
+  a.run("completeChemPM('화13')");
+  const changes13=a.data("pendingChanges.filter(item=>item.field==='inlineDesmearFlags')");
+  const b=app({now:'2026-10-02T12:01:00+09:00'});
+  b.context.remote=remote;b.run('acceptRemoteState(remote)');
+  b.run("completeChemPM('화13');completeChemPM('화14')");
+  b.context.changes13=changes13;
+  b.run('pendingChanges=[];acceptRemoteState(applyChanges(currentState(),changes13))');
+  assert.equal(b.run("getInlineCycle('화13').count"),1);
+  assert.equal(b.run("getInlineCycle('화14').count"),1);
 });
 
 test('inline entry shortcut selects line and default PM without saving anything',()=>{
