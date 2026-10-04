@@ -10,6 +10,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <style>
   :root {
@@ -460,17 +461,35 @@
   }
   @media(min-width:768px) { .nav-short { display:none; } }
 
+  [hidden] { display:none !important; }
+  .auth-gate { min-height:80vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .auth-card { width:100%; max-width:420px; background:#fff; border:1px solid var(--border-light); border-radius:18px; padding:28px 24px; display:grid; gap:16px; }
+  .auth-card h1 { font-size:23px; }
+  .auth-card p { color:var(--text-secondary); overflow-wrap:anywhere; }
+  .account-bar { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--text-secondary); }
+  .account-bar .btn { min-height:36px; }
 </style>
 </head>
 <body>
 
-<div class="container">
+<section id="authGate" class="auth-gate" aria-label="로그인">
+  <div class="auth-card">
+    <h1>PM 모니터링</h1>
+    <p>본인 계정으로만 사용할 수 있습니다.</p>
+    <p id="authMessage" role="status" aria-live="polite">로그인 상태를 확인하는 중입니다.</p>
+    <button id="googleLoginButton" class="btn" onclick="signInToPM()" disabled>Google 계정으로 로그인</button>
+    <button id="gateSignOutButton" class="btn btn-sub" onclick="signOutOfPM()" hidden>로그아웃</button>
+    <button class="btn btn-sub" onclick="location.reload()">새로고침</button>
+  </div>
+</section>
+<div class="container" id="appContent" hidden>
   <div id="remindBanner" class="remind-banner">
     <div id="remindBannerText">🔔 <strong>[액퍼내기 4주 전 알림]</strong> 건욕 일정이 도래했습니다.</div>
     <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
   </div>
 
   <header>
+    <div class="account-bar"><span id="signedInAccount"></span><button class="btn btn-sub btn-sm" onclick="signOutOfPM()">로그아웃</button></div>
     <div class="header-top">
       <h1>동도금 PM 모니터링</h1>
       <div class="header-top-buttons">
@@ -1045,11 +1064,13 @@ function acceptRemoteState(remote) {
 }
 
 async function flushPendingChanges() {
-  if (!db || !isFirebaseConnected || !remoteLoaded || syncInFlight || !pendingChanges.length) return;
+  if (!db || !firebaseAuth || !firebaseAuth.currentUser || !databaseAccessGranted || !isFirebaseConnected || !remoteLoaded || syncInFlight || !pendingChanges.length) return;
   syncInFlight = true;
   const batch = pendingChanges.slice();
+  const version = authSessionVersion;
   try {
     const result = await db.ref('pm_system_data').transaction(remote => {
+      if (version !== authSessionVersion || !databaseAccessGranted) return;
       const base = remote || currentState();
       const merged = applyChanges(base,batch);
       merged.chemList = ensureChemIntegrity(merged.chemList,chemList);
@@ -1057,20 +1078,27 @@ async function flushPendingChanges() {
       merged.lastUpdated = new Date().toISOString();
       return merged;
     }, undefined, false);
+    if (version !== authSessionVersion) return;
     if (!result.committed) throw new Error('동기화 미완료');
     pendingChanges.splice(0,batch.length);
     acceptRemoteState(result.snapshot.val() || {});
     if (isFirebaseConnected) document.getElementById('syncStatus').textContent = '🟢 실시간 서버 연결됨';
     safeRenderAll();
   } catch (error) {
+    if (version !== authSessionVersion) return;
     console.error('Firebase sync error:',error);
+    if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
+      stopDatabaseSession();
+      showLoginGate('저장 권한이 없습니다. 본인 Google 계정으로 다시 로그인해주세요.');
+      return;
+    }
     document.getElementById('syncStatus').textContent = '⚠️ 서버 저장 실패 · 로컬 변경 보관 중';
     clearTimeout(retrySyncTimer);
     retrySyncTimer = setTimeout(() => { retrySyncTimer = null; flushPendingChanges(); },15000);
   } finally {
     syncInFlight = false;
   }
-  if (pendingChanges.length && !retrySyncTimer) flushPendingChanges();
+  if (pendingChanges.length && !retrySyncTimer && databaseAccessGranted) flushPendingChanges();
 }
 
 let selectedDateStr = '2026-09-25';
@@ -1087,44 +1115,153 @@ function getEtchingLine(dateObj) {
   return cycle[idx];
 }
 
+let firebaseAuth = null;
+let databaseAccessGranted = false;
+let authSessionVersion = 0;
+let connectionListener = null;
+let dataListener = null;
+
+function showLoginGate(message) {
+  document.getElementById('appContent').hidden = true;
+  document.getElementById('authGate').hidden = false;
+  document.getElementById('authMessage').textContent = message;
+  document.getElementById('googleLoginButton').disabled = !firebaseAuth;
+  document.getElementById('gateSignOutButton').hidden = !firebaseAuth || !firebaseAuth.currentUser;
+  document.querySelectorAll('.modal-overlay').forEach(el => { el.style.display = 'none'; });
+}
+
+function stopDatabaseSession() {
+  authSessionVersion++;
+  databaseAccessGranted = false;
+  remoteLoaded = false;
+  isFirebaseConnected = false;
+  clearTimeout(retrySyncTimer);
+  retrySyncTimer = null;
+  if (db) {
+    if (connectionListener) db.ref('.info/connected').off('value',connectionListener);
+    if (dataListener) db.ref('pm_system_data').off('value',dataListener);
+    db.goOffline();
+  }
+  connectionListener = null;
+  dataListener = null;
+}
+
+function loginErrorMessage(error) {
+  const messages = {
+    'auth/popup-closed-by-user': '로그인을 취소했습니다. 로그인 버튼을 다시 눌러주세요.',
+    'auth/popup-blocked': '로그인 창이 차단됐습니다. 팝업을 허용하거나 Safari에서 앱을 열어 다시 로그인해주세요.',
+    'auth/network-request-failed': '인터넷 연결을 확인하고 다시 로그인해주세요.',
+    'auth/unauthorized-domain': '이 앱 주소에서 로그인이 허용되지 않았습니다. 기존 PM 앱 주소로 접속해주세요.',
+    'auth/operation-not-allowed': '로그인 설정을 확인해야 합니다. 잠시 후 다시 시도해주세요.'
+  };
+  return messages[error.code] || '로그인하지 못했습니다. 잠시 후 다시 시도해주세요.';
+}
+
+function signInToPM() {
+  if (!firebaseAuth) return;
+  const button = document.getElementById('googleLoginButton');
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({prompt:'select_account'});
+  button.disabled = true;
+  document.getElementById('authMessage').textContent = 'Google 계정을 확인하는 중입니다.';
+  firebaseAuth.signInWithPopup(provider).catch(error => {
+    console.error('Sign-in failed:',error.code);
+    showLoginGate(loginErrorMessage(error));
+  }).finally(() => { button.disabled = false; });
+}
+
+async function signOutOfPM() {
+  if (!firebaseAuth) return;
+  stopDatabaseSession();
+  showLoginGate('로그아웃하는 중입니다.');
+  try {
+    await firebaseAuth.signOut();
+    showLoginGate('본인 Google 계정으로 로그인해주세요.');
+  } catch (error) {
+    showLoginGate('로그아웃하지 못했습니다. 새로고침 후 다시 시도해주세요.');
+  }
+}
+
+function startDatabaseSession(user) {
+  const version = authSessionVersion;
+  const isCurrentSession = () => version === authSessionVersion &&
+    firebaseAuth.currentUser && firebaseAuth.currentUser.uid === user.uid;
+  showLoginGate('데이터 접근 권한을 확인하는 중입니다.');
+  db.goOnline();
+  connectionListener = snap => {
+    if (!isCurrentSession()) return;
+    isFirebaseConnected = snap.val() === true;
+    if (databaseAccessGranted) {
+      document.getElementById('syncStatus').textContent = isFirebaseConnected ?
+        '🟢 실시간 서버 연결됨' : '🔴 오프라인 · 로컬 변경 보관';
+      if (isFirebaseConnected) {
+        clearTimeout(retrySyncTimer);
+        retrySyncTimer = null;
+        flushPendingChanges();
+      }
+    }
+  };
+  db.ref('.info/connected').on('value',connectionListener);
+  dataListener = snapshot => {
+    if (!isCurrentSession()) return;
+    const remote = snapshot.val();
+    databaseAccessGranted = true;
+    remoteLoaded = true;
+    if (remote) acceptRemoteState(remote);
+    else if (!pendingChanges.length) {
+      const state = currentState();
+      for (const field of STATE_FIELDS) {
+        for (const [key,value] of Object.entries(stateEntries(field,state[field]))) {
+          pendingChanges.push({field,key,value,ifMissing:true});
+        }
+      }
+      persistLocalState();
+    }
+    document.getElementById('signedInAccount').textContent = user.email || '본인 계정';
+    document.getElementById('authGate').hidden = true;
+    document.getElementById('appContent').hidden = false;
+    document.getElementById('syncStatus').textContent = isFirebaseConnected ?
+      '🟢 실시간 서버 연결됨' : '🔴 오프라인 · 로컬 변경 보관';
+    migrateLegacyTimers();
+    safeRenderAll();
+    flushPendingChanges();
+  };
+  db.ref('pm_system_data').on('value',dataListener,error => {
+    if (!isCurrentSession()) return;
+    stopDatabaseSession();
+    console.error('Database access failed:',error.code);
+    showLoginGate(error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied' ?
+      '이 계정은 사용할 수 없습니다. 본인 Google 계정으로 다시 로그인해주세요.' :
+      '데이터를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해주세요.');
+  });
+}
+
 function initFirebase() {
-  const statusEl = document.getElementById('syncStatus');
   persistLocalState();
   try {
-    if (typeof firebase === 'undefined') {
-      statusEl.textContent = '⚠️ 로컬 저장 모드'; return;
+    if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') {
+      showLoginGate('로그인 기능을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해주세요.');
+      return;
     }
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
-    db.ref('.info/connected').on('value', snap => {
-      isFirebaseConnected = snap.val() === true;
-      statusEl.textContent = isFirebaseConnected ? '🟢 실시간 서버 연결됨' : '🔴 오프라인 · 로컬 변경 보관';
-      if (isFirebaseConnected) { clearTimeout(retrySyncTimer); retrySyncTimer = null; flushPendingChanges(); }
-    });
-    db.ref('pm_system_data').on('value', snapshot => {
-      const remote = snapshot.val();
-      remoteLoaded = true;
-      if (remote) acceptRemoteState(remote);
-      else if (!pendingChanges.length) {
-        const state = currentState();
-        for (const field of STATE_FIELDS) {
-          for (const [key,value] of Object.entries(stateEntries(field,state[field]))) pendingChanges.push({field,key,value,ifMissing:true});
-        }
-        persistLocalState();
-      }
-      migrateLegacyTimers();
-      safeRenderAll();
-      flushPendingChanges();
-    }, error => {
-      remoteLoaded = false;
-      console.error('Firebase read error:',error);
-      statusEl.textContent = '⚠️ 서버 읽기 실패 · 로컬 저장 모드';
+    db.goOffline();
+    firebaseAuth = firebase.auth();
+    firebaseAuth.languageCode = 'ko';
+    firebaseAuth.onAuthStateChanged(user => {
+      stopDatabaseSession();
+      if (user) startDatabaseSession(user);
+      else showLoginGate('본인 Google 계정으로 로그인해주세요.');
+    },error => {
+      stopDatabaseSession();
+      showLoginGate('로그인 상태를 확인하지 못했습니다. 새로고침해주세요.');
     });
   } catch (error) {
     console.error('Firebase Init Error:',error);
-    statusEl.textContent = '⚠️ 로컬 저장 모드';
+    showLoginGate('연결을 준비하지 못했습니다. 인터넷 연결을 확인하고 새로고침해주세요.');
   }
 }
+
 
 function syncDataToFirebase() {
   chemList = ensureChemIntegrity(chemList,lastLocalState.chemList);
