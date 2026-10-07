@@ -3,7 +3,7 @@ process.env.TZ='Asia/Seoul';
 const fs=require('node:fs');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
-const {reduceEvents}=require('./kakao-events.cjs');
+const {reduceEvents}=require('./kakao-events.js');
 const {app}=require('./headless-app.cjs');
 function plan(remote,messages,now=new Date()) {
   reduceEvents(remote,messages,now); // Validate the full batch before any schedule changes.

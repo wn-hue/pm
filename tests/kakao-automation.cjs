@@ -1,7 +1,8 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {reduceEvents,classify}=require('../automation/kakao-events.cjs');
+const {reduceEvents,classify}=require('../automation/kakao-events.js');
 const {sync,plan}=require('../automation/sync.cjs');
+const {app}=require('../automation/headless-app.cjs');
 const state=()=>({chemList:['화7','화8','화9','화13','화14'].map(id=>({id,lastDone:'2026-10-01T10:00:00+09:00',status:'완료',note:''})),unrelated:{preserve:true}});
 const msg=(time,text,kind)=>({postedAt:`2026-10-07T${time}:00+09:00`,text,kind});
 const now=new Date('2026-10-07T23:00:00+09:00');
@@ -64,6 +65,26 @@ test('schedule uses production parser and retains completion time',()=>{
 test('Firebase refuses access instead of fabricating defaults',async()=>{
  await assert.rejects(sync([],{fetcher:async()=>({ok:false,status:401})}),/401/);
  await assert.rejects(sync([],{fetcher:async()=>({ok:true,json:async()=>null})}),/기존 서버/);
+});
+test('browser importer requires server connection and never writes while access is denied',async()=>{
+ const a=app();let writes=0;
+ a.context.fakeDb={ref:()=>({transaction:()=>{writes++;}})};
+ a.run('db=fakeDb; databaseReadError=true;remoteLoaded=false;isFirebaseConnected=true;');
+ await a.run('importKakaoEvents()');assert.equal(writes,0);
+ assert.match(a.nodes.get('kakaoEventsResult').textContent,/서버 연결/);
+});
+test('browser import transaction uses remote state, retains unrelated data and validates completion chain',async()=>{
+ const a=app({now:now.toISOString()});let server=state();
+ a.context.window.PMKakao={reduceEvents};a.context.crypto=require('node:crypto').webcrypto;
+ a.context.TextEncoder=TextEncoder;a.context.Uint8Array=Uint8Array;
+ a.context.fakeDb={ref:()=>({transaction:async fn=>{
+  server=fn(server);server=fn(server);return {committed:true,snapshot:{val:()=>server}};
+ }})};
+ a.run('db=fakeDb;databaseReadError=false;remoteLoaded=true;isFirebaseConnected=true;pendingChanges=[];');
+ a.nodes.get('kakaoEventsInput').value=JSON.stringify([msg('10:00','화8 PM'),msg('16:00','화8 액수위 입니다')]);
+ await a.run('importKakaoEvents()');
+ assert.equal(server.chemList[1].status,'완료');assert.equal(server.chemList[1].lastDone,'2026-10-07T16:00:00+09:00');
+ assert.deepEqual(server.unrelated,{preserve:true});assert.match(a.nodes.get('kakaoEventsResult').textContent,/서버 반영/);
 });
 test('preview never writes; ETag conflict re-reads, preserves concurrent edits and verifies response',async()=>{
  let reads=0,writes=0; const initial=state(); const concurrent=state();concurrent.unrelated.newValue=7;

@@ -1,5 +1,5 @@
 // Pure event reducer. No network calls and no raw conversations stored in state.
-const {createHash} = require('node:crypto');
+const createHash = typeof require === 'function' ? require('node:crypto').createHash : null;
 const IDS = new Set(['화7','화8','화9','화13','화14']);
 function classify(text) {
   const tokens=[...text.matchAll(/(?:^|[^a-zA-Z0-9가-힣])((화학동|화|디화|디스미어|디|전기동|전|에칭|에)\s*(\d+))(?!\d)/gi)];
@@ -16,7 +16,7 @@ function classify(text) {
     return {line:'화'+m[3],type:blocked.test(body)||explicitTime?'review':complete?'complete':running?'running':'ignore',segment};
   }).filter(Boolean);
 }
-function reduceEvents(state,messages,now=new Date()) {
+function reduceEvents(state,messages,now=new Date(),hashes=null) {
   if (!Array.isArray(messages)||messages.length>1000) throw Error('메시지 배열은 최대 1000건입니다.');
   const next=structuredClone(state); const result=[];
   if (!Array.isArray(next.chemList)) throw Error('기존 화학동 데이터가 필요합니다.');
@@ -29,7 +29,7 @@ function reduceEvents(state,messages,now=new Date()) {
     return m;
   }).sort((a,b)=>Date.parse(a.postedAt)-Date.parse(b.postedAt));
   for(const msg of valid) {
-    const hash=createHash('sha256').update(msg.postedAt+'\n'+msg.text).digest('hex');
+    const hash=hashes?.get(msg)||createHash('sha256').update(msg.postedAt+'\n'+msg.text).digest('hex');
     if(meta.seen[hash]) continue;
     for(const event of classify(msg.text)) {
       const item=next.chemList.find(x=>x.id===event.line);
@@ -59,4 +59,5 @@ function reduceEvents(state,messages,now=new Date()) {
   meta.seen=Object.fromEntries(Object.entries(meta.seen).sort((a,b)=>Date.parse(b[1])-Date.parse(a[1])).slice(0,2000));
   return {state:next,result};
 }
-module.exports={classify,reduceEvents};
+if(typeof module!=='undefined'&&module.exports) module.exports={classify,reduceEvents};
+else window.PMKakao={classify,reduceEvents};
