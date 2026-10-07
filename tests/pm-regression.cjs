@@ -272,6 +272,33 @@ test('new browser caches its first Firebase snapshot before any user edit',()=>{
   const b=app({stored:Object.fromEntries(a.storage)});assert.equal(b.run('chemList[0].note'),'중앙 기록');
 });
 
+test('PM opens without Google sign-in or an authentication SDK',()=>{
+  assert.doesNotMatch(html,/firebase-auth-compat|authGate|signInWithPopup|GoogleAuthProvider|id="appContent" hidden/);
+  const a=app();
+  assert.equal(a.logs.length,0);
+  assert.equal(a.data('chemList').length,5);
+  assert.match(a.nodes.get('shareTextOutput').value,/동도금/);
+});
+
+test('denied server access retains local edits and never reports transport-only connection as synced',async()=>{
+  const a=app();const callbacks={};let denied;
+  a.context.firebase={apps:[{}],database:()=>({ref:path=>({on:(event,callback,error)=>{
+    callbacks[path]=callback;if(path==='pm_system_data') denied=error;
+  },transaction:async update=>({committed:true,snapshot:{val:()=>update(a.data('currentState()'))}})})})};
+  a.run('initFirebase()');
+  denied({code:'PERMISSION_DENIED'});
+  callbacks['.info/connected']({val:()=>true});
+  assert.match(a.nodes.get('syncStatus').textContent,/서버 접근 제한/);
+  assert.equal(a.run('remoteLoaded'),false);
+  a.run("chemList[0].note='로컬 작업';syncDataToFirebase()");
+  assert.equal(JSON.parse(a.storage.get('chem_data_master'))[0].note,'로컬 작업');
+  assert.equal(a.data('pendingChanges').length>0,true);
+  callbacks['pm_system_data']({val:()=>a.data('currentState()')});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(a.run('databaseReadError'),false);
+  assert.match(a.nodes.get('syncStatus').textContent,/실시간 서버 연결됨/);
+});
+
 test('failed Firebase write keeps user changes for retry rather than losing them',async()=>{
   const a=app();a.context.testDb={ref:()=>({transaction:async()=>{throw Error('permission denied');}})};
   a.run("db=testDb;isFirebaseConnected=true;remoteLoaded=true;chemList[0].note='보관';syncDataToFirebase()");
