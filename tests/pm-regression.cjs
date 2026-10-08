@@ -272,8 +272,9 @@ test('new browser caches its first Firebase snapshot before any user edit',()=>{
   const b=app({stored:Object.fromEntries(a.storage)});assert.equal(b.run('chemList[0].note'),'중앙 기록');
 });
 
-test('PM opens without Google sign-in or an authentication SDK',()=>{
-  assert.doesNotMatch(html,/firebase-auth-compat|authGate|signInWithPopup|GoogleAuthProvider|id="appContent" hidden/);
+test('PM opens without requiring Google sign-in; server login remains optional',()=>{
+  assert.doesNotMatch(html,/authGate|id="appContent" hidden/);
+  assert.match(html,/id="serverLoginButton"/);
   const a=app();
   assert.equal(a.logs.length,0);
   assert.equal(a.data('chemList').length,5);
