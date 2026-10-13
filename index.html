@@ -2734,9 +2734,8 @@ function generateShareText() {
     const isRunning = (c.status === '시작');
 
     if (isRunning) {
-      const timeKr = formatTimeKr(t.getHours(), t.getMinutes());
-      const noteLabel = c.note ? `${c.note} ` : '';
-      ongoing.push(`-${c.id} ${timeKr} ${noteLabel}PM 진행중`);
+      const timeKr = `${t.getHours()}시`;
+      ongoing.push(`-${c.id} ${timeKr} PM 진행중`);
     } else {
       const nextDue = getChemDue(c);
       const manualChemNote = getNote(c.id);
