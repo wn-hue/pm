@@ -1317,8 +1317,6 @@ function parseAndApplyKakaoMsg() {
     if (formatDateOnly(headerDate) === formatDateOnly(now)) selectQuickDay('today');
     else if (formatDateOnly(headerDate) === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
   }
-  const passMatch = raw.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
-  if (passMatch && extractNoticeTime(passMatch[1])) document.getElementById('passTimeInput').value = passMatch[1].replace(/\s+/g,'');
   let updatedChemCount = 0; let updatedNoteCount = 0; let skippedInlineCount = 0;
   const featureRules = [
     ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
@@ -1372,6 +1370,16 @@ function parseAndApplyKakaoMsg() {
         }
         if (changed) updatedChemCount++;
       } else {
+        const linePass = segment.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
+        if (/^전기동 /.test(key) && linePass && extractNoticeTime(linePass[1])) {
+          const dateStr = formatDateOnly(date);
+          const passText = linePass[1].replace(/\s+/g,'');
+          const existing = manualNotes.filter(note => note.date === dateStr && note.line === key && /^\d{1,2}시(?:\d{1,2}분)?패스$/.test(note.text));
+          if (existing.length !== 1 || existing[0].text !== passText) {
+            manualNotes = manualNotes.filter(note => !existing.includes(note));
+            manualNotes.push({date:dateStr,line:key,text:passText}); updatedNoteCount++;
+          }
+        }
         for (const [tag,pattern] of featureRules) {
           if (!pattern.test(segment)) continue;
           const dateStr = formatDateOnly(date);
@@ -2674,8 +2682,13 @@ function generateShareText() {
   const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
 
   const getNote = (lineKeyword) => {
-    const found = manualNotes.filter(n => n.date === selectedDateStr && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
+    const found = manualNotes.filter(n => n.date === selectedDateStr && !/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text) && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
     return found.length > 0 ? ` ${found.map(f => f.text).join(' ')}` : '';
+  };
+
+  const getPass = (line) => {
+    const found = manualNotes.filter(n => n.date === selectedDateStr && n.line === line && /^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text));
+    return found.length ? found[found.length-1].text : pass;
   };
 
   let debarr = '';
@@ -2704,28 +2717,28 @@ function generateShareText() {
     if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디11 기본PM${getNote('디스미어 11')}`);
     if (checkBiWeek(ANCHOR_BIWEEK.des11, targetDate)) desmear.push(`디15 기본PM${getNote('디스미어 15')}`);
     blackhole = `화12 정기PM${getNote('화12')}`;
-    electro.push(`전9 산탈지.산세.박리 (${pass})${getNote('전기동 9')}`);
-    electro.push(`전16 산세.박리 (${pass})${getNote('전기동 16')}`);
+    electro.push(`전9 산탈지.산세.박리 (${getPass('전기동 9')})${getNote('전기동 9')}`);
+    electro.push(`전16 산세.박리 (${getPass('전기동 16')})${getNote('전기동 16')}`);
   } else if (day === 2) {
     desmear.push(`디9 기본PM${getNote('디스미어 9')}`, `디6 기본PM${getNote('디스미어 6')}`);
-    electro.push(`전18 산세.박리 (${pass})${getNote('전기동 18')}`);
-    electro.push(`전22 산세.박리 (${pass})${getNote('전기동 22')}`);
+    electro.push(`전18 산세.박리 (${getPass('전기동 18')})${getNote('전기동 18')}`);
+    electro.push(`전22 산세.박리 (${getPass('전기동 22')})${getNote('전기동 22')}`);
   } else if (day === 3) {
     desmear.push(`디12 기본PM${getNote('디스미어 12')}`);
     blackhole = `화11 정기PM${getNote('화11')}`;
-    electro.push(`전15 산세.박리 (${pass})${getNote('전기동 15')}`);
-    electro.push(`전20 산탈지.산세.박리 (${pass})${getNote('전기동 20')}`);
+    electro.push(`전15 산세.박리 (${getPass('전기동 15')})${getNote('전기동 15')}`);
+    electro.push(`전20 산탈지.산세.박리 (${getPass('전기동 20')})${getNote('전기동 20')}`);
   } else if (day === 4) {
     desmear.push(`디7 기본PM${getNote('디스미어 7')}`);
-    electro.push(`전11 산세.박리 (${pass})${getNote('전기동 11')}`);
-    electro.push(`전14 산탈지.산세.박리 (${pass})${getNote('전기동 14')}`);
-    electro.push(`전17 산세.박리 (${pass})${getNote('전기동 17')}`);
+    electro.push(`전11 산세.박리 (${getPass('전기동 11')})${getNote('전기동 11')}`);
+    electro.push(`전14 산탈지.산세.박리 (${getPass('전기동 14')})${getNote('전기동 14')}`);
+    electro.push(`전17 산세.박리 (${getPass('전기동 17')})${getNote('전기동 17')}`);
   } else if (day === 5) {
     desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
     blackhole = `화10 정기PM${getNote('화10')}`;
-    if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 산탈지.산세.박리 (${pass})${getNote('전기동 12')}`);
-    electro.push(`전13 산세.박리 (${pass})${getNote('전기동 13')}`);
-    electro.push(`전21 산탈지.산세.박리 (${pass})${getNote('전기동 21')}`);
+    if (checkBiWeek(ANCHOR_BIWEEK.elec12, targetDate)) electro.push(`전12 산탈지.산세.박리 (${getPass('전기동 12')})${getNote('전기동 12')}`);
+    electro.push(`전13 산세.박리 (${getPass('전기동 13')})${getNote('전기동 13')}`);
+    electro.push(`전21 산탈지.산세.박리 (${getPass('전기동 21')})${getNote('전기동 21')}`);
   }
 
   // [수정] 화학동 건욕 명칭(촉매 건욕 등)을 정확히 반영하여 기본PM 대체
