@@ -10,6 +10,8 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="automation/kakao-events.js"></script>
 
 <style>
   :root {
@@ -460,6 +462,79 @@
   }
   @media(min-width:768px) { .nav-short { display:none; } }
 
+  /* Daily operations dashboard */
+  :root { --accent:#0f766e; --accent-light:#e6f4f1; --bg-base:#f4f6f6; --text-primary:#142e35; --border-light:#e0e7e8; }
+  body { background:var(--bg-base); }
+  .container { max-width:1180px; }
+  header { background:transparent; padding:20px 0 12px; }
+  .brand-accent { color:var(--accent); }
+  .header-top h1 { font-size:26px;letter-spacing:-1px; }
+  .header-top-buttons .btn { background:#fff;color:#425d64;border:1px solid var(--border-light); }
+  .header-bottom-bar { gap:10px;flex-wrap:wrap; }
+  #serverLoginButton { min-height:32px;padding:4px 12px;font-size:12px; }
+  #serverLoginMessage { font-size:11px;color:var(--text-secondary); }
+  .main-nav { border:1px solid var(--border-light);box-shadow:none;padding:5px; }
+  .nav-btn { color:#627880;font-weight:600; }
+  .nav-btn.active { background:#142e35;color:#fff; }
+  .workspace-intro { display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0 6px; }
+  .eyebrow { font-size:10px;letter-spacing:2px;color:var(--accent);font-weight:800; }
+  .workspace-intro h2 { margin:6px 0;font-size:25px;letter-spacing:-.8px; }
+  .workspace-intro p { color:#6b7f85;font-size:13px;margin:0; }
+  .workspace-intro .btn { background:#fff;border:1px solid var(--border-light);color:#244951;white-space:nowrap; }
+  .focus-pill { padding:18px;transition:border-color .15s,background .15s; }
+  .focus-pill strong { margin:10px 0 8px;font-size:32px;letter-spacing:-1px; }
+  .focus-pill strong small { font-size:13px;margin-left:6px;color:#6b7f85;font-weight:500; }
+  .focus-pill .summary-hint { font-size:11px; }
+  .focus-pill.running strong { color:var(--accent); }
+  .focus-pill.selected { border-color:var(--accent);background:#eef8f5; }
+  .focus-pill:focus-visible,.filter-btn:focus-visible { outline:3px solid #6cc8bc;outline-offset:2px; }
+  .dashboard-card { padding:20px;background:#fff;border:1px solid var(--border-light);border-radius:18px; }
+  .dashboard-toolbar { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap; }
+  .filter-tabs { display:flex;gap:4px;flex-wrap:wrap; }
+  .filter-btn { min-height:40px;padding:8px 14px;background:transparent;border:0;border-radius:9px;color:#60777e;font-size:13px;cursor:pointer; }
+  .filter-btn.active { background:#e6f4f1;color:#0b6b61;font-weight:800; }
+  #tab1ChemStatusContainer { gap:12px;display:grid; }
+  .chem-overview { border:1px solid var(--border-light);border-radius:14px;padding:18px;border-left-width:1px; }
+  .chem-overview.running { background:#f5fcf9;border-color:#afd8cc; }
+  .chem-overview.warn { background:#fffcf4;border-color:#e8d7a7; }
+  .chem-overview.late { background:#fff8f6;border-color:#edc0b8; }
+  .chem-overview-head { margin-bottom:18px; }
+  .line-identity { display:flex;gap:10px;align-items:center; }
+  .line-number { display:grid;place-items:center;width:40px;height:40px;background:#edf2f3;border-radius:10px;font-size:20px;font-weight:800;color:#355c65; }
+  .chem-work { margin:3px 0 0;font-size:12px; }
+  .state-label { font-size:11px;background:#edf2f3;color:#526c74;padding:6px 9px;border-radius:7px;font-weight:700; }
+  .running .state-label { background:#e0f3eb;color:#187557; }
+  .warn .state-label { background:#fbefca;color:#886010; }
+  .late .state-label { background:#fbe5df;color:#b44335; }
+  .chem-time { font-size:22px;letter-spacing:-.5px;margin:4px 0 14px; }
+  .cycle-caption { display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#5b747b;margin-bottom:7px; }
+  .cycle-caption strong { color:#284c54;font-weight:600; }
+  .late .cycle-caption strong { color:#b44335; }
+  .cycle-track { height:5px;background:#e8eeee;border-radius:5px;overflow:hidden; }
+  .cycle-track>div { height:100%;background:#8dafb3;border-radius:5px; }
+  .running .cycle-track>div { background:#249578; }.warn .cycle-track>div { background:#d6a33a; }.late .cycle-track>div { background:#d87665; }
+  .last-record { font-size:11px;color:#75898e;margin:10px 0 16px;line-height:1.5; }
+  .chem-actions .btn { border-radius:9px;font-size:13px;min-height:44px; }
+  .chem-actions .btn-sub { background:#fff;border:1px solid #dce5e5;color:#536f77;flex:.8; }
+  .chem-actions .complete-btn { background:#147957; }.chem-actions .detail-btn { flex:.5; }
+  .buildup-warning { color:#a66316;background:#fff2d9;padding:8px 10px;border-radius:8px;font-size:11px;margin-bottom:12px; }
+  .inline-section { border-top:1px solid var(--border-light);margin-top:20px;padding-top:10px; }
+  .inline-section summary { color:#5a7077;font-size:13px; }
+  .inline-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+  .dashboard-empty { grid-column:1/-1;text-align:center;padding:32px 12px;color:#59747c; }
+  .dashboard-empty p { font-size:13px;margin:10px 0 18px; }
+  .parser-box,.card { border-radius:18px; }
+  textarea { line-height:1.65; }
+  @media(max-width:767px) {
+    header { padding:12px 0; }.workspace-intro { align-items:flex-start;padding-top:8px; }.workspace-intro h2 { font-size:22px; }
+    .workspace-intro p { font-size:11px; }.workspace-intro .btn { padding:8px 10px;font-size:11px; }
+    .focus-pill { padding:13px 10px; }.focus-pill strong { font-size:27px; }.focus-pill .summary-hint { display:none; }
+    .focus-pill span { font-size:10px; }.dashboard-card { padding:14px; }.dashboard-toolbar>.helper { display:none; }
+    .filter-tabs { width:100%; }.filter-btn { flex:1;padding:8px; }.chem-overview { padding:16px; }.chem-actions { max-width:none; }
+    .chem-time { font-size:21px; }.inline-grid { grid-template-columns:1fr; }.main-nav { border-radius:16px 16px 0 0; }
+    .brief-toolbar { flex-wrap:wrap; }.brief-toolbar>.btn { flex:1; }
+  }
+
 </style>
 </head>
 <body>
@@ -472,7 +547,7 @@
 
   <header>
     <div class="header-top">
-      <h1>동도금 PM 모니터링</h1>
+      <h1>동도금 <span class="brand-accent">PM</span></h1>
       <div class="header-top-buttons">
         <button class="btn btn-sub btn-sm" onclick="openModal('matrixModal')">🗓️ 주간 매트릭스</button>
         <button class="btn btn-sub btn-sm" onclick="openModal('pulseModal')">💧 액퍼내기</button>
@@ -482,6 +557,8 @@
       <div id="syncStatus" class="sync-status-badge">
         <span>⚪</span> 연결 확인 중...
       </div>
+      <button class="btn btn-sub" id="serverLoginButton" onclick="connectPMServer()">서버 연결 로그인</button>
+      <span id="serverLoginMessage" role="status"></span>
       <div class="live-clock-box">
         <span>🕒</span> <span id="liveClock">로딩 중...</span>
       </div>
@@ -490,16 +567,16 @@
 
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
-      <span class="nav-icon">📋</span><span class="nav-full">오늘 브리핑</span><span class="nav-short">브리핑</span>
+      <span class="nav-icon">📋</span><span class="nav-full">현황 & 공유</span><span class="nav-short">현황</span>
     </button>
     <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
-      <span class="nav-icon">⚡</span><span class="nav-full">진척 게이지</span><span class="nav-short">진척</span>
+      <span class="nav-icon">⚡</span><span class="nav-full">진행 작업</span><span class="nav-short">진척</span>
     </button>
     <button class="nav-btn" id="tabBtn3" onclick="switchTab('tab3')">
-      <span class="nav-icon">🧪</span><span class="nav-full">화학동 관리</span><span class="nav-short">화학동</span>
+      <span class="nav-icon">🧪</span><span class="nav-full">시간 관리</span><span class="nav-short">화학동</span>
     </button>
     <button class="nav-btn" id="tabBtn4" onclick="switchTab('tab4')">
-      <span class="nav-icon">✏️</span><span class="nav-full">특이사항 수동</span><span class="nav-short">특이사항</span>
+      <span class="nav-icon">✏️</span><span class="nav-full">작업 메모</span><span class="nav-short">특이사항</span>
     </button>
   </div>
 
@@ -507,13 +584,25 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
+      <div class="workspace-intro"><div><span class="eyebrow">CHEMICAL PM</span><h2>지금 확인할 라인</h2><p>일반 화학동 5개 라인 · 완료 시점부터 72시간</p></div><button class="btn btn-sub" onclick="openNoticePanel()">카톡 일정 가져오기 <span aria-hidden="true">↗</span></button></div>
       <div id="focusSummary" class="focus-grid" aria-label="현재 화학동 상태 요약"></div>
+      <section class="dashboard-card" aria-label="일반 화학동 현황">
+        <div class="dashboard-toolbar"><div class="filter-tabs" aria-label="라인 상태 필터">
+          <button class="filter-btn active" id="filter_all" onclick="setChemFilter('all')" aria-pressed="true">전체 5개</button>
+          <button class="filter-btn" id="filter_running" onclick="setChemFilter('running')" aria-pressed="false">진행 중</button>
+          <button class="filter-btn" id="filter_warn" onclick="setChemFilter('warn')" aria-pressed="false">임박</button>
+          <button class="filter-btn" id="filter_late" onclick="setChemFilter('late')" aria-pressed="false">지연</button>
+        </div><span class="helper">급한 라인부터 표시</span></div>
+        <div id="tab1ChemStatusContainer"></div>
+        <details class="inline-section"><summary>디스미어 13 · 14 연계 PM <span class="helper">화학동 2회마다 1회</span></summary><div id="inlineDesmearStatusContainer" class="inline-grid"></div></details>
+      </section>
       <details id="kakaoPanel" class="parser-box">
         <summary>📲 카톡 공지 반영 <span class="helper">붙여넣으면 자동 반영</span></summary>
         <div class="parser-content">
           <p class="helper">시각·건욕 명칭·특이사항을 자동 반영합니다. 직접 수정한 내용은 반영 버튼을 누르세요.</p>
           <textarea id="kakaoRawInput" rows="4" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 여기에 붙여넣으세요" onpaste="queueKakaoPaste()"></textarea>
           <button class="btn" onclick="parseAndApplyKakaoMsg()">공지 반영</button>
+          <details><summary>자동 연동 관리</summary><p class="helper">수집한 메시지와 시각을 반영합니다. 서버 연결이 필요합니다.</p><textarea id="kakaoEventsInput" aria-label="자동 수집 메시지 JSON" rows="4"></textarea><button class="btn" id="kakaoEventsApply" onclick="importKakaoEvents()">수집 메시지 반영</button><p id="kakaoEventsResult" role="status"></p></details>
         </div>
       </details>
 
@@ -528,7 +617,7 @@
             <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
             <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
           </div>
-          <button class="btn" onclick="copyShareText()">📋 공지 복사</button>
+          <button class="btn" onclick="copyShareText()">카톡에 공유할 공지 복사</button>
         </div>
         <div id="briefingCards" class="brief-grid" aria-label="공정별 PM 일정"></div>
         <details>
@@ -540,16 +629,7 @@
           <textarea id="shareTextOutput" class="report-area" aria-label="공유할 공지 원문" readonly></textarea>
         </details>
 
-        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
-        <div style="margin-top: 4px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
-          <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🧪 화학동 현재 상태</span>
-            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시간정정 · 시작/완료 바로 처리</span>
-          </div>
-          <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
-          <div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디스미어 13 · 14 PM · 화학동 2회마다 1회</div>
-          <div id="inlineDesmearStatusContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;"></div>
-        </div>
+
       </div>
     </div>
   </div>
@@ -811,6 +891,7 @@ const firebaseConfig = {
 };
 
 let db = null;
+let serverAuthWatching = false;
 let isFirebaseConnected = false;
 let databaseReadError = false;
 
@@ -1074,6 +1155,7 @@ async function flushPendingChanges() {
   if (pendingChanges.length && !retrySyncTimer) flushPendingChanges();
 }
 
+let chemDashboardFilter = 'all';
 let selectedDateStr = '2026-09-25';
 let lastCheckedDate = '';
 let currentDateChoice = 'today';
@@ -1088,6 +1170,45 @@ function getEtchingLine(dateObj) {
   return cycle[idx];
 }
 
+async function connectPMServer() {
+  const message=document.getElementById('serverLoginMessage');
+  if(typeof firebase==='undefined'||typeof firebase.auth!=='function') {message.textContent='로그인 서비스를 불러오지 못했습니다.';return;}
+  try { await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch(error) {message.textContent='로그인하지 못했습니다. '+(error.code||'다시 시도해주세요.');}
+}
+
+async function importKakaoEvents() {
+  const output=document.getElementById('kakaoEventsResult');
+  const button=document.getElementById('kakaoEventsApply');
+  if(!db||!remoteLoaded||databaseReadError||!isFirebaseConnected) {output.textContent='서버 연결을 먼저 확인해주세요. 수집 메시지는 그대로 보관됩니다.';return;}
+  if(pendingChanges.length||syncInFlight) {output.textContent='수동 변경 저장이 완료된 후 다시 반영해주세요.';return;}
+  button.disabled=true;
+  try {
+    const messages=JSON.parse(document.getElementById('kakaoEventsInput').value);
+    if(!Array.isArray(messages)||messages.length>1000) throw Error('메시지 배열은 최대 1000건입니다.');
+    if(messages.some(m=>m.kind==='schedule')) throw Error('일정 공지는 위 공지 반영 입력란에 원문으로 반영해주세요.');
+    const hashes=new Map();
+    for(const msg of messages) {
+      const bytes=new TextEncoder().encode(msg.postedAt+'\n'+msg.text);
+      const digest=await crypto.subtle.digest('SHA-256',bytes);
+      hashes.set(msg,Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''));
+    }
+    const now=new Date();let outcomes=[];
+    const saved=await db.ref('pm_system_data').transaction(remote=>{
+      if(!remote||!Array.isArray(remote.chemList)) throw Error('기존 서버 데이터를 확인할 수 없습니다.');
+      const reduced=window.PMKakao.reduceEvents(remote,messages,now,hashes);
+      outcomes=reduced.result;reduced.state.lastUpdated=now.toISOString();return reduced.state;
+    },undefined,false);
+    if(!saved.committed) throw Error('서버 저장이 완료되지 않았습니다.');
+    acceptRemoteState(saved.snapshot.val());safeRenderAll();
+    const changed=outcomes.filter(r=>['running','complete'].includes(r.type));
+    const review=outcomes.filter(r=>r.type==='review');
+    output.textContent='서버 반영 '+changed.length+'건 · 확인 필요 '+review.length+'건'+(review.length?' ('+review.map(r=>r.line).join(', ')+')':'');
+    // Keep input available so review items are not silently discarded.
+  } catch(error) {output.textContent='반영 실패: '+error.message;}
+  finally {button.disabled=false;}
+}
+
 function initFirebase() {
   const statusEl = document.getElementById('syncStatus');
   persistLocalState();
@@ -1097,6 +1218,10 @@ function initFirebase() {
     }
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
+    if (!serverAuthWatching && typeof firebase.auth === 'function') { serverAuthWatching=true; firebase.auth().onAuthStateChanged(user => {
+      document.getElementById('serverLoginMessage').textContent=user?'로그인됨':'서버 저장은 Google 로그인이 필요합니다.';
+      if(user) { db.ref('pm_system_data').off(); db.ref('.info/connected').off(); initFirebase(); }
+    }); }
     db.ref('.info/connected').on('value', snap => {
       isFirebaseConnected = snap.val() === true;
       statusEl.textContent = databaseReadError ? '⚠️ 서버 접근 제한 · 로컬 저장 모드' :
@@ -1245,35 +1370,56 @@ function chemAttention(line, now = new Date()) {
   return remaining <= 0 ? 'late' : remaining <= 7 ? 'warn' : 'normal';
 }
 
-function renderFocusSummary() {
-  const el = document.getElementById('focusSummary');
-  if (!el) return;
-  const counts = {running:0,warn:0,late:0};
-  chemList.forEach(line => { const state=chemAttention(line); if (line.status==='시작') counts.running++; if (state==='warn'||state==='late') counts[state]++; });
-  const html = [['running','진행 중'],['warn','7시간 이내 임박'],['late','지연 · 주기 초과']].map(([key,label])=>
-    `<button class="focus-pill ${key}" onclick="switchTab('tab2')" aria-label="화학동 ${label} ${counts[key]}개, 진척 보기"><strong>${counts[key]}<small style="font-size:12px;font-weight:500">개</small></strong><span>${label}</span></button>`).join('');
-  if(el.innerHTML!==html) el.innerHTML=html;
+function setChemFilter(filter) {
+  if(!['all','running','warn','late'].includes(filter)) return;
+  chemDashboardFilter=filter;renderTab1ChemStatus();
 }
-
+function openNoticePanel() {
+  switchTab('tab1');document.getElementById('kakaoPanel').open=true;
+  document.getElementById('kakaoRawInput').focus();
+}
+function relativePmDay(date,now=new Date()) {
+  const target=new Date(date);target.setHours(0,0,0,0);
+  const today=new Date(now);today.setHours(0,0,0,0);
+  const days=Math.round((target-today)/86400000);
+  const day=days===0?'오늘':days===1?'내일':days===-1?'어제':`${date.getMonth()+1}월 ${date.getDate()}일`;
+  return `${day} ${formatTimeKr(date.getHours(),date.getMinutes())}`;
+}
+function durationLabel(hours) {
+  const mins=Math.max(0,Math.ceil(Math.abs(hours)*60));
+  return mins>=60?`${Math.floor(mins/60)}시간${mins%60?' '+mins%60+'분':''}`:`${mins}분`;
+}
+function renderFocusSummary() {
+  const el=document.getElementById('focusSummary');if(!el)return;
+  const counts={running:0,warn:0,late:0};
+  chemList.forEach(line=>{const state=chemAttention(line);if(line.status==='시작')counts.running++;if(state==='warn'||state==='late')counts[state]++;});
+  const html=[['running','진행 중','작업 종료 시 완료 처리'],['warn','7시간 내 임박','다음 PM 준비가 필요한 라인'],['late','지연 · 주기 초과','우선 확인이 필요한 라인']].map(([key,label,hint])=>
+    `<button class="focus-pill ${key} ${chemDashboardFilter===key?'selected':''}" onclick="setChemFilter('${key}')" aria-label="화학동 ${label} ${counts[key]}개, 해당 라인 보기"><span>${label}</span><strong>${counts[key]}<small>개</small></strong><span class="summary-hint">${hint}</span></button>`).join('');
+  if(el.innerHTML!==html)el.innerHTML=html;
+}
 function renderTab1ChemStatus() {
-  const container = document.getElementById('tab1ChemStatusContainer');
-  if (!container) return;
-  chemList = ensureChemIntegrity(chemList);
-  const now=new Date();
-  const html=chemList.map(line=>{
-    const running=line.status==='시작', state=chemAttention(line,now);
-    const date=running?new Date(line.lastDone):getChemDue(line);
-    const remaining=(date-now)/3600000;
-    const label=state==='late'?(running?'미완료 지연':'주기 초과'):running?'PM 진행 중':state==='warn'?'7시간 이내 임박':`${remaining.toFixed(1)}H 남음`;
-    const badge=state==='late'?'red':state==='warn'?'yellow':running?'green':'blue';
-    const buildup=line.id==='화8'&&!running&&(now-new Date(line.lastDone))/3600000>48?'<div class="helper" style="color:var(--danger);margin-bottom:8px">⛔ 빌드업 금지</div>':'';
-    return `<article class="chem-overview ${state}"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-${badge}">${label}</span></div>
-      <div class="chem-work">${escapeHtml(line.note||'기본PM')}</div><div class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</div>
-      <div class="chem-time">${formatDateTimeKr(date)}</div>${buildup}<div class="chem-actions">
-      <button class="btn ${running?'btn-sub':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')">${running?'PM 완료':'PM 시작'}</button>
-      <button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')">시간정정</button></div></article>`;
-  }).join('');
-  if(container.innerHTML!==html) container.innerHTML=html;
+  const container=document.getElementById('tab1ChemStatusContainer');if(!container)return;
+  chemList=ensureChemIntegrity(chemList);const now=new Date();
+  const rank={late:0,running:1,warn:2,normal:3};
+  const visible=[...chemList].filter(line=>chemDashboardFilter==='all'||(chemDashboardFilter==='running'?line.status==='시작':chemAttention(line,now)===chemDashboardFilter))
+    .sort((a,b)=>rank[chemAttention(a,now)]-rank[chemAttention(b,now)]||getChemDue(a)-getChemDue(b));
+  const html=visible.map(line=>{
+    const running=line.status==='시작',state=chemAttention(line,now);
+    const started=new Date(line.lastDone),date=running?started:getChemDue(line),remaining=(date-now)/3600000;
+    const elapsed=(now-started)/3600000;
+    const label=state==='late'?(running?'완료 확인 필요':'주기 초과'):running?'PM 진행 중':state==='warn'?'PM 임박':'대기';
+    const countdown=running?`${durationLabel(elapsed)} 진행`:remaining<0?`${durationLabel(remaining)} 초과`:`${durationLabel(remaining)} 남음`;
+    const pct=Math.max(0,Math.min(100,running?elapsed/14*100:elapsed/72*100));
+    const buildup=line.id==='화8'&&!running&&elapsed>48?'<div class="buildup-warning">빌드업 금지 · 직전 완료 후 48시간 경과</div>':'';
+    const basis=line.kakaoTimeBasis?` · ${escapeHtml(line.kakaoTimeBasis)}`:'';
+    return `<article class="chem-overview ${state}" aria-label="${line.id} ${label}"><div class="chem-overview-head"><div class="line-identity"><span class="line-number">${line.id.slice(1)}</span><div><strong>${line.id}</strong><div class="chem-work">${escapeHtml(line.note||'기본PM')}</div></div></div><span class="state-label">${label}</span></div>
+      <div class="helper">${running?'PM 시작':'다음 PM'}</div><div class="chem-time">${relativePmDay(date,now)}</div>
+      <div class="cycle-caption"><strong>${countdown}</strong><span>${running?'14시간 기준':'72시간 주기'}</span></div><div class="cycle-track" aria-hidden="true"><div style="width:${pct}%"></div></div>
+      <div class="last-record">${running?'시작 기록':'직전 완료'} ${formatDateTimeKr(started)}${basis}</div>${buildup}
+      <div class="chem-actions"><button class="btn ${running?'complete-btn':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')" aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'PM 완료 처리':'PM 시작'}</button><button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button>${running?`<button class="btn btn-sub detail-btn" onclick="switchTab('tab2')" aria-label="${line.id} 진행 상세 보기">진척 ↗</button>`:''}</div></article>`;
+  }).join('')||`<div class="dashboard-empty"><strong>해당 상태의 라인이 없습니다.</strong><p>전체를 누르면 5개 라인의 일정을 확인할 수 있습니다.</p><button class="btn btn-sub" onclick="setChemFilter('all')">전체 라인 보기</button></div>`;
+  if(container.innerHTML!==html)container.innerHTML=html;
+  for(const key of ['all','running','warn','late']) {const button=document.getElementById('filter_'+key);if(button){button.className='filter-btn'+(chemDashboardFilter===key?' active':'');button.setAttribute?.('aria-pressed',String(chemDashboardFilter===key));}}
   renderFocusSummary();
 }
 
