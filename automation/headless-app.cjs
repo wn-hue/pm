@@ -1,5 +1,5 @@
 // Run: node --test tests/pm-regression.cjs
-// DOM and Firebase are isolated test doubles. No production database is contacted.
+// DOM and browser storage are isolated test doubles. No network access is available.
 process.env.TZ = 'Asia/Seoul';
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -30,7 +30,7 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
   nodes.get('passTimeInput').value='7시패스';
   const storage = new Map(Object.entries(stored));
   const localStorage = {getItem:key=>{if(storageError)throw Error('blocked');return storage.get(key)??null;},
-    setItem:(key,value)=>{if(storageError)throw Error('blocked');storage.set(key,value);},get length(){return storage.size;},key:i=>[...storage.keys()][i]};
+    setItem:(key,value)=>{if(storageError)throw Error('blocked');storage.set(key,value);},removeItem:key=>{if(storageError)throw Error('blocked');storage.delete(key);},get length(){return storage.size;},key:i=>[...storage.keys()][i]};
   const sessionStorage = {getItem:()=>null,setItem(){}};
   class ClockDate extends Date {
     constructor(...args){super(...(args.length?args:[clock]));}

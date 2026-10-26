@@ -2,16 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>동도금 PM 일정 & 실시간 통합 모니터링</title>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="automation/kakao-events.js"></script>
 
 <style>
   :root {
@@ -95,7 +91,7 @@
     border-radius: 8px;
     padding: 8px 12px;
   }
-  .sync-status-badge {
+  .local-save-badge {
     font-size: 12px;
     font-weight: 700;
     display: flex;
@@ -443,7 +439,7 @@
     .header-top h1 { font-size:20px; }
     .header-top-buttons { width:100%; }
     .header-top-buttons .btn { flex:1; }
-    .live-clock-box,.sync-status-badge { font-size:11.5px; }
+    .live-clock-box,.local-save-badge { font-size:11.5px; }
     .main-nav { position:fixed; top:auto; bottom:0; left:0; right:0; border-radius:16px 16px 0 0; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); border-top:1px solid var(--border-light); box-shadow:0 -4px 20px #0f172a08; }
     .nav-btn { font-size:11px; padding:5px 2px; }
     .nav-icon { display:block; font-size:20px; margin:0 0 2px; }
@@ -464,7 +460,6 @@
 
   /* Small usability adjustments within the original layout. */
   .brief-actions { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
-  .connection-tools summary { min-height:30px;font-size:12px;color:var(--text-secondary); }
   #kakaoRawInput { width:100%;min-height:120px;resize:vertical; }
   #kakaoParseResult:empty { display:none; }
   .message-time-setting input { display:block;max-width:100%;margin-top:6px; }
@@ -500,14 +495,13 @@
       </div>
     </div>
     <div class="header-bottom-bar">
-      <div id="syncStatus" class="sync-status-badge">
-        <span>⚪</span> 연결 확인 중...
+      <div id="localSaveStatus" class="local-save-badge">
+        💾 개인용 · 자동 저장
       </div>
       <div class="live-clock-box">
         <span>🕒</span> <span id="liveClock">로딩 중...</span>
       </div>
     </div>
-    <details class="connection-tools"><summary>연결 · 데이터 관리</summary><div class="settings-inline"><button class="btn btn-sub" id="serverLoginButton" onclick="connectPMServer()">서버 연결</button><button class="btn btn-sub" onclick="exportPMBackup()">기기 데이터 백업</button><span id="serverLoginMessage" role="status"></span></div><p class="helper">로그인 없이 이 기기에서 사용할 수 있습니다. 기기 간 동기화는 서버 권한이 있는 계정으로 연결하세요.</p><p class="helper" id="storageSummary"></p></details>
   </header>
 
   <div class="main-nav">
@@ -532,7 +526,6 @@
           <p id="kakaoParseResult" class="helper" role="status" aria-live="polite"></p>
           <details id="kakaoTimeDetails" class="message-time-setting"><summary>메시지에 날짜·시각이 없는 경우</summary><label for="kakaoMessageTime">메시지 시각</label><input id="kakaoMessageTime" type="datetime-local" aria-label="완료 메시지 시각"><p class="helper">실제 메시지 시각을 입력한 뒤 공지 반영을 누르세요.</p></details>
           <button class="btn" onclick="parseAndApplyKakaoMsg()">공지 반영</button>
-          <details><summary>자동 연동 관리</summary><p class="helper">수집한 메시지와 시각을 반영합니다. 서버 연결이 필요합니다.</p><textarea id="kakaoEventsInput" aria-label="자동 수집 메시지 JSON" rows="4"></textarea><button class="btn" id="kakaoEventsApply" onclick="importKakaoEvents()">수집 메시지 반영</button><p id="kakaoEventsResult" role="status"></p></details>
         </div>
       </details>
 
@@ -745,7 +738,7 @@
       <div class="modal-body">
         <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 12px; color: var(--text-secondary);">4주(28일) 전 진입 시 리마인드 알림이 자동 점등됩니다.</span>
-          <button class="btn btn-sm" onclick="syncDataToFirebase()">동기화 저장</button>
+          <span class="helper">변경 시 자동 저장</span>
         </div>
         <div class="table-responsive">
           <table>
@@ -783,22 +776,6 @@
 <div id="uiToast" role="status" aria-live="polite"></div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyAoX8WeDRc0lzKB1x-QB501Fd_WatuyCR0",
-  authDomain: "pm1234-3069b.firebaseapp.com",
-  databaseURL: "https://pm1234-3069b-default-rtdb.firebaseio.com",
-  projectId: "pm1234-3069b",
-  storageBucket: "pm1234-3069b.firebasestorage.app",
-  messagingSenderId: "716536956170",
-  appId: "1:716536956170:web:8d6f9e7fa9164f9ee626f3",
-  measurementId: "G-GYQXKQR7P4"
-};
-
-let db = null;
-let serverAuthWatching = false;
-let isFirebaseConnected = false;
-let databaseReadError = false;
-
 function escapeHtml(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -974,14 +951,10 @@ let elecCompletedFlags = recoverFlags('elec_completed_flags');
 let inlineDesmearFlags = recoverFlags('inline_desmear_flags');
 const INLINE_CHEM_IDS = ['화13','화14'];
 
-// Store only user changes for retry. Transactions merge them with the latest server state.
+// Keep one authoritative browser snapshot; legacy keys remain readable for migration.
 const STATE_FIELDS = ['chemList','pulseList','manualNotes','equipWorkFlags','elecDummyFlags','pulseProcessFlags','elecCompletedFlags','inlineDesmearFlags'];
 const MASTER_KEYS = ['chem_data_master','pulse_data_master','manual_notes_master','equip_work_flags_master','elec_dummy_flags_master','pulse_process_flags_master','elec_completed_flags_master','inline_desmear_flags_master'];
-const PENDING_KEY = 'pm_pending_changes_master';
-let pendingChanges = ensureArray(readStored(PENDING_KEY), []).filter(change => change && STATE_FIELDS.includes(change.field) && typeof change.key === 'string');
-let remoteLoaded = false;
-let syncInFlight = false;
-let retrySyncTimer = null;
+const LOCAL_STATE_KEY = 'pm_local_state_master';
 function currentState() {
   return JSON.parse(JSON.stringify({chemList,pulseList,manualNotes,equipWorkFlags,elecDummyFlags,pulseProcessFlags,elecCompletedFlags,inlineDesmearFlags}));
 }
@@ -994,7 +967,7 @@ function stateEntries(field, value) {
   return ensureObject(value);
 }
 
-function applyChanges(state, changes) {
+function applyLegacyChanges(state, changes) {
   const result = {...state};
   for (const field of STATE_FIELDS) {
     const map = {...stateEntries(field,result[field])};
@@ -1007,67 +980,44 @@ function applyChanges(state, changes) {
   return result;
 }
 
+function restoreLocalState(state) {
+  chemList=ensureChemIntegrity(state.chemList,chemList);
+  pulseList=ensurePulseIntegrity(state.pulseList,pulseList);
+  manualNotes=normalizeNotes(state.manualNotes);
+  equipWorkFlags=ensureObject(state.equipWorkFlags);
+  elecDummyFlags=ensureObject(state.elecDummyFlags);
+  pulseProcessFlags=ensureObject(state.pulseProcessFlags);
+  elecCompletedFlags=ensureObject(state.elecCompletedFlags);
+  inlineDesmearFlags=ensureObject(state.inlineDesmearFlags);
+  lastLocalState=currentState();
+}
 function persistLocalState() {
-  const state = currentState();
+  const state=currentState();
   try {
-    STATE_FIELDS.forEach((field,index) => localStorage.setItem(MASTER_KEYS[index], JSON.stringify(state[field])));
-    localStorage.setItem(PENDING_KEY,JSON.stringify(pendingChanges));
-    const summary=document.getElementById('storageSummary');
-    if(summary) summary.textContent=`이 기기에 저장됨 · 서버 저장 대기 ${pendingChanges.length}건`;
-    return true;
-  } catch (error) {
-    console.error('로컬 저장 실패:',error);
-    document.getElementById('syncStatus').textContent = '⚠️ 로컬 저장 실패 (저장 공간 확인)';
+    // One atomic storage write is sufficient to recover every field after a reload.
+    localStorage.setItem(LOCAL_STATE_KEY,JSON.stringify(state));
+  } catch(error) {
+    console.error('기기 저장 실패:',error);
+    document.getElementById('localSaveStatus').textContent='⚠️ 이 브라우저에 저장하지 못했습니다 (저장 공간 확인)';
     return false;
   }
+  // Keep legacy recovery keys compatible; the snapshot remains authoritative if a mirror fails.
+  try {STATE_FIELDS.forEach((field,index)=>localStorage.setItem(MASTER_KEYS[index],JSON.stringify(state[field])));} catch(error) {console.warn('이전 형식 사본 저장 실패:',error);}
+  document.getElementById('localSaveStatus').textContent='💾 개인용 · 자동 저장';
+  return true;
 }
-
-function acceptRemoteState(remote) {
-  const base = {...remote,
-    chemList: ensureChemIntegrity(remote.chemList,chemList),
-    pulseList: ensurePulseIntegrity(remote.pulseList,pulseList),
-    manualNotes: normalizeNotes(remote.manualNotes)
-  };
-  const merged = applyChanges(base,pendingChanges);
-  chemList = ensureChemIntegrity(merged.chemList,chemList);
-  pulseList = ensurePulseIntegrity(merged.pulseList,pulseList);
-  manualNotes = normalizeNotes(merged.manualNotes);
-  equipWorkFlags = ensureObject(merged.equipWorkFlags);
-  elecDummyFlags = ensureObject(merged.elecDummyFlags);
-  pulseProcessFlags = ensureObject(merged.pulseProcessFlags);
-  elecCompletedFlags = ensureObject(merged.elecCompletedFlags);
-  inlineDesmearFlags = ensureObject(merged.inlineDesmearFlags);
-  lastLocalState = currentState();
-  persistLocalState();
-}
-
-async function flushPendingChanges() {
-  if (!db || !isFirebaseConnected || !remoteLoaded || syncInFlight || !pendingChanges.length) return;
-  syncInFlight = true;
-  const batch = pendingChanges.slice();
-  try {
-    const result = await db.ref('pm_system_data').transaction(remote => {
-      const base = remote || currentState();
-      const merged = applyChanges(base,batch);
-      merged.chemList = ensureChemIntegrity(merged.chemList,chemList);
-      merged.pulseList = ensurePulseIntegrity(merged.pulseList,pulseList);
-      merged.lastUpdated = new Date().toISOString();
-      return merged;
-    }, undefined, false);
-    if (!result.committed) throw new Error('동기화 미완료');
-    pendingChanges.splice(0,batch.length);
-    acceptRemoteState(result.snapshot.val() || {});
-    if (isFirebaseConnected) document.getElementById('syncStatus').textContent = '🟢 실시간 서버 연결됨';
-    safeRenderAll();
-  } catch (error) {
-    console.error('Firebase sync error:',error);
-    document.getElementById('syncStatus').textContent = '⚠️ 서버 저장 실패 · 로컬 변경 보관 중';
-    clearTimeout(retrySyncTimer);
-    retrySyncTimer = setTimeout(() => { retrySyncTimer = null; flushPendingChanges(); },15000);
-  } finally {
-    syncInFlight = false;
+function initializeLocalData() {
+  const saved=readStored(LOCAL_STATE_KEY);
+  const valid=saved && typeof saved==='object' && !Array.isArray(saved) && STATE_FIELDS.every(field=>field in saved) && ['chemList','pulseList','manualNotes'].every(field=>Array.isArray(saved[field]));
+  if(valid) restoreLocalState(saved);
+  else {
+    // Recover unsent changes once, entirely inside this browser.
+    const changes=ensureArray(readStored('pm_pending_changes_master'),[]).filter(change=>change && STATE_FIELDS.includes(change.field) && typeof change.key==='string');
+    if(changes.length) restoreLocalState(applyLegacyChanges(currentState(),changes));
   }
-  if (pendingChanges.length && !retrySyncTimer) flushPendingChanges();
+  if(persistLocalState()) {
+    try {localStorage.removeItem('pm_pending_changes_master');} catch(error) { /* A later startup can retry cleanup. */ }
+  }
 }
 
 let selectedDateStr = '2026-09-25';
@@ -1084,122 +1034,16 @@ function getEtchingLine(dateObj) {
   return cycle[idx];
 }
 
-async function connectPMServer() {
-  const message=document.getElementById('serverLoginMessage');
-  const button=document.getElementById('serverLoginButton');
-  if(typeof firebase==='undefined'||typeof firebase.auth!=='function') {message.textContent='로그인 서비스를 불러오지 못했습니다.';return;}
-  button.disabled=true;
-  try { await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-  catch(error) {message.textContent='로그인하지 못했습니다. '+(error.code||'다시 시도해주세요.');}
-  finally {button.disabled=false;}
-}
-
-async function importKakaoEvents() {
-  const output=document.getElementById('kakaoEventsResult');
-  const button=document.getElementById('kakaoEventsApply');
-  if(!db||!remoteLoaded||databaseReadError||!isFirebaseConnected) {output.textContent='서버 연결을 먼저 확인해주세요. 수집 메시지는 그대로 보관됩니다.';return;}
-  if(pendingChanges.length||syncInFlight) {output.textContent='수동 변경 저장이 완료된 후 다시 반영해주세요.';return;}
-  button.disabled=true;
-  try {
-    const messages=JSON.parse(document.getElementById('kakaoEventsInput').value);
-    if(!Array.isArray(messages)||messages.length>1000) throw Error('메시지 배열은 최대 1000건입니다.');
-    if(messages.some(m=>m.kind==='schedule')) throw Error('일정 공지는 위 공지 반영 입력란에 원문으로 반영해주세요.');
-    const hashes=new Map();
-    for(const msg of messages) {
-      const bytes=new TextEncoder().encode(msg.postedAt+'\n'+msg.text);
-      const digest=await crypto.subtle.digest('SHA-256',bytes);
-      hashes.set(msg,Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''));
-    }
-    const now=new Date();let outcomes=[];
-    const saved=await db.ref('pm_system_data').transaction(remote=>{
-      if(!remote||!Array.isArray(remote.chemList)) throw Error('기존 서버 데이터를 확인할 수 없습니다.');
-      const reduced=window.PMKakao.reduceEvents(remote,messages,now,hashes);
-      outcomes=reduced.result;reduced.state.lastUpdated=now.toISOString();return reduced.state;
-    },undefined,false);
-    if(!saved.committed) throw Error('서버 저장이 완료되지 않았습니다.');
-    acceptRemoteState(saved.snapshot.val());safeRenderAll();
-    const changed=outcomes.filter(r=>['running','complete'].includes(r.type));
-    const review=outcomes.filter(r=>r.type==='review');
-    output.textContent='서버 반영 '+changed.length+'건 · 확인 필요 '+review.length+'건'+(review.length?' ('+review.map(r=>r.line).join(', ')+')':'');
-    // Keep input available so review items are not silently discarded.
-  } catch(error) {output.textContent='반영 실패: '+error.message;}
-  finally {button.disabled=false;}
-}
-
-function initFirebase() {
-  const statusEl = document.getElementById('syncStatus');
-  persistLocalState();
-  try {
-    if (typeof firebase === 'undefined') {
-      statusEl.textContent = '⚠️ 로컬 저장 모드'; return;
-    }
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    if (!serverAuthWatching && typeof firebase.auth === 'function') { serverAuthWatching=true; firebase.auth().onAuthStateChanged(user => {
-      document.getElementById('serverLoginMessage').textContent=user?'로그인됨':'서버 저장은 Google 로그인이 필요합니다.';
-      remoteLoaded=false; databaseReadError=false;
-      db.ref('pm_system_data').off(); db.ref('.info/connected').off(); initFirebase();
-    }); }
-    db.ref('.info/connected').on('value', snap => {
-      isFirebaseConnected = snap.val() === true;
-      statusEl.textContent = databaseReadError ? '⚠️ 서버 접근 제한 · 로컬 저장 모드' :
-        isFirebaseConnected && remoteLoaded ? '🟢 실시간 서버 연결됨' :
-        isFirebaseConnected ? '⚪ 서버 데이터 확인 중...' : '🔴 오프라인 · 로컬 변경 보관';
-      if (isFirebaseConnected) { clearTimeout(retrySyncTimer); retrySyncTimer = null; flushPendingChanges(); }
-    });
-    db.ref('pm_system_data').on('value', snapshot => {
-      const remote = snapshot.val();
-      databaseReadError = false;
-      remoteLoaded = true;
-      statusEl.textContent = isFirebaseConnected ? '🟢 실시간 서버 연결됨' : '🔴 오프라인 · 로컬 변경 보관';
-      if (remote) acceptRemoteState(remote);
-      else if (!pendingChanges.length) {
-        const state = currentState();
-        for (const field of STATE_FIELDS) {
-          for (const [key,value] of Object.entries(stateEntries(field,state[field]))) {
-            if(field==='chemList' && value.needsReview) continue;
-            pendingChanges.push({field,key,value,ifMissing:true});
-          }
-        }
-        persistLocalState();
-      }
-      migrateLegacyTimers();
-      safeRenderAll();
-      flushPendingChanges();
-    }, error => {
-      remoteLoaded = false;
-      databaseReadError = true;
-      console.error('Firebase read error:',error);
-      statusEl.textContent = error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied' ?
-        '⚠️ 서버 접근 제한 · 로컬 저장 모드' : '⚠️ 서버 읽기 실패 · 로컬 저장 모드';
-    });
-  } catch (error) {
-    console.error('Firebase Init Error:',error);
-    statusEl.textContent = '⚠️ 로컬 저장 모드';
-  }
-}
-
-function syncDataToFirebase() {
-  chemList = ensureChemIntegrity(chemList,lastLocalState.chemList);
-  pulseList = ensurePulseIntegrity(pulseList,lastLocalState.pulseList);
-  manualNotes = normalizeNotes(manualNotes);
-  for (const line of chemList.filter(item=>item.status==='완료')) {
+function savePMData() {
+  chemList=ensureChemIntegrity(chemList,lastLocalState.chemList);
+  pulseList=ensurePulseIntegrity(pulseList,lastLocalState.pulseList);
+  manualNotes=normalizeNotes(manualNotes);
+  for(const line of chemList.filter(item=>item.status==='완료')) {
     const previous=lastLocalState.chemList.find(item=>item.id===line.id);
-    if (previous) recordInlineChemCompletion(previous,new Date(line.lastDone));
+    if(previous) recordInlineChemCompletion(previous,new Date(line.lastDone));
   }
-  const state = currentState();
-  for (const field of STATE_FIELDS) {
-    const before = stateEntries(field,lastLocalState[field]);
-    const after = stateEntries(field,state[field]);
-    for (const key of new Set([...Object.keys(before),...Object.keys(after)])) {
-      if (JSON.stringify(before[key]) === JSON.stringify(after[key])) continue;
-      pendingChanges.push(key in after ? {field,key,value:after[key]} : {field,key,deleted:true});
-    }
-  }
-  lastLocalState = state;
-  persistLocalState();
-  clearTimeout(retrySyncTimer); retrySyncTimer = null;
-  flushPendingChanges();
+  lastLocalState=currentState();
+  return persistLocalState();
 }
 
 function formatTimeKr(hour, min) {
@@ -1327,7 +1171,7 @@ function renderTab1ChemStatus() {
   chemList = ensureChemIntegrity(chemList);
   const now=new Date();
   const html=chemList.map(line=>{
-    if(line.needsReview) return `<article class="chem-overview"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-sub">기록 확인 필요</span></div><p class="helper">서버 연결 또는 실제 시각을 입력해주세요.</p><div class="chem-actions"><button class="btn" onclick="setChemStepStatusById('${line.id}','시작')">PM 시작</button><button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></article>`;
+    if(line.needsReview) return `<article class="chem-overview"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-sub">기록 확인 필요</span></div><p class="helper">실제 PM 시각을 입력해주세요.</p><div class="chem-actions"><button class="btn" onclick="setChemStepStatusById('${line.id}','시작')">PM 시작</button><button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></article>`;
 
     const running=line.status==='시작', state=chemAttention(line,now);
     const date=running?new Date(line.lastDone):getChemDue(line);
@@ -1535,7 +1379,7 @@ function parseAndApplyKakaoMsg() {
       }
     }
   }
-  syncDataToFirebase(); safeRenderAll();
+  savePMData(); safeRenderAll();
   if(missingTimeCount) document.getElementById('kakaoTimeDetails').open=true;
   if (!updatedChemCount && !updatedNoteCount && !updatedPMNoteCount && !ignoredPassCount) {
     showToast(missingTimeCount ? '메시지 날짜·시각을 확인해주세요.' : staleCount ? '오래된 공지는 현재 기록에 반영하지 않았습니다.' : skippedInlineCount ? '디화13·14 디스미어 PM은 첫 화면의 PM 기록에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
@@ -1570,8 +1414,8 @@ window.onload = function() {
   const mD = document.getElementById('manualDateInput');
   if (mD) mD.value = selectedDateStr;
 
+  initializeLocalData();
   migrateLegacyTimers();
-  initFirebase();
   updateDateToggleUI();
   updateManualLineOptions();
 
@@ -2018,7 +1862,7 @@ function addManualNote() {
   const key=manualNoteKey(note);
   if(manualNotes.some(n=>manualNoteKey(n)===key && manualNoteKey(n)!==editingManualNote)) {status.textContent='같은 일정이 이미 저장되어 있습니다.';return;}
   if(editingManualNote) manualNotes=manualNotes.filter(n=>manualNoteKey(n)!==editingManualNote);
-  manualNotes.push(note);syncDataToFirebase();
+  manualNotes.push(note);savePMData();
   cancelManualEdit();document.getElementById('manualContentInput').value='';document.getElementById('scheduleRawInput').value='';
   document.getElementById('scheduleParseResult').textContent='';
   status.textContent=`${date} · ${line} 저장 완료. 해당 날짜의 공지 복사에 포함됩니다.`;
@@ -2043,7 +1887,7 @@ function cancelManualEdit() {
 function removeManualNote(index) {
   const note=manualNotes[index];if(!note) return;
   if(editingManualNote===manualNoteKey(note)) cancelManualEdit();
-  manualNotes.splice(index,1);syncDataToFirebase();safeRenderAll();
+  manualNotes.splice(index,1);savePMData();safeRenderAll();
 }
 function viewManualNoteDate(index) {
   if(!manualNotes[index]) return;
@@ -2122,7 +1966,7 @@ function addInlinePMRecord() {
   const text=document.getElementById('inlinePMWork').value.trim(),result=document.getElementById('inlinePMResult');
   if(!validDateTime(date+'T00:00') || !INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===line) || !isRoutinePMText(text)) {result.textContent='날짜·디스미어 라인·PM 작업 내용을 확인해주세요. 별도 공사·점검은 특이사항에서 기록하세요.';return;}
   if(!manualNotes.some(n=>n.date===date&&n.line===line&&n.text===text)) manualNotes.push({date,line,text});
-  syncDataToFirebase();safeRenderAll();result.textContent=`${date} · ${line} PM 기록 저장 완료`;
+  savePMData();safeRenderAll();result.textContent=`${date} · ${line} PM 기록 저장 완료`;
 }
 function renderInlinePMHistory() {
   const el=document.getElementById('inlinePMHistory');if(!el) return;
@@ -2270,7 +2114,7 @@ function migrateLegacyTimers() {
       delete flags[key]; changed = true;
     }
   }
-  if (changed) syncDataToFirebase();
+  if (changed) savePMData();
 }
 
 function getGaugeElectroLines() {
@@ -2663,7 +2507,7 @@ function setChemStepStatusById(lineId,st) {
   if(!line.needsReview) line.previousCompletion = line.lastDone;
   line.needsReview=false; line.backlightPmAt = null;
   line.status = '시작'; line.lastDone = new Date().toISOString();
-  syncDataToFirebase(); safeRenderAll();
+  savePMData(); safeRenderAll();
   showToast(`${lineId} PM 시작 시간 저장 완료`);
 }
 
@@ -2679,7 +2523,7 @@ function completeChemPM(lineId) {
   line.status = '완료'; line.backlightPmAt = null;
   line.lastDone = new Date().toISOString();
 
-  syncDataToFirebase();
+  savePMData();
   renderChemList();
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
@@ -2694,7 +2538,7 @@ function togglePulseProcess(lineName,isChecked,dateStr = selectedDateStr) {
     const now = new Date();
     pulseProcessFlags[key] = {isStarted:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
   } else delete pulseProcessFlags[key];
-  syncDataToFirebase(); renderElectroGauges(new Date());
+  savePMData(); renderElectroGauges(new Date());
 }
 
 function updatePulseProcessTime(lineName,part,val,dateStr = selectedDateStr) {
@@ -2710,13 +2554,13 @@ function completeElecPM(lineName,dateStr = selectedDateStr) {
   delete elecDummyFlags[key];
   delete pulseProcessFlags[key];
 
-  syncDataToFirebase();
+  savePMData();
   renderElectroGauges(new Date());
 }
 
 function restoreCompletedElec() {
   getElectroLines().forEach(line => { delete elecCompletedFlags[timerKey(line.name)]; });
-  syncDataToFirebase(); renderElectroGauges(new Date());
+  savePMData(); renderElectroGauges(new Date());
 }
 
 function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
@@ -2725,7 +2569,7 @@ function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
     const now = new Date();
     elecDummyFlags[key] = {isDummy:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
   } else delete elecDummyFlags[key];
-  syncDataToFirebase(); renderElectroGauges(new Date());
+  savePMData(); renderElectroGauges(new Date());
 }
 
 function updateElecDummyTimeSelect(lineName,part,val,dateStr = selectedDateStr) {
@@ -2741,7 +2585,7 @@ function updateTimerTime(flags,lineName,part,val,dateStr = selectedDateStr) {
   if (part === 'h') start.setHours(value); else start.setMinutes(value);
   start.setSeconds(0,0);
   flag.h = start.getHours(); flag.m = start.getMinutes(); flag.startedAt = start.toISOString();
-  syncDataToFirebase(); updateLiveTimesOnly(new Date());
+  savePMData(); updateLiveTimesOnly(new Date());
 }
 
 function renderChemList() {
@@ -2810,7 +2654,7 @@ function updateChemRealtimeStatuses() {
     const box = document.getElementById(`chem_box_${idx}`);
     if (!box) return;
     const t = new Date(c.lastDone);
-    if(c.needsReview) {box.innerText='실제 PM 기록을 확인해주세요. 서버 연결 또는 시간정정으로 등록할 수 있습니다.';return;}
+    if(c.needsReview) {box.innerText='실제 PM 기록을 확인해주세요. 시간정정으로 등록할 수 있습니다.';return;}
     if (isNaN(t.getTime())) { box.innerText = '일시 확인 필요'; return; }
 
     const isRunning = (c.status === '시작');
@@ -2880,7 +2724,7 @@ function updateChemRealtimeStatuses() {
 function setChemNow(idx) {
   delete chemList[idx].plannedDue;
   chemList[idx].lastDone = new Date().toISOString();
-  syncDataToFirebase(); safeRenderAll();
+  savePMData(); safeRenderAll();
 }
 
 let activePulseReminds = [];
@@ -2947,7 +2791,7 @@ function dismissRemindBanner() {
 function updatePulseDate(idx, val) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(val) || !validDateTime(val + 'T00:00')) { alert('유효한 작업일을 입력해주세요.'); renderPulseTable(); return; }
   pulseList[idx].lastDate = val;
-  syncDataToFirebase();
+  savePMData();
   renderPulseTable();
 }
 
@@ -3116,16 +2960,6 @@ async function copyShareText() {
   }
 }
 
-function buildPMBackup() {
-  return {format:'pm-backup',version:1,exportedAt:new Date().toISOString(),state:currentState(),pendingChanges:JSON.parse(JSON.stringify(pendingChanges))};
-}
-function exportPMBackup() {
-  const blob=new Blob([JSON.stringify(buildPMBackup(),null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob), link=document.createElement('a');
-  link.href=url;link.download=`pm-backup-${formatDateOnly(new Date())}.json`;link.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);showToast('기기 데이터 백업을 저장했습니다.');
-}
-
 let toastTimer = null;
 function showToast(message) {
   const el=document.getElementById('uiToast');
@@ -3200,7 +3034,7 @@ function saveChemTimeEditor() {
   if(!date) {error.textContent='유효한 일자를 입력해주세요.';return;}
   if(line.needsReview) line.status='완료';
   delete line.plannedDue; line.needsReview=false; line.lastDone=date.toISOString();
-  syncDataToFirebase(); safeRenderAll(); closeModal('chemTimeModal');
+  savePMData(); safeRenderAll(); closeModal('chemTimeModal');
   showToast(`${line.id} 시간정정 완료`);
 }
 
