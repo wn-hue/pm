@@ -567,6 +567,7 @@
             <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시간정정 · 시작/완료 바로 처리</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
+          <details id="inlinePMEntry" ontoggle="if(this.open) openInlinePMForm()"><summary>디스미어 13·14 PM 기록</summary><p class="helper">건욕·기본 PM의 실제 작업일을 등록합니다. 별도 공사·점검 일정은 특이사항에 기록하세요.</p><div class="settings-inline"><label for="inlinePMDate">작업일</label><input type="date" id="inlinePMDate" aria-label="디스미어 PM 작업일"><select id="inlinePMLine" aria-label="디스미어 PM 라인"><option value="디스미어 13">디스미어 13</option><option value="디스미어 14">디스미어 14</option></select><input id="inlinePMWork" aria-label="디스미어 PM 작업 내용" value="기본PM" placeholder="기본PM 또는 스웰러·망간 건욕"><button class="btn btn-sub btn-sm" onclick="addInlinePMRecord()">PM 기록 저장</button></div><p id="inlinePMResult" class="helper" role="status"></p><div id="inlinePMHistory"></div></details>
           <div id="inlineDesmearSection" hidden><div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디스미어 13 · 14 PM · 화학동 2회마다 1회</div>
           <div id="inlineDesmearStatusContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;"></div></div>
         </div>
@@ -582,7 +583,7 @@
         <span class="badge badge-yellow">해당 날짜 공지에 자동 포함</span>
       </div>
       
-      <p class="helper">전달받은 문장을 적으면 날짜·라인·내용으로 정리합니다. 확인 후 저장하면 그날 공지에 함께 들어갑니다.</p>
+      <p class="helper">유산동 필터 교체·옥사멧 점검·인써트 교체 등 별도 공사·점검·일정만 기록합니다. 약품 건욕과 기본 PM은 PM 관리에서 처리합니다.</p>
       <textarea id="scheduleRawInput" rows="3" oninput="updateScheduleInput()" aria-label="기억할 일정 문장" placeholder="디스미어12&#10;옥사멧점검 이번주 수요일에 진행예정 이오니 준비 바랍니다."></textarea>
       <div class="settings-inline"><div id="scheduleParseActions" hidden><button class="btn btn-sub btn-sm" onclick="parseScheduleInput()">문장에서 일정 가져오기</button></div><button class="btn btn-sub btn-sm" onclick="openManualNoteEditor()">날짜·라인 직접 입력</button></div>
       <p id="scheduleParseResult" class="helper" role="status" aria-live="polite"></p>
@@ -596,10 +597,9 @@
         </div>
 
         <div style="flex:1; min-width:160px;">
-          <label for="manualContentInput">공유할 내용</label><input type="text" id="manualContentInput" aria-label="특이사항 내용" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="특이사항 직접 입력 또는 아래 전용 태그 클릭" style="width:100%;">
+          <label for="manualContentInput">공유할 내용</label><input type="text" id="manualContentInput" aria-label="특이사항 내용" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="예: 유산동 필터 교체, 옥사멧 점검, 인써트 교체" style="width:100%;">
         </div>
         <div>
-          <label for="manualNoteMode">반영 방식</label><select id="manualNoteMode" aria-label="특이사항 반영 방식"><option value="schedule">특이사항 추가 (괄호)</option><option value="work">PM 작업 내용</option></select>
           <button class="btn" id="manualSaveButton" onclick="addManualNote()">저장</button><button class="btn btn-sub btn-sm" id="manualCancelEditButton" style="display:none" onclick="cancelManualEdit()">수정 취소</button>
         </div>
       </div>
@@ -1368,7 +1368,7 @@ function extractChemWork(text) {
   const rules = [
     ['촉매 건욕',/촉매\s*건욕/], ['화학동 건욕',/화학동\s*건욕/],
     ['촉매cs',/촉매\s*(?:cs|c\/s)/i], ['전체건욕',/전체\s*건욕/],
-    ['인써트 교체',/인[써서]트\s*교체/], ['설비작업',/설비\s*작업/], ['기본PM',/기본\s*PM/i]
+    ['기본PM',/기본\s*PM/i]
   ];
   return rules.filter(([,pattern]) => pattern.test(text)).map(([name]) => name).join(' · ');
 }
@@ -1417,12 +1417,12 @@ function parseAndApplyKakaoMsg() {
     if (formatDateOnly(headerDate) === formatDateOnly(now)) selectQuickDay('today');
     else if (formatDateOnly(headerDate) === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
   }
-  let updatedChemCount = 0; let updatedNoteCount = 0; let skippedInlineCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0; let staleCount = 0;
+  let updatedChemCount = 0; let updatedNoteCount = 0; let updatedPMNoteCount = 0; let skippedInlineCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0; let staleCount = 0;
   const manualTime = document.getElementById('kakaoMessageTime').value;
   const featureRules = [
     ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
-    ['산탈지.산세.프리딥.박리',/프리딥/], ['산탈지.산세.박리',/산탈지[.·\s]*산세[.·\s]*박리/], ['유산동필터 교체',/유산동\s*필터(?:\s*교체)?/],
-    ['인써트 교체',/인[써서]트\s*교체/], ['전체건욕',/전체\s*건욕/], ['설비작업',/설비\s*작업/]
+    ['산탈지.산세.프리딥.박리',/프리딥/], ['산탈지.산세.박리',/산탈지[.·\s]*산세[.·\s]*박리/],
+    ['전체건욕',/전체\s*건욕/]
   ];
   const linePattern = /(?:디화\s*)(?:14|13)(?!\d)|(?:화학동\s*|화\s*)(?:14|13|12|11|10|9|8|7)(?!\d)|(?:디스미어\s*|디\s*)(?:15|14|13|12|11|10|9|8|7|6)(?!\d)|(?:전기동\s*|전\s*)(?:22|21|20|18|17|16|15|14|13|12|11|9)(?!\d)|MSF(?:\s*전기동)?|에[13]\s*[.·,]\s*[24]|에6(?!\d)|고압수세\s*1(?!\d)|(?:데버링\s*|데)(?:2|3)(?!\d)/gi;
   for (const row of kakaoRows(raw,reference,now)) {
@@ -1441,13 +1441,28 @@ function parseAndApplyKakaoMsg() {
       if (/^디화/.test(token)) key = /디스미어|스웰러|망간/.test(segment.slice(match[0].length)) ? '디스미어 '+number : '화'+number;
       if (['화13','화14'].includes(key) && /스웰러|망간|디스미어/.test(segment.slice(match[0].length))) key = '디스미어 '+number;
       // Inline desmear schedules are entered only through the manual form.
-      if (['디스미어 13','디스미어 14'].includes(key)) { skippedInlineCount++; continue; }
       let date = new Date(row.date);
       const explicit = noticeDate(segment,now);
       const dayOnly = segment.match(/(?:^|[^\d])(\d{1,2})일/);
       if (explicit) date = explicit;
       else if (dayOnly) date = resolveDayInput(Number(dayOnly[1]),date) || date;
       else if (/익일|내일/.test(segment)) date.setDate(date.getDate()+1);
+      let specialWorks=extractSpecialWorks(segment);
+      const onlySpecial=!specialWorkError(segment) && !/양산|액\s*수위|백\s*라이트|빽\s*라이트/.test(segment);
+      if(onlySpecial && !specialWorks.length) {
+        const body=normalizeSpecialWorkText(segment.slice(match[0].length)
+          .replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}일/g,' ')
+          .replace(/(?:오전|오후)?\s*\d{1,2}(?::\d{2}|시(?:\s*\d{1,2}분)?)/g,' ')
+          .replace(/익일|내일|오늘/g,' ').replace(/(?:진행\s*예정|예정|진행중|완료|종료)\s*(?:입니다|합니다)?[.!]?$/,'')
+          .replace(/\s+/g,' ').replace(/^[\s:,.\-]+|[\s:,.\-]+$/g,''));
+        if(body && !specialWorkError(body)) specialWorks=[body];
+      }
+      if(!/취소|철회|작업\s*없/.test(segment)) for(const tag of specialWorks) {
+        const dateStr=formatDateOnly(date);
+        if(!manualNotes.some(note=>note.date===dateStr&&note.line===key&&normalizeSpecialWorkText(note.text)===tag)) {manualNotes.push({date:dateStr,line:key,text:tag,kind:'schedule'});updatedNoteCount++;}
+      }
+      if(['디스미어 13','디스미어 14'].includes(key)) {if(isRoutinePMText(segment)) skippedInlineCount++;continue;}
+      if(onlySpecial) continue;
       const item = chemList.find(chem => chem.id === key);
       if (item) {
         const backlightPm = row.backlightTime && /(?:^|[^a-z])PM(?:$|[^a-z])/i.test(segment) && !/PM\s*후|완료|종료|예정|취소|미실시|양산|액\s*수위/.test(segment);
@@ -1515,17 +1530,17 @@ function parseAndApplyKakaoMsg() {
           if (!pattern.test(segment)) continue;
           const dateStr = formatDateOnly(date);
           if (manualNotes.some(note => note.date === dateStr && note.line === key && note.text === tag)) continue;
-          manualNotes.push({date:dateStr,line:key,text:tag}); updatedNoteCount++;
+          manualNotes.push({date:dateStr,line:key,text:tag}); updatedPMNoteCount++;
         }
       }
     }
   }
   syncDataToFirebase(); safeRenderAll();
   if(missingTimeCount) document.getElementById('kakaoTimeDetails').open=true;
-  if (!updatedChemCount && !updatedNoteCount && !ignoredPassCount) {
-    showToast(missingTimeCount ? '메시지 날짜·시각을 확인해주세요.' : staleCount ? '오래된 공지는 현재 기록에 반영하지 않았습니다.' : skippedInlineCount ? '디화13·14 디스미어 PM은 특이사항 수동에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
+  if (!updatedChemCount && !updatedNoteCount && !updatedPMNoteCount && !ignoredPassCount) {
+    showToast(missingTimeCount ? '메시지 날짜·시각을 확인해주세요.' : staleCount ? '오래된 공지는 현재 기록에 반영하지 않았습니다.' : skippedInlineCount ? '디화13·14 디스미어 PM은 첫 화면의 PM 기록에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
   }
-  showToast(`공지 반영 완료 · 일정 ${updatedChemCount}건 · 특이사항 ${updatedNoteCount}건${ignoredPassCount?' · 전기동 7시패스 고정':''}${skippedInlineCount ? ' · 디화 디스미어는 수동 등록' : ''}`);
+  showToast(`공지 반영 완료 · PM 일정 ${updatedChemCount}건 · PM 작업 ${updatedPMNoteCount}건 · 특이사항 ${updatedNoteCount}건${ignoredPassCount?' · 전기동 7시패스 고정':''}${skippedInlineCount ? ' · 디화 디스미어는 수동 등록' : ''}`);
   savePassPreference();
   if (missingTimeCount) {showToast(`일정 ${updatedChemCount}건 반영 · ${missingTimeCount}건은 날짜·시각 확인 필요`);return;}
   input.value = '';
@@ -1538,7 +1553,7 @@ function safeRenderAll() {
   try { renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e){ console.error(e); }
   try { renderWeeklyMatrix(); } catch(e){ console.error(e); }
   try { updateManualLineOptions(); } catch(e){ console.error(e); }
-  try { renderManualNotesList(); } catch(e){ console.error(e); }
+  try { renderInlinePMHistory(); renderManualNotesList(); } catch(e){ console.error(e); }
   try { renderChemList(); } catch(e){ console.error(e); }
   try { renderPulseTable(); } catch(e){ console.error(e); }
   try { renderActiveChemGauges(new Date()); } catch(e){ console.error(e); }
@@ -1554,7 +1569,6 @@ window.onload = function() {
   
   const mD = document.getElementById('manualDateInput');
   if (mD) mD.value = selectedDateStr;
-  document.getElementById('manualNoteMode').value='schedule';
 
   migrateLegacyTimers();
   initFirebase();
@@ -1848,53 +1862,18 @@ function onManualLineChange(val) {
   if (!container) return;
   container.innerHTML = '';
 
-  let tags = [];
-
-  if (val.startsWith('디스미어')) {
-    if (['디스미어 13','디스미어 14'].includes(val)) tags.push({name:'기본PM',isAppend:false});
-    tags.push({ name: '스웰러 건욕', isAppend: false });
-    tags.push({ name: '망간 건욕', isAppend: false });
-  } else if (val.startsWith('화') && ['화7', '화8', '화9', '화13', '화14'].includes(val)) {
-    tags.push({ name: '촉매 건욕', isAppend: false });
-    tags.push({ name: '화학동 건욕', isAppend: false });
-    if (val === '화7') {
-      tags.push({ name: '촉매cs', isAppend: false });
-    }
-  } else if (val.startsWith('전기동') || val.includes('MSF')) {
-    tags.push({ name: '산탈지.산세.박리', isAppend: false });
-    if (val === '전기동 15' || val === '전기동 18') {
-      tags.push({ name: '산탈지.산세.프리딥.박리', isAppend: false });
-    }
-    if (!['전기동 9', '전기동 20', '전기동 21'].includes(val)) {
-      tags.push({ name: '+ 유산동필터 교체', isAppend: true, val: '유산동필터 교체' });
-    }
+  for(const tag of SPECIAL_WORK_TAGS) {
+    const btn=document.createElement('button');btn.type='button';btn.className='btn btn-sub btn-sm';btn.innerText=tag;
+    btn.onclick=()=>setQuickTag(tag);container.appendChild(btn);
   }
-
-  tags.push({ name: '인써트 교체', isAppend: false });
-  tags.push({ name: '전체건욕', isAppend: false });
-  tags.push({ name: '설비작업', isAppend: false });
-
-  tags.forEach(t => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = t.isAppend ? 'btn btn-sm' : 'btn btn-sub btn-sm';
-    if (t.isAppend) btn.style.background = '#0284c7';
-    btn.innerText = t.name;
-    btn.onclick = () => {
-      if (t.isAppend) appendQuickTag(t.val);
-      else setQuickTag(t.name);
-    };
-    container.appendChild(btn);
-  });
 }
 
 function setQuickTag(tag) {
-  document.getElementById('manualNoteMode').value='work';
-  document.getElementById('manualContentInput').value = tag;
+  if(specialWorkError(tag)) return;
+  document.getElementById('manualContentInput').value=normalizeSpecialWorkText(tag);
 }
 
 function appendQuickTag(tag) {
-  document.getElementById('manualNoteMode').value='work';
   const input = document.getElementById('manualContentInput');
   const cur = input.value.trim();
   if (cur) {
@@ -1905,6 +1884,32 @@ function appendQuickTag(tag) {
     input.value = tag;
   }
 }
+
+const SPECIAL_WORK_TAGS=['유산동 필터 교체','옥사멧 점검','인써트 교체','설비공사','설비점검'];
+const SPECIAL_WORK_RULES=[
+  ['유산동 필터 교체',/유산동\s*필터(?:\s*교체)?/],['옥사멧 점검',/옥사멧\s*점검/],
+  ['인써트 교체',/인[써서]트\s*교체/],['설비공사',/설비\s*공사/],
+  ['설비점검',/설비\s*점검/],['설비작업',/설비\s*작업/]
+];
+function normalizeSpecialWorkText(text) {
+  return String(text||'').trim().replace(/유산동\s*필터\s*교체/g,'유산동 필터 교체')
+    .replace(/옥사멧\s*점검/g,'옥사멧 점검').replace(/인[써서]트\s*교체/g,'인써트 교체');
+}
+function isRoutinePMText(text) {
+  const work=String(text||'').replace(/(?:건욕|산탈지|산세|박리|프리딥|촉매cs)\s*(?:탱크|배관|펌프|필터|밸브|모터|히터|설비|장치|조)(?=\s*(?:공사|점검|교체|보수|수리|설치|철거|개조))/gi,'설비');
+  return /건\s*욕|약품\s*(?:교체|교환|투입|보충)|(?:기본|정기)\s*(?:PM|피\s*엠)|\bPM\b|피\s*엠|산탈지|산세|박리|프리딥|촉매\s*(?:cs|c\/s)/i.test(work);
+}
+function specialWorkError(text) {
+  if(isRoutinePMText(text)) return '특이사항에는 별도 공사·점검·교체 일정만 저장합니다. 약품 건욕·기본 PM 내용을 빼고 입력해주세요. PM 기록은 첫 화면에서 관리합니다.';
+  if(!/교체|점검|공사|보수|수리|설치|철거|증설|이설|개조|용접|누수|정전|단수|정비|검사|검수|작업|일정|교육|회의|방문|안전|테스트|확인/.test(text)) return '공사·점검·교체 등 실제 작업이나 일정 내용을 입력해주세요.';
+  return '';
+}
+function isSpecialNote(note) {
+  const text=displayManualText(note);
+  return Boolean(text) && !specialWorkError(text);
+}
+function isPMRecord(note) {return note.kind!=='schedule' && !isSpecialNote(note);}
+function extractSpecialWorks(text) {return SPECIAL_WORK_RULES.filter(([,pattern])=>pattern.test(text)).map(([tag])=>tag);}
 
 // Scheduled annotations share the durable notes store but never count as completed PM.
 let editingManualNote = null;
@@ -1969,6 +1974,8 @@ function parseScheduleSentence(raw, now=new Date()) {
     .replace(/(?:이오니|이니|이므로|준비\s*바랍니다|준비\s*부탁|참고\s*바랍니다|부탁\s*드립니다)[\s\S]*$/,'')
     .replace(/옥사멧\s*점검/g,'옥사멧 점검').replace(/\s+/g,' ').replace(/^[\s:,.\-]+|[\s:,.\-]+$/g,'').trim();
   if(!rest) return {error:'공유할 특이사항 내용을 입력해주세요.'};
+  rest=normalizeSpecialWorkText(rest);
+  const error=specialWorkError(rest);if(error) return {error};
   return {date:formatDateOnly(date),line:lines[0],text:rest};
 }
 function selectManualLine(line) {
@@ -1991,7 +1998,6 @@ function parseScheduleInput() {
   document.getElementById('manualDateInput').value=result.date;
   selectManualLine(result.line);
   document.getElementById('manualContentInput').value=result.text;
-  document.getElementById('manualNoteMode').value='schedule';
   const past=result.date<formatDateOnly(new Date());
   status.textContent=`${result.date} · ${result.line} · ${result.text}${past?' · 지난 날짜입니다. 날짜를 확인하세요.':''} 아래 내용을 확인하고 저장해주세요.`;
 }
@@ -2002,10 +2008,11 @@ function addManualNote() {
   let line=document.getElementById('manualLineSelect').value;
   if(line==='CUSTOM') line=document.getElementById('manualCustomLineInput').value.trim();
   line=normalizeScheduleLine(line)||line;
-  const text=document.getElementById('manualContentInput').value.trim();
-  const kind=document.getElementById('manualNoteMode').value==='schedule'?'schedule':null;
+  const text=normalizeSpecialWorkText(document.getElementById('manualContentInput').value);
+  const kind='schedule';
   if(!validDateTime(date+'T00:00') || !line || !text) {status.textContent='날짜·라인·내용을 모두 입력해주세요.';return;}
   if(/^(?:전기동\s*|전\d|MSF)/.test(line) && !stripElectroPass(text)) {status.textContent='전기동 패스는 7시로 고정되어 있습니다.';return;}
+  const workError=specialWorkError(text);if(workError) {status.textContent=workError;return;}
   if(editingManualNote && !manualNotes.some(n=>manualNoteKey(n)===editingManualNote)) {status.textContent='원래 기록이 변경되었습니다. 목록에서 다시 선택해주세요.';return;}
   const note={date,line,text,...(kind?{kind}:{})};
   const key=manualNoteKey(note);
@@ -2019,12 +2026,11 @@ function addManualNote() {
   safeRenderAll();showToast('특이사항을 기억했습니다. 해당 날짜 공지에 포함됩니다.');
 }
 function editManualNote(index) {
-  const note=manualNotes[index];if(!note) return;
+  const note=manualNotes[index];if(!note || !isSpecialNote(note)) return;
   editingManualNote=manualNoteKey(note);
   document.getElementById('manualNoteEditor').hidden=false;
   document.getElementById('manualDateInput').value=note.date;selectManualLine(note.line);
   document.getElementById('manualContentInput').value=note.text;
-  document.getElementById('manualNoteMode').value=note.kind==='schedule'?'schedule':'work';
   document.getElementById('manualSaveButton').textContent='수정 저장';document.getElementById('manualCancelEditButton').style.display='inline-block';document.getElementById('manualCancelEditButton').textContent='수정 취소';
   document.getElementById('manualSaveResult').textContent='날짜·라인·내용을 수정한 뒤 저장해주세요.';
   document.getElementById('manualContentInput').focus();
@@ -2050,13 +2056,13 @@ async function copyManualNoteDate(index) {
 function renderManualNotesList() {
   const container=document.getElementById('manualNoteList');if(!container) return;
   container.innerHTML='';
-  const notes=manualNotes.map((note,index)=>({note,index})).filter(({note})=>displayManualText(note)).sort((a,b)=>a.note.date.localeCompare(b.note.date)||a.note.line.localeCompare(b.note.line,'ko'));
+  const notes=manualNotes.map((note,index)=>({note,index})).filter(({note})=>isSpecialNote(note)).sort((a,b)=>a.note.date.localeCompare(b.note.date)||a.note.line.localeCompare(b.note.line,'ko'));
   container.hidden=!notes.length;
   if(!notes.length) return;
   const today=formatDateOnly(new Date());
   const current=notes.filter(({note})=>note.date>=today || note.date===selectedDateStr);
   const past=notes.filter(({note})=>note.date<today && note.date!==selectedDateStr);
-  const cardHtml=({note:n,index})=>`<strong>${escapeHtml(n.date)} · ${escapeHtml(n.line)}</strong><span class="helper"> ${n.kind==='schedule'?'특이사항 추가':'PM 작업 내용'}</span><p>${escapeHtml(displayManualText(n))}</p><div class="settings-inline"><button class="btn btn-sub btn-sm" onclick="viewManualNoteDate(${index})">공지 보기</button><button class="btn btn-sm" onclick="copyManualNoteDate(${index})">이 날짜 공지 복사</button><button class="btn btn-sub btn-sm" onclick="editManualNote(${index})">수정</button><button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})" aria-label="${escapeHtml(n.date+' '+n.line)} 특이사항 삭제">삭제</button></div>`;
+  const cardHtml=({note:n,index})=>`<strong>${escapeHtml(n.date)} · ${escapeHtml(n.line)}</strong><span class="helper"> 별도 작업·일정</span><p>${escapeHtml(displayManualText(n))}</p><div class="settings-inline"><button class="btn btn-sub btn-sm" onclick="viewManualNoteDate(${index})">공지 보기</button><button class="btn btn-sm" onclick="copyManualNoteDate(${index})">이 날짜 공지 복사</button><button class="btn btn-sub btn-sm" onclick="editManualNote(${index})">수정</button><button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})" aria-label="${escapeHtml(n.date+' '+n.line)} 특이사항 삭제">삭제</button></div>`;
   current.forEach(item=>{
     const card=document.createElement('div');card.className='saved-note';card.innerHTML=cardHtml(item);container.appendChild(card);
   });
@@ -2071,7 +2077,7 @@ function inlineDesmearName(id) { return '디스미어 ' + id.slice(1); }
 function inlineDisplayName(id) { return inlineDesmearName(id); }
 
 function getInlineCycle(id) {
-  const anchors = manualNotes.filter(note=>note.kind!=='schedule' && note.line===inlineDesmearName(id)).sort((a,b)=>b.date.localeCompare(a.date));
+  const anchors = manualNotes.filter(note=>isPMRecord(note) && isRoutinePMText(note.text) && note.line===inlineDesmearName(id)).sort((a,b)=>b.date.localeCompare(a.date));
   if (!anchors.length) return null;
   const date = anchors[0].date;
   const events = Object.values(inlineDesmearFlags).filter(event=>event && event.version===2 && event.lineId===id &&
@@ -2100,15 +2106,28 @@ function inlineScheduledText(id, due) {
   return `${inlineDisplayName(id)} ${due.getDate()}일 기본PM`;
 }
 function inlineNoteText(text) { return text.replace(/망간\s*건욕/g,'망간건욕'); }
+function openInlinePMForm() {
+  const date=document.getElementById('inlinePMDate');if(!date.value) date.value=selectedDateStr;
+}
 function openInlineManualEntry(id) {
-  if (!INLINE_CHEM_IDS.includes(id)) return;
-  cancelManualEdit();switchTab('tab4');openManualNoteEditor();
-  document.getElementById('manualDateInput').value=selectedDateStr;
-  document.getElementById('manualNoteMode').value='work';
-  document.getElementById('manualLineSelect').value=inlineDesmearName(id);
-  onManualLineChange(inlineDesmearName(id));
-  document.getElementById('manualContentInput').value='기본PM';
-  document.getElementById('manualContentInput').focus();
+  if(!INLINE_CHEM_IDS.includes(id)) return;
+  switchTab('tab1');document.getElementById('inlinePMEntry').open=true;
+  document.getElementById('inlinePMDate').value=selectedDateStr;
+  document.getElementById('inlinePMLine').value=inlineDesmearName(id);
+  document.getElementById('inlinePMWork').value='기본PM';
+  document.getElementById('inlinePMEntry').scrollIntoView?.({behavior:'smooth',block:'center'});
+}
+function addInlinePMRecord() {
+  const date=document.getElementById('inlinePMDate').value,line=document.getElementById('inlinePMLine').value;
+  const text=document.getElementById('inlinePMWork').value.trim(),result=document.getElementById('inlinePMResult');
+  if(!validDateTime(date+'T00:00') || !INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===line) || !isRoutinePMText(text)) {result.textContent='날짜·디스미어 라인·PM 작업 내용을 확인해주세요. 별도 공사·점검은 특이사항에서 기록하세요.';return;}
+  if(!manualNotes.some(n=>n.date===date&&n.line===line&&n.text===text)) manualNotes.push({date,line,text});
+  syncDataToFirebase();safeRenderAll();result.textContent=`${date} · ${line} PM 기록 저장 완료`;
+}
+function renderInlinePMHistory() {
+  const el=document.getElementById('inlinePMHistory');if(!el) return;
+  el.innerHTML=manualNotes.map((note,index)=>({note,index})).filter(({note})=>INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===note.line)&&isPMRecord(note))
+    .sort((a,b)=>b.note.date.localeCompare(a.note.date)).map(({note,index})=>`<div class="helper">${escapeHtml(note.date+' · '+note.line+' · '+note.text)} <button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})">PM 기록 삭제</button></div>`).join('');
 }
 
 function inlineControlsHtml(id) {
@@ -2146,7 +2165,7 @@ function inlineBriefingLines(dateStr) {
     const line=chemList.find(item=>item.id===id);
     const chemDue=line.status==='시작' ? new Date(line.lastDone) : getChemDue(line);
     const notes=manualNotes.filter(note=>{
-      if(note.kind==='schedule') return false;
+      if(!isPMRecord(note)) return false;
       if(note.line!==inlineDesmearName(id)) return false;
       if(note.date===dateStr) return true;
       const time=extractNoticeTime(note.text);
@@ -2205,7 +2224,7 @@ function displayManualText(note) {
   return /^(?:전기동\s*|전\d|MSF)/.test(note.line)?stripElectroPass(note.text):note.text;
 }
 function getElectroDetails(number,dateStr=selectedDateStr) {
-  const notes=manualNotes.filter(n=>n.kind!=='schedule'&&n.date===dateStr&&n.line===`전기동 ${number}`).map(n=>displayManualText(n)).filter(Boolean);
+  const notes=manualNotes.filter(n=>isPMRecord(n)&&n.date===dateStr&&n.line===`전기동 ${number}`).map(n=>displayManualText(n)).filter(Boolean);
   const defaultWork=[9,12,14,20,21].includes(number)?'산탈지.산세.박리':'산세.박리';
   const workPattern=/산탈지[.·]산세[.·](?:프리딥[.·])?박리|산세[.·]박리/;
   const overrides=notes.map(text=>text.match(workPattern)?.[0]).filter(Boolean);
@@ -2291,7 +2310,7 @@ function renderElectroGauges(now) {
     const number = line.number;
     const details=getElectroDetails(number,line.dateStr);
     const name = escapeHtml(`전${number} ${details.work} (${details.pass})`);
-    const equipment = manualNotes.some(note => note.kind !== 'schedule' && note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
+    const equipment = manualNotes.some(note => isPMRecord(note) && note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
     return `<div class="gauge-box" id="elec_card_${timerKey(line.name,line.dateStr)}">
       <div class="gauge-top"><strong>${name} ${line.isPulse ? '(펄스)' : ''}${line.carryover ? ` · ${line.dateStr} 미완료` : ''}</strong>
         <button class="btn btn-sub btn-sm" onclick="completeElecPM('${line.name}','${line.dateStr}')">완료</button></div>
@@ -2947,7 +2966,7 @@ function generateShareText() {
   const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
 
   const getNote = (lineKeyword) => {
-    const found = manualNotes.filter(n => n.kind !== 'schedule' && n.date === selectedDateStr && !/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text) && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
+    const found = manualNotes.filter(n => isPMRecord(n) && n.date === selectedDateStr && !/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text) && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
     return found.length > 0 ? ` ${found.map(displayManualText).filter(Boolean).join(' ')}` : '';
   };
 
@@ -3023,11 +3042,11 @@ function generateShareText() {
   desmear.push(...inlineBriefingLines(selectedDateStr));
 
   const regularLines = new Set([...getDayLines(targetDate),...INLINE_CHEM_IDS.map(inlineDesmearName)]);
-  const extraNotes = manualNotes.filter(note => note.kind !== 'schedule' && displayManualText(note) && note.date === selectedDateStr &&
+  const extraNotes = manualNotes.filter(note => isPMRecord(note) && displayManualText(note) && note.date === selectedDateStr &&
     !regularLines.has(note.line) && !REQUIRED_CHEM_IDS.includes(note.line));
 
   const scheduled = new Map();
-  manualNotes.filter(note=>note.kind==='schedule' && note.date===selectedDateStr).forEach(note=>{
+  manualNotes.filter(note=>isSpecialNote(note) && note.date===selectedDateStr).forEach(note=>{
     const text=displayManualText(note);if(!text) return;
     const key=normalizeScheduleLine(note.line)||note.line;
     if(!scheduled.has(key)) scheduled.set(key,[]);
@@ -3047,8 +3066,7 @@ function generateShareText() {
   if(blackhole) blackhole=annotate({1:'화12',3:'화11',5:'화10'}[day],blackhole);
   const scheduledExtras=[...scheduled].map(([line,notes])=>{
     const label=line.replace(/^디스미어\s*/,'디').replace(/^전기동\s*/,'전');
-    const base=/^디스미어 /.test(line)?' 기본PM':/^전기동 /.test(line)?` ${getElectroDetails(Number(line.match(/\d+/)[0])).work} (${ELECTRO_PASS_TEXT})`:'';
-    return `${label}${base} (${notes.join(' · ')})`;
+    return `${label} (${notes.join(' · ')})`;
   });
   let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
   if (debarr) out += `${debarr}\n\n`;
