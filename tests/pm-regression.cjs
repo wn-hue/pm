@@ -25,6 +25,8 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
     focus(){} blur(){} select(){} setSelectionRange(){} closest(){return null;}
   }
   for (const match of html.matchAll(/id="([^"]+)"/g)) nodes.set(match[1],new Element(match[1]));
+  // Compatibility targets for persisted timer rules; these do not exist in the app UI.
+  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) nodes.set(id,new Element(id));
   nodes.get('passTimeInput').value='7시패스';
   const storage = new Map(Object.entries(stored));
   const localStorage = {getItem:key=>{if(storageError)throw Error('blocked');return storage.get(key)??null;},
@@ -629,7 +631,7 @@ test('concurrent completion records merge without losing lines or double-countin
 test('inline entry shortcut selects line and default PM without saving anything',()=>{
   const a=app();a.run("openInlineManualEntry('화14')");
   assert.equal(a.nodes.get('manualLineSelect').value,'디스미어 14');
-  assert.equal(a.nodes.get('manualDayInput').value,1);
+  assert.equal(a.nodes.get('manualDateInput').value,'2026-10-01');
   assert.equal(a.nodes.get('manualContentInput').value,'기본PM');
   assert.deepEqual(a.data('manualNotes'),[]);
   assert.match(a.run("inlineControlsHtml('화14')"),/디스미어 PM 입력/);
@@ -638,7 +640,7 @@ test('inline entry shortcut selects line and default PM without saving anything'
 
 test('manually registered inline PM appears only on entered date and survives reload',()=>{
   const a=app();a.run("openInlineManualEntry('화13')");
-  a.nodes.get('manualDayInput').value='2';a.nodes.get('manualContentInput').value='10시 스웰러 건욕';
+  a.nodes.get('manualDateInput').value='2026-10-02';a.nodes.get('manualContentInput').value='10시 스웰러 건욕';
   const chemistry=a.data('chemList');a.run('addManualNote()');
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 13/);
   assert.match(a.nodes.get('inline_cell_5').innerHTML,/디스미어 13.*<br>10시 스웰러 건욕/);
@@ -881,4 +883,109 @@ test('an incomplete message stays in the inline notice box and opens the missing
   assert.equal(a.nodes.get('kakaoRawInput').value,'화13 액수위입니다');
   assert.match(a.nodes.get('kakaoParseResult').textContent,/날짜·시각/);
   assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
+});
+
+test('progress screen is removed and its summary links open chemistry management',()=>{
+  assert.doesNotMatch(html,/id="(?:tab2|tabBtn2|elecGaugesContainer|activeChemGaugesContainer)"/);
+  const a=app();
+  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) a.nodes.delete(id);
+  a.run("safeRenderAll();tick();switchTab('tab2')");
+  assert.equal(a.logs.length,0);
+  assert.match(a.nodes.get('focusSummary').innerHTML,/switchTab\('tab3'\)/);
+  assert.doesNotMatch(a.nodes.get('focusSummary').innerHTML,/진척/);
+});
+
+test('Korean schedule sentence is previewed then saved, reloaded and copied only on its date',async()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  const before=a.data('chemList');
+  a.nodes.get('scheduleRawInput').value='디스미어12\n옥사멧점검 이번주 수요일에 진행예정 이오니 준비 바랍니다.';
+  a.run('parseScheduleInput()');
+  assert.equal(a.nodes.get('manualDateInput').value,'2026-10-28');
+  assert.equal(a.nodes.get('manualLineSelect').value,'디스미어 12');
+  assert.equal(a.nodes.get('manualContentInput').value,'옥사멧 점검');
+  assert.deepEqual(a.data('manualNotes'),[]);
+  a.run('addManualNote()');
+  assert.deepEqual(a.data('manualNotes'),[{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}]);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/옥사멧/);
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-28T08:00:00+09:00'});
+  const report=b.nodes.get('shareTextOutput').value;
+  assert.match(report,/디12 기본PM \(옥사멧 점검\)/);
+  assert.equal(report.match(/옥사멧 점검/g).length,1);
+  let copied;b.context.navigator.clipboard.writeText=async text=>{copied=text;};
+  await b.run('copyShareText()');assert.equal(copied,report);
+  assert.deepEqual(a.data('chemList'),before);
+  b.run("selectQuickDay('tomorrow')");assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/옥사멧/);
+});
+
+test('schedule parsing resolves full dates, relative dates and next week across year boundaries',()=>{
+  const a=app({now:'2026-12-31T08:00:00+09:00'});
+  for(const [text,date] of [
+    ['디12 옥사멧점검 2027년 1월 6일 진행예정','2027-01-06'],
+    ['전기동18 1월 1일 설비 점검 예정입니다','2027-01-01'],
+    ['화학동7 내일 촉매 점검 예정입니다','2027-01-01'],
+    ['디12 다음주 수요일 옥사멧 점검 예정','2027-01-06'],
+    ['디12 모레 설비 점검 예정','2027-01-02'],
+    ['디12 2027-02-03 옥사멧 점검 예정','2027-02-03']]) {
+    const result=a.data(`parseScheduleSentence(${JSON.stringify(text)})`);
+    assert.equal(result.date,date,JSON.stringify(result));
+  }
+  const r=a.data("parseScheduleSentence('이번주 수요일에 디12 옥사멧 점검 진행예정',new Date('2026-10-27T08:00:00+09:00'))");
+  assert.equal(r.text,'옥사멧 점검');assert.equal(r.date,'2026-10-28');
+});
+
+test('missing, invalid, multiple and recurring schedule dates stay unsaved with an explanation',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  for(const text of ['디12 옥사멧 점검','디12 2026-02-30 옥사멧 점검','디12 10월 28일 10월 29일 점검',
+    '디12 디11 이번주 수요일 점검','디12 매주 수요일 옥사멧 점검','디12 28일~30일 점검','디12 내일']) {
+    a.nodes.get('scheduleRawInput').value=text;a.run('parseScheduleInput()');
+    assert.match(a.nodes.get('scheduleParseResult').textContent,/입력|날짜|일정|특이사항/);
+    assert.ok(a.run(`Boolean(parseScheduleSentence(${JSON.stringify(text)}).error)`),text);
+    assert.equal(a.nodes.get('scheduleRawInput').value,text);
+    assert.deepEqual(a.data('manualNotes'),[]);
+  }
+});
+
+test('saved schedules support arbitrary dates, irregular lines, editing, deduplication and deletion',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.nodes.get('scheduleRawInput').value='디스미어12 11월 3일 설비 점검 예정';a.run('parseScheduleInput();addManualNote()');
+  assert.equal(a.run('manualNotes.length'),1);
+  a.run('viewManualNoteDate(0)');assert.equal(a.run('selectedDateStr'),'2026-11-03');
+  assert.match(a.nodes.get('shareTextOutput').value,/디12 기본PM \(설비 점검\)/);
+  a.nodes.get('manualContentInput').value='설비 점검';a.run('addManualNote()');
+  assert.equal(a.run('manualNotes.length'),1);assert.match(a.nodes.get('manualSaveResult').textContent,/이미/);
+  a.run('editManualNote(0)');a.nodes.get('manualDateInput').value='2026-11-04';
+  a.nodes.get('manualContentInput').value='옥사멧 점검';a.run('addManualNote()');
+  assert.equal(a.run('manualNotes.length'),1);assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/옥사멧|설비 점검/);
+  a.run('viewManualNoteDate(0)');assert.match(a.nodes.get('shareTextOutput').value,/디12 기본PM \(옥사멧 점검\)/);
+  const reloaded=app({stored:Object.fromEntries(a.storage)});reloaded.run('viewManualNoteDate(0);removeManualNote(0)');
+  assert.equal(reloaded.run('manualNotes.length'),0);assert.doesNotMatch(reloaded.nodes.get('shareTextOutput').value,/옥사멧/);
+});
+
+test('scheduled annotations preserve electric work and 7AM pass and do not reset inline cycles',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-09-01',line:'디스미어 13',text:'기본PM'}]");
+  const cycle=a.data("getInlineCycle('화13')");
+  a.nodes.get('scheduleRawInput').value='디스미어13 10월 28일 설비 점검 예정';a.run('parseScheduleInput();addManualNote()');
+  assert.deepEqual(a.data("getInlineCycle('화13')"),cycle);
+  a.nodes.get('scheduleRawInput').value='전기동18 10월 29일 옥사멧 점검 예정';a.run("parseScheduleInput();addManualNote();selectBriefingDate('2026-10-29')");
+  assert.match(a.nodes.get('shareTextOutput').value,/전18 산세\.박리 \(7시패스\) \(옥사멧 점검\)/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/9시30분패스/);
+});
+
+test('pending scheduled notes merge with server notes without losing schedule metadata',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.nodes.get('scheduleRawInput').value='화7 10월 28일 촉매 점검 예정';a.run('parseScheduleInput();addManualNote()');
+  a.run("acceptRemoteState({...currentState(),manualNotes:[{date:'2026-10-28',line:'디스미어 12',text:'설비작업'}]});selectBriefingDate('2026-10-28')");
+  assert.equal(a.run('manualNotes.length'),2);
+  assert.equal(a.run("manualNotes.find(n=>n.line==='화7').kind"),'schedule');
+  assert.match(a.nodes.get('shareTextOutput').value,/화7.*\(촉매 점검\)/);
+});
+
+test('changing a schedule date retains its selected line and AM wording is not an electric line',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.nodes.get('scheduleRawInput').value='디스미어12 10월 28일 오전 10시 옥사멧 점검 예정';
+  a.run('parseScheduleInput()');assert.equal(a.nodes.get('manualLineSelect').value,'디스미어 12');
+  assert.equal(a.nodes.get('manualContentInput').value,'오전 10시 옥사멧 점검');
+  a.nodes.get('manualDateInput').value='2026-10-30';a.run('updateManualLineOptions();addManualNote()');
+  assert.equal(a.run('manualNotes[0].line'),'디스미어 12');assert.equal(a.run('manualNotes[0].date'),'2026-10-30');
 });
