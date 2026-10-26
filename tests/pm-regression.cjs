@@ -859,26 +859,25 @@ test('legacy pass notes and custom preference cannot leak into report, copied te
   assert.equal(a.data('manualNotes').length,3); // Historical source notes are preserved.
 });
 
-test('notice dialog preserves drafts on cancel and closes with scroll restored after successful import',()=>{
+test('inline notice input preserves draft when folded and folds after a successful import',()=>{
   const a=app();
   a.nodes.get('kakaoRawInput').value='화8 07:17 화학동 건욕 완료';
   a.run('openNoticePanel()');
-  assert.equal(a.nodes.get('kakaoModal').style.display,'flex');
-  assert.equal(a.run('document.body.style.position'),'fixed');
-  a.run("closeModal('kakaoModal')");
+  assert.equal(a.nodes.get('kakaoPanel').open,true);
+  assert.notEqual(a.run('document.body.style.position'),'fixed');
+  a.nodes.get('kakaoPanel').open=false;
   assert.equal(a.nodes.get('kakaoRawInput').value,'화8 07:17 화학동 건욕 완료');
   a.run('openNoticePanel();parseAndApplyKakaoMsg()');
-  assert.equal(a.nodes.get('kakaoModal').style.display,'none');
-  assert.notEqual(a.run('document.body.style.position'),'fixed');
+  assert.equal(a.nodes.get('kakaoPanel').open,false);
   assert.equal(a.run('new Date(chemList[1].lastDone).getMinutes()'),17);
 });
 
-test('an incomplete message stays in its dialog and opens the missing time field',()=>{
+test('an incomplete message stays in the inline notice box and opens the missing time field',()=>{
   const a=app({now:'2026-10-03T12:00:00+09:00'});
   a.parse('2026년 10월 2일\n22시 백라이트\n화13 PM\n이상입니다');
   a.run('openNoticePanel()');
   a.parse('화13 액수위입니다');
-  assert.equal(a.nodes.get('kakaoModal').style.display,'flex');
+  assert.equal(a.nodes.get('kakaoPanel').open,true);
   assert.equal(a.nodes.get('kakaoRawInput').value,'화13 액수위입니다');
   assert.match(a.nodes.get('kakaoParseResult').textContent,/날짜·시각/);
   assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
