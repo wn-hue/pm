@@ -469,6 +469,16 @@
   #kakaoParseResult:empty { display:none; }
   .message-time-setting input { display:block;max-width:100%;margin-top:6px; }
   @media(max-width:767px) { .brief-toolbar { flex-wrap:wrap; }.brief-actions { margin-left:auto; } }
+  .day-switch { flex-wrap:wrap; align-items:center; }
+  #briefingDateInput { width:150px; min-width:0; }
+  #scheduleRawInput { width:100%; margin-top:10px; }
+  .manual-fields { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin:12px 0; }
+  .manual-fields label { display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
+  .saved-notes { display:grid; gap:8px; margin-top:12px; }
+  .saved-note { padding:12px; border:1px solid var(--border-light); border-radius:8px; overflow-wrap:anywhere; }
+  .saved-note p { margin:6px 0; white-space:pre-wrap; }
+  .saved-note .settings-inline { gap:6px; }
+  @media(max-width:640px) { .brief-toolbar { flex-wrap:wrap; } .brief-actions { margin-left:auto; } }
 </style>
 </head>
 <body>
@@ -502,14 +512,11 @@
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
       <span class="nav-icon">📋</span><span class="nav-full">오늘 브리핑</span><span class="nav-short">브리핑</span>
     </button>
-    <button class="nav-btn" id="tabBtn2" onclick="switchTab('tab2')">
-      <span class="nav-icon">⚡</span><span class="nav-full">진척 게이지</span><span class="nav-short">진척</span>
-    </button>
     <button class="nav-btn" id="tabBtn3" onclick="switchTab('tab3')">
       <span class="nav-icon">🧪</span><span class="nav-full">화학동 관리</span><span class="nav-short">화학동</span>
     </button>
     <button class="nav-btn" id="tabBtn4" onclick="switchTab('tab4')">
-      <span class="nav-icon">✏️</span><span class="nav-full">특이사항 수동</span><span class="nav-short">특이사항</span>
+      <span class="nav-icon">✏️</span><span class="nav-full">특이사항</span><span class="nav-short">특이사항</span>
     </button>
   </div>
 
@@ -540,6 +547,7 @@
           <div class="day-switch" aria-label="브리핑 날짜">
             <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
             <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
+            <input type="date" id="briefingDateInput" aria-label="브리핑 날짜 선택" onchange="selectBriefingDate(this.value)">
           </div>
           <div class="brief-actions"><button class="btn btn-sub btn-sm" onclick="openNoticePanel()">공지 입력</button><button class="btn" id="copyBriefingButton" onclick="copyShareText()">📋 공지 복사</button></div>
         </div>
@@ -567,34 +575,6 @@
     </div>
   </div>
 
-  <!-- [탭 2] 자동 진척 게이지 -->
-  <div id="tab2" class="tab-pane">
-    <div class="grid-2col-even">
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <div class="card">
-          <div class="card-title">
-            <span>🧪 1. 일반 화학동 진행 진척 (12시간 액이송 / 14시간 PM기준)</span>
-            <span class="badge badge-blue">진행 라인 자동 연동</span>
-          </div>
-          <div id="activeChemGaugesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
-        </div>
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <div class="card">
-          <div class="card-title">
-            <span>⚡ 2. 전기동 PM 자동 진척 게이지</span>
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span class="badge badge-blue" id="elecTodayLinesBadge">전기동</span>
-              <button class="btn btn-sub btn-sm" id="btnRestoreElec" style="display:none; padding:3px 7px; font-size:11px;" onclick="restoreCompletedElec()">복구</button>
-            </div>
-          </div>
-          <div id="elecGaugesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- [탭 3] 화학동 주기 관리 -->
   <div id="tab3" class="tab-pane">
     <div class="card">
@@ -613,31 +593,34 @@
   <div id="tab4" class="tab-pane">
     <div class="card">
       <div class="card-title">
-        <span>✏️ 라인 / 날짜별 특이사항 수동 입력 관리</span>
-        <span class="badge badge-yellow">매트릭스 & 브리핑 연동</span>
+        <span>✏️ 날짜별 특이사항 기억하기</span>
+        <span class="badge badge-yellow">해당 날짜 공지에 자동 포함</span>
       </div>
       
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <div style="display:flex; align-items:center; gap:2px;">
-          <input type="number" id="manualDayInput" aria-label="특이사항 일" inputmode="numeric" min="1" max="31" style="width:52px; text-align:center;">일
-        </div>
+      <p class="helper">날짜·라인·내용을 직접 입력하거나, 아래에 전달받은 문장을 붙여넣어 해석하세요. 확인 후 저장하면 그날 공지에 함께 들어갑니다.</p>
+      <textarea id="scheduleRawInput" rows="3" aria-label="기억할 일정 문장" placeholder="디스미어12&#10;옥사멧점검 이번주 수요일에 진행예정 이오니 준비 바랍니다."></textarea>
+      <div class="settings-inline"><button class="btn btn-sub btn-sm" onclick="parseScheduleInput()">문장에서 일정 가져오기</button><span id="scheduleParseResult" class="helper" role="status" aria-live="polite"></span></div>
+      <div class="manual-fields">
+        <div><label for="manualDateInput">날짜</label><input type="date" id="manualDateInput" aria-label="특이사항 날짜" onchange="updateManualLineOptions()"></div>
         
         <div>
-          <select id="manualLineSelect" aria-label="특이사항 라인" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
+          <label for="manualLineSelect">라인</label><select id="manualLineSelect" aria-label="특이사항 라인" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
           <input type="text" id="manualCustomLineInput" placeholder="라인명 직접입력" style="display:none; width:120px; margin-left:4px;">
         </div>
 
         <div style="flex:1; min-width:160px;">
-          <input type="text" id="manualContentInput" aria-label="특이사항 내용" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="특이사항 직접 입력 또는 아래 전용 태그 클릭" style="width:100%;">
+          <label for="manualContentInput">공유할 내용</label><input type="text" id="manualContentInput" aria-label="특이사항 내용" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="특이사항 직접 입력 또는 아래 전용 태그 클릭" style="width:100%;">
         </div>
         <div>
-          <button class="btn" onclick="addManualNote()">등록</button>
+          <label for="manualNoteMode">반영 방식</label><select id="manualNoteMode" aria-label="특이사항 반영 방식"><option value="schedule">특이사항 추가 (괄호)</option><option value="work">PM 작업 내용</option></select>
+          <button class="btn" id="manualSaveButton" onclick="addManualNote()">저장</button><button class="btn btn-sub btn-sm" id="manualCancelEditButton" style="display:none" onclick="cancelManualEdit()">수정 취소</button>
         </div>
       </div>
 
       <div id="dynamicTagsContainer" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"></div>
 
-      <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;"></div>
+      <p id="manualSaveResult" class="helper" role="status" aria-live="polite"></p>
+      <div id="manualNoteList" class="saved-notes"></div>
     </div>
   </div>
 
@@ -1289,7 +1272,11 @@ function updateDateToggleUI() {
   const btnToday = document.getElementById('btnDateToday');
   const btnTomorrow = document.getElementById('btnDateTomorrow');
   if (!btnToday || !btnTomorrow) return;
-  if (currentDateChoice === 'tomorrow') {
+  const dateInput=document.getElementById('briefingDateInput');
+  if(dateInput) dateInput.value=selectedDateStr;
+  if (currentDateChoice === 'custom') {
+    btnToday.className='btn btn-sub btn-sm';btnTomorrow.className='btn btn-sub btn-sm';
+  } else if (currentDateChoice === 'tomorrow') {
     btnToday.className = 'btn btn-sub btn-sm';
     btnTomorrow.className = 'btn btn-sm';
   } else {
@@ -1308,8 +1295,8 @@ function selectQuickDay(choice) {
   selectedDateStr = formatDateOnly(target);
   updateDateToggleUI();
 
-  const mD = document.getElementById('manualDayInput');
-  if (mD) mD.value = target.getDate();
+  const mD = document.getElementById('manualDateInput');
+  if (mD && !editingManualNote) mD.value = selectedDateStr;
 
   safeRenderAll();
 }
@@ -1334,7 +1321,7 @@ function renderFocusSummary() {
   const counts = {running:0,warn:0,late:0};
   chemList.forEach(line => { const state=chemAttention(line); if (!line.needsReview && line.status==='시작') counts.running++; if (state==='warn'||state==='late') counts[state]++; });
   const html = [['running','진행 중'],['warn','7시간 이내 임박'],['late','지연 · 주기 초과']].map(([key,label])=>
-    `<button class="focus-pill ${key}" onclick="switchTab('tab2')" aria-label="화학동 ${label} ${counts[key]}개, 진척 보기"><strong>${counts[key]}<small style="font-size:12px;font-weight:500">개</small></strong><span>${label}</span></button>`).join('');
+    `<button class="focus-pill ${key}" onclick="switchTab('tab3')" aria-label="화학동 ${label} ${counts[key]}개, 화학동 관리 보기"><strong>${counts[key]}<small style="font-size:12px;font-weight:500">개</small></strong><span>${label}</span></button>`).join('');
   if(el.innerHTML!==html) el.innerHTML=html;
 }
 
@@ -1568,8 +1555,9 @@ window.onload = function() {
   currentDateChoice = 'today';
   savePassPreference();
   
-  const mD = document.getElementById('manualDayInput');
-  if (mD) mD.value = today.getDate();
+  const mD = document.getElementById('manualDateInput');
+  if (mD) mD.value = selectedDateStr;
+  document.getElementById('manualNoteMode').value='schedule';
 
   migrateLegacyTimers();
   initFirebase();
@@ -1604,8 +1592,8 @@ function tick() {
       tmr.setDate(tmr.getDate() + 1);
       selectedDateStr = formatDateOnly(tmr);
     }
-    const mD = document.getElementById('manualDayInput');
-    if (mD) mD.value = new Date(selectedDateStr + 'T00:00:00').getDate();
+    const mD = document.getElementById('manualDateInput');
+    if (mD && !editingManualNote) mD.value = selectedDateStr;
     safeRenderAll();
   }
 }
@@ -1620,12 +1608,12 @@ function formatClock(d) {
 }
 
 function switchTab(t) {
+  if (t === 'tab2') t = 'tab3';
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
   const btnMap = {
     'tab1': 'tabBtn1',
-    'tab2': 'tabBtn2',
     'tab3': 'tabBtn3',
     'tab4': 'tabBtn4'
   };
@@ -1638,10 +1626,6 @@ function switchTab(t) {
   if (t === 'tab1') {
     generateShareText();
     renderTab1ChemStatus();
-  }
-  else if (t === 'tab2') {
-    renderActiveChemGauges(now);
-    renderElectroGauges(now);
   }
   else if (t === 'tab3') renderChemList();
   else if (t === 'tab4') {
@@ -1811,8 +1795,8 @@ function updateManualLineOptions() {
   if (!select) return;
 
   const curVal = select.value;
-  const targetDate = new Date();
-  targetDate.setHours(0,0,0,0);
+  const enteredDate=document.getElementById('manualDateInput')?.value;
+  const targetDate = new Date((validDateTime(enteredDate+'T00:00') ? enteredDate : selectedDateStr)+'T00:00:00');
   const tomorrowDate = new Date(targetDate.getTime() + 86400000);
 
   const todayLines = getDayLines(targetDate);
@@ -1824,7 +1808,7 @@ function updateManualLineOptions() {
 
   const chemLines = ['화7', '화8', '화9', '화13', '화14'];
 
-  let html = '<optgroup label="오늘/내일 규칙 PM">';
+  let html = '<optgroup label="선택 날짜/다음날 규칙 PM">';
   ruleLinesSet.forEach(l => {
     html += `<option value="${l}">${l}</option>`;
   });
@@ -1840,13 +1824,15 @@ function updateManualLineOptions() {
   INLINE_CHEM_IDS.forEach(id => { html += `<option value="${inlineDesmearName(id)}">${inlineDisplayName(id)}</option>`; });
   html += '</optgroup>';
 
+  const keepSelected=curVal && curVal!=='CUSTOM' && !ruleLinesSet.has(curVal) && !chemLines.includes(curVal) && !INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===curVal);
+  if(keepSelected) html+=`<optgroup label="현재 선택 라인"><option value="${escapeHtml(curVal)}">${escapeHtml(curVal)}</option></optgroup>`;
   html += '<optgroup label="기타">';
   html += `<option value="CUSTOM">[직접 입력]</option>`;
   html += '</optgroup>';
 
   select.innerHTML = html;
 
-  if (ruleLinesSet.has(curVal) || chemLines.includes(curVal) || INLINE_CHEM_IDS.some(id => inlineDesmearName(id) === curVal) || curVal === 'CUSTOM') {
+  if (keepSelected || ruleLinesSet.has(curVal) || chemLines.includes(curVal) || INLINE_CHEM_IDS.some(id => inlineDesmearName(id) === curVal) || curVal === 'CUSTOM') {
     select.value = curVal;
   } else {
     select.selectedIndex = 0;
@@ -1909,10 +1895,12 @@ function onManualLineChange(val) {
 }
 
 function setQuickTag(tag) {
+  document.getElementById('manualNoteMode').value='work';
   document.getElementById('manualContentInput').value = tag;
 }
 
 function appendQuickTag(tag) {
+  document.getElementById('manualNoteMode').value='work';
   const input = document.getElementById('manualContentInput');
   const cur = input.value.trim();
   if (cur) {
@@ -1924,60 +1912,135 @@ function appendQuickTag(tag) {
   }
 }
 
+// Scheduled annotations share the durable notes store but never count as completed PM.
+let editingManualNote = null;
+function normalizeScheduleLine(text) {
+  const match=String(text).match(/(?<![가-힣A-Za-z0-9])(?:디스미어|디|전기동|전|화학동|화|데버링|데|고압수세|에칭|에)\s*(\d+(?:[.]\d+)?)/);
+  if(!match) return null;
+  const prefix=match[0].replace(/[\d\s.]/g,'');
+  const group=/^디/.test(prefix)?'디스미어 ':/^전/.test(prefix)?'전기동 ':/^화/.test(prefix)?'화':/^데/.test(prefix)?'데버링 ':/^고/.test(prefix)?'고압수세 ':'에';
+  return group+match[1];
+}
+function selectBriefingDate(date) {
+  if(!validDateTime(date+'T00:00')) {showToast('유효한 날짜를 선택해주세요.');return;}
+  selectedDateStr=date;currentDateChoice='custom';updateDateToggleUI();safeRenderAll();
+}
+function parseScheduleSentence(raw, now=new Date()) {
+  const lineMatches=[...String(raw).matchAll(/(?<![가-힣A-Za-z0-9])(?:디스미어|디|전기동|전|화학동|화|데버링|데|고압수세|에칭|에)\s*\d+(?:[.]\d+)?(?:\s*라인)?/g)];
+  const lines=[...new Set(lineMatches.map(m=>normalizeScheduleLine(m[0])))];
+  if(lines.length!==1) return {error:'한 번에 한 라인의 일정을 입력해주세요. 라인과 날짜는 아래에서 직접 선택할 수도 있습니다.'};
+  let rest=raw;
+  for(const m of lineMatches) rest=rest.replace(m[0],' ');
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let date, dateToken;
+  const explicit=[...rest.matchAll(/(?:(\d{4})\s*(?:년\s*|[-./]))?(\d{1,2})\s*(?:월\s*|[-./])(\d{1,2})(?:\s*일)?/g)];
+  const weekday=[...rest.matchAll(/(?:(이번|다음|차|금)\s*주\s*)?([월화수목금토일])요일/g)];
+  const relative=[...rest.matchAll(/오늘|내일|모레/g)];
+  if(explicit.length+weekday.length+relative.length>1 || /\d\s*(?:일)?\s*(?:[~～]|부터)|(?:매주|매일|격주)/.test(rest)) return {error:'날짜가 여러 개이거나 반복 일정입니다. 날짜별로 나누어 저장해주세요.'};
+  if(explicit.length) {
+    const m=explicit[0], month=Number(m[2]),day=Number(m[3]);let year=Number(m[1])||today.getFullYear();
+    date=new Date(year,month-1,day);
+    if(date.getMonth()!==month-1||date.getDate()!==day) return {error:'존재하지 않는 날짜입니다. 날짜를 직접 선택해주세요.'};
+    if(!m[1] && date<today) date=new Date(year+1,month-1,day);
+    if(date.getMonth()!==month-1||date.getDate()!==day) return {error:'연도를 포함해 유효한 날짜를 입력해주세요.'};
+    dateToken=m[0];
+  } else if(weekday.length) {
+    const m=weekday[0], target='월화수목금토일'.indexOf(m[2]);
+    date=getMonday(today);date.setDate(date.getDate()+target+(/다음|차/.test(m[1]||'')?7:0));dateToken=m[0];
+  } else if(relative.length) {
+    date=new Date(today);date.setDate(date.getDate()+({오늘:0,내일:1,모레:2}[relative[0][0]]));dateToken=relative[0][0];
+  } else {
+    const days=[...rest.matchAll(/(?<!\d)(\d{1,2})일/g)];
+    if(days.length!==1) return {error:'날짜를 찾지 못했습니다. “10월 28일” 또는 “이번주 수요일”처럼 입력해주세요.'};
+    const day=Number(days[0][1]);date=new Date(today.getFullYear(),today.getMonth(),day);
+    if(date<today) date=new Date(today.getFullYear(),today.getMonth()+1,day);
+    if(date.getDate()!==day || day<1 || day>31) return {error:'존재하지 않는 날짜입니다. 날짜를 직접 선택해주세요.'};
+    dateToken=days[0][0];
+  }
+  rest=rest.replace(dateToken,'\u0000').replace(/\u0000\s*(?:에는?|날)?/,' ').replace(/^\s*(?:[-:•]|라인)\s*/,'').replace(/PM\s*일정/gi,' ');
+  // Keep the actual work description; remove only scheduling/polite boilerplate.
+  rest=rest.replace(/(?:에\s*)?(?:진행\s*예정|실시\s*예정|예정|진행합니다|실시합니다|진행하겠습니다)[\s\S]*$/,'')
+    .replace(/(?:이오니|이니|이므로|준비\s*바랍니다|준비\s*부탁|참고\s*바랍니다|부탁\s*드립니다)[\s\S]*$/,'')
+    .replace(/옥사멧\s*점검/g,'옥사멧 점검').replace(/\s+/g,' ').replace(/^[\s:,.\-]+|[\s:,.\-]+$/g,'').trim();
+  if(!rest) return {error:'공유할 특이사항 내용을 입력해주세요.'};
+  return {date:formatDateOnly(date),line:lines[0],text:rest};
+}
+function selectManualLine(line) {
+  updateManualLineOptions();
+  const normalized=normalizeScheduleLine(line)||line;
+  const known=new Set([...getDayLines(new Date(document.getElementById('manualDateInput').value+'T00:00:00')),
+    ...getDayLines(new Date(new Date(document.getElementById('manualDateInput').value+'T00:00:00').getTime()+86400000)),
+    ...REQUIRED_CHEM_IDS,...INLINE_CHEM_IDS.map(inlineDesmearName)]);
+  document.getElementById('manualLineSelect').value=known.has(normalized)?normalized:'CUSTOM';
+  if(!known.has(normalized)) document.getElementById('manualCustomLineInput').value=normalized;
+  onManualLineChange(document.getElementById('manualLineSelect').value);
+}
+function parseScheduleInput() {
+  const result=parseScheduleSentence(document.getElementById('scheduleRawInput').value);
+  const status=document.getElementById('scheduleParseResult');
+  if(result.error) {status.textContent=result.error;return;}
+  cancelManualEdit();
+  document.getElementById('manualDateInput').value=result.date;
+  selectManualLine(result.line);
+  document.getElementById('manualContentInput').value=result.text;
+  document.getElementById('manualNoteMode').value='schedule';
+  const past=result.date<formatDateOnly(new Date());
+  status.textContent=`${result.date} · ${result.line} · ${result.text}${past?' · 지난 날짜입니다. 날짜를 확인하세요.':''} 아래 내용을 확인하고 저장해주세요.`;
+}
+function manualNoteKey(note) {return JSON.stringify([note.date,note.line,note.text]);}
 function addManualNote() {
-  const parsed = resolveDayInput(Number(document.getElementById('manualDayInput').value),new Date(selectedDateStr + 'T00:00:00'));
-  if (!parsed) { alert('해당 월에 존재하는 일자를 입력해주세요.'); return; }
-  const date = formatDateOnly(parsed);
-
-  let line = document.getElementById('manualLineSelect').value;
-  if (line === 'CUSTOM') {
-    line = document.getElementById('manualCustomLineInput').value.trim();
-    if (!line) {
-      alert('직접 입력할 라인명을 입력해주세요.');
-      return;
-    }
-  }
-
-  const text = document.getElementById('manualContentInput').value.trim();
-
-  if (/^(?:전기동\s*|전\d|MSF)/.test(line) && text && !stripElectroPass(text)) {showToast('전기동 패스는 7시로 고정되어 있습니다.');return;}
-  if (!text) {
-    alert('특이사항 내용을 입력해주세요.');
-    return;
-  }
-
-  if (!manualNotes.some(note => note.date === date && note.line === line && note.text === text)) manualNotes.push({ date, line, text });
-  syncDataToFirebase();
-  renderInlineDesmearStatus();
-  showToast(`${line} 특이사항 등록 완료`);
-  document.getElementById('manualContentInput').value = '';
-  renderManualNotesList();
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
+  const status=document.getElementById('manualSaveResult');
+  const date=document.getElementById('manualDateInput').value;
+  let line=document.getElementById('manualLineSelect').value;
+  if(line==='CUSTOM') line=document.getElementById('manualCustomLineInput').value.trim();
+  line=normalizeScheduleLine(line)||line;
+  const text=document.getElementById('manualContentInput').value.trim();
+  const kind=document.getElementById('manualNoteMode').value==='schedule'?'schedule':null;
+  if(!validDateTime(date+'T00:00') || !line || !text) {status.textContent='날짜·라인·내용을 모두 입력해주세요.';return;}
+  if(/^(?:전기동\s*|전\d|MSF)/.test(line) && !stripElectroPass(text)) {status.textContent='전기동 패스는 7시로 고정되어 있습니다.';return;}
+  if(editingManualNote && !manualNotes.some(n=>manualNoteKey(n)===editingManualNote)) {status.textContent='원래 기록이 변경되었습니다. 목록에서 다시 선택해주세요.';return;}
+  const note={date,line,text,...(kind?{kind}:{})};
+  const key=manualNoteKey(note);
+  if(manualNotes.some(n=>manualNoteKey(n)===key && manualNoteKey(n)!==editingManualNote)) {status.textContent='같은 일정이 이미 저장되어 있습니다.';return;}
+  if(editingManualNote) manualNotes=manualNotes.filter(n=>manualNoteKey(n)!==editingManualNote);
+  manualNotes.push(note);syncDataToFirebase();
+  cancelManualEdit();document.getElementById('manualContentInput').value='';document.getElementById('scheduleRawInput').value='';
+  document.getElementById('scheduleParseResult').textContent='';
+  status.textContent=`${date} · ${line} 저장 완료. 해당 날짜의 공지 복사에 포함됩니다.`;
+  safeRenderAll();showToast('특이사항을 기억했습니다. 해당 날짜 공지에 포함됩니다.');
 }
-
+function editManualNote(index) {
+  const note=manualNotes[index];if(!note) return;
+  editingManualNote=manualNoteKey(note);
+  document.getElementById('manualDateInput').value=note.date;selectManualLine(note.line);
+  document.getElementById('manualContentInput').value=note.text;
+  document.getElementById('manualNoteMode').value=note.kind==='schedule'?'schedule':'work';
+  document.getElementById('manualSaveButton').textContent='수정 저장';document.getElementById('manualCancelEditButton').style.display='inline-block';
+  document.getElementById('manualSaveResult').textContent='날짜·라인·내용을 수정한 뒤 저장해주세요.';
+  document.getElementById('manualContentInput').focus();
+}
+function cancelManualEdit() {
+  editingManualNote=null;
+  document.getElementById('manualSaveButton').textContent='저장';document.getElementById('manualCancelEditButton').style.display='none';
+}
 function removeManualNote(index) {
-  manualNotes.splice(index, 1);
-  renderInlineDesmearStatus();
-  syncDataToFirebase();
-  renderManualNotesList();
-  renderWeeklyMatrix();
-  generateShareText();
-  renderElectroGauges(new Date());
+  const note=manualNotes[index];if(!note) return;
+  if(editingManualNote===manualNoteKey(note)) cancelManualEdit();
+  manualNotes.splice(index,1);syncDataToFirebase();safeRenderAll();
 }
-
+function viewManualNoteDate(index) {
+  if(!manualNotes[index]) return;
+  selectBriefingDate(manualNotes[index].date);switchTab('tab1');
+}
 function renderManualNotesList() {
-  const container = document.getElementById('manualNoteList');
-  if (!container) return;
-  container.innerHTML = '';
-  manualNotes.forEach((n, idx) => {
-    if(!displayManualText(n)) return;
-    const chip = document.createElement('span');
-    chip.className = 'note-chip';
-    const dayOnly = Number(n.date.split('-')[2]);
-    chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(displayManualText(n))} <button onclick="removeManualNote(${idx})">&times;</button>`;
-    container.appendChild(chip);
+  const container=document.getElementById('manualNoteList');if(!container) return;
+  container.innerHTML='';
+  const notes=manualNotes.map((note,index)=>({note,index})).filter(({note})=>displayManualText(note)).sort((a,b)=>a.note.date.localeCompare(b.note.date)||a.note.line.localeCompare(b.note.line,'ko'));
+  if(!notes.length) {container.innerHTML='<p class="helper">저장된 특이사항이 없습니다.</p>';return;}
+  notes.forEach(({note:n,index})=>{
+    const card=document.createElement('div');card.className='saved-note';
+    card.innerHTML=`<strong>${escapeHtml(n.date)} · ${escapeHtml(n.line)}</strong><span class="helper"> ${n.kind==='schedule'?'특이사항 추가':'PM 작업 내용'}</span><p>${escapeHtml(displayManualText(n))}</p><div class="settings-inline"><button class="btn btn-sub btn-sm" onclick="viewManualNoteDate(${index})">이 날짜 공지 보기</button><button class="btn btn-sub btn-sm" onclick="editManualNote(${index})">수정</button><button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})" aria-label="${escapeHtml(n.date+' '+n.line)} 특이사항 삭제">삭제</button></div>`;
+    container.appendChild(card);
   });
 }
 
@@ -1985,7 +2048,7 @@ function inlineDesmearName(id) { return '디스미어 ' + id.slice(1); }
 function inlineDisplayName(id) { return inlineDesmearName(id); }
 
 function getInlineCycle(id) {
-  const anchors = manualNotes.filter(note=>note.line===inlineDesmearName(id)).sort((a,b)=>b.date.localeCompare(a.date));
+  const anchors = manualNotes.filter(note=>note.kind!=='schedule' && note.line===inlineDesmearName(id)).sort((a,b)=>b.date.localeCompare(a.date));
   if (!anchors.length) return null;
   const date = anchors[0].date;
   const events = Object.values(inlineDesmearFlags).filter(event=>event && event.version===2 && event.lineId===id &&
@@ -2017,7 +2080,8 @@ function inlineNoteText(text) { return text.replace(/망간\s*건욕/g,'망간�
 function openInlineManualEntry(id) {
   if (!INLINE_CHEM_IDS.includes(id)) return;
   switchTab('tab4');
-  document.getElementById('manualDayInput').value=new Date(selectedDateStr+'T00:00:00').getDate();
+  document.getElementById('manualDateInput').value=selectedDateStr;
+  document.getElementById('manualNoteMode').value='work';
   document.getElementById('manualLineSelect').value=inlineDesmearName(id);
   onManualLineChange(inlineDesmearName(id));
   document.getElementById('manualContentInput').value='기본PM';
@@ -2055,6 +2119,7 @@ function inlineBriefingLines(dateStr) {
     const line=chemList.find(item=>item.id===id);
     const chemDue=line.status==='시작' ? new Date(line.lastDone) : getChemDue(line);
     const notes=manualNotes.filter(note=>{
+      if(note.kind==='schedule') return false;
       if(note.line!==inlineDesmearName(id)) return false;
       if(note.date===dateStr) return true;
       const time=extractNoticeTime(note.text);
@@ -2113,7 +2178,7 @@ function displayManualText(note) {
   return /^(?:전기동\s*|전\d|MSF)/.test(note.line)?stripElectroPass(note.text):note.text;
 }
 function getElectroDetails(number,dateStr=selectedDateStr) {
-  const notes=manualNotes.filter(n=>n.date===dateStr&&n.line===`전기동 ${number}`).map(n=>displayManualText(n)).filter(Boolean);
+  const notes=manualNotes.filter(n=>n.kind!=='schedule'&&n.date===dateStr&&n.line===`전기동 ${number}`).map(n=>displayManualText(n)).filter(Boolean);
   const defaultWork=[9,12,14,20,21].includes(number)?'산탈지.산세.박리':'산세.박리';
   const workPattern=/산탈지[.·]산세[.·](?:프리딥[.·])?박리|산세[.·]박리/;
   const overrides=notes.map(text=>text.match(workPattern)?.[0]).filter(Boolean);
@@ -2199,7 +2264,7 @@ function renderElectroGauges(now) {
     const number = line.number;
     const details=getElectroDetails(number,line.dateStr);
     const name = escapeHtml(`전${number} ${details.work} (${details.pass})`);
-    const equipment = manualNotes.some(note => note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
+    const equipment = manualNotes.some(note => note.kind !== 'schedule' && note.date === line.dateStr && note.line === `전기동 ${number}` && /설비\s*작업/.test(note.text));
     return `<div class="gauge-box" id="elec_card_${timerKey(line.name,line.dateStr)}">
       <div class="gauge-top"><strong>${name} ${line.isPulse ? '(펄스)' : ''}${line.carryover ? ` · ${line.dateStr} 미완료` : ''}</strong>
         <button class="btn btn-sub btn-sm" onclick="completeElecPM('${line.name}','${line.dateStr}')">완료</button></div>
@@ -2855,7 +2920,7 @@ function generateShareText() {
   const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
 
   const getNote = (lineKeyword) => {
-    const found = manualNotes.filter(n => n.date === selectedDateStr && !/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text) && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
+    const found = manualNotes.filter(n => n.kind !== 'schedule' && n.date === selectedDateStr && !/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text) && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
     return found.length > 0 ? ` ${found.map(displayManualText).filter(Boolean).join(' ')}` : '';
   };
 
@@ -2931,9 +2996,33 @@ function generateShareText() {
   desmear.push(...inlineBriefingLines(selectedDateStr));
 
   const regularLines = new Set([...getDayLines(targetDate),...INLINE_CHEM_IDS.map(inlineDesmearName)]);
-  const extraNotes = manualNotes.filter(note => displayManualText(note) && note.date === selectedDateStr &&
+  const extraNotes = manualNotes.filter(note => note.kind !== 'schedule' && displayManualText(note) && note.date === selectedDateStr &&
     !regularLines.has(note.line) && !REQUIRED_CHEM_IDS.includes(note.line));
 
+  const scheduled = new Map();
+  manualNotes.filter(note=>note.kind==='schedule' && note.date===selectedDateStr).forEach(note=>{
+    const text=displayManualText(note);if(!text) return;
+    const key=normalizeScheduleLine(note.line)||note.line;
+    if(!scheduled.has(key)) scheduled.set(key,[]);
+    if(!scheduled.get(key).includes(text)) scheduled.get(key).push(text);
+  });
+  const annotate=(line,text)=>{
+    const notes=scheduled.get(line);if(!notes) return text;
+    scheduled.delete(line);return text+' ('+notes.join(' · ')+')';
+  };
+  desmear=desmear.map(text=>annotate(normalizeScheduleLine(text)||'',text));
+  electro=electro.map(text=>annotate(normalizeScheduleLine(text)||'',text));
+  chems=chems.map(text=>annotate(normalizeScheduleLine(text)||'',text));
+  ongoing=ongoing.map(text=>annotate(normalizeScheduleLine(text)||'',text));
+  etching=annotate(todayEtch,etching);
+  if(debarr) debarr=annotate(day===3?'데버링 3':'데버링 2',debarr);
+  if(wash) wash=annotate('고압수세 1',wash);
+  if(blackhole) blackhole=annotate({1:'화12',3:'화11',5:'화10'}[day],blackhole);
+  const scheduledExtras=[...scheduled].map(([line,notes])=>{
+    const label=line.replace(/^디스미어\s*/,'디').replace(/^전기동\s*/,'전');
+    const base=/^디스미어 /.test(line)?' 기본PM':/^전기동 /.test(line)?` ${getElectroDetails(Number(line.match(/\d+/)[0])).work} (${ELECTRO_PASS_TEXT})`:'';
+    return `${label}${base} (${notes.join(' · ')})`;
+  });
   let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
   if (debarr) out += `${debarr}\n\n`;
   if (wash) out += `${wash}\n\n`;
@@ -2955,10 +3044,11 @@ function generateShareText() {
   }
 
   if (extraNotes.length) out += extraNotes.map(note => `${note.line} ${displayManualText(note)}`).join('\n') + '\n\n';
+  if(scheduledExtras.length) out+=scheduledExtras.join('\n')+'\n\n';
   out += `이상입니다.`;
   const outEl = document.getElementById('shareTextOutput');
   if (outEl) outEl.value = out;
-  renderBriefingCards({equipment:[debarr,wash,etching].filter(Boolean),desmear,chemical:[blackhole,...chems].filter(Boolean),electro,ongoing,extra:extraNotes.map(note=>`${note.line} ${displayManualText(note)}`)});
+  renderBriefingCards({equipment:[debarr,wash,etching].filter(Boolean),desmear,chemical:[blackhole,...chems].filter(Boolean),electro,ongoing,extra:[...extraNotes.map(note=>`${note.line} ${displayManualText(note)}`),...scheduledExtras]});
 }
 
 async function copyShareText() {
