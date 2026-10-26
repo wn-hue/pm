@@ -22,9 +22,11 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
     appendChild(child){this.children.push(child);}
     focus(){} blur(){} select(){} setSelectionRange(){} closest(){return null;}
   }
-  for (const match of html.matchAll(/id="([^"]+)"/g)) nodes.set(match[1],new Element(match[1]));
+  for (const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)) {
+    const node=new Element(match[1]);node.hidden=/\bhidden\b/.test(match[0]);nodes.set(match[1],node);
+  }
   // Compatibility targets for persisted timer rules; these do not exist in the app UI.
-  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) nodes.set(id,new Element(id));
+  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) nodes.set(id,new Element(id));
   nodes.get('passTimeInput').value='7시패스';
   const storage = new Map(Object.entries(stored));
   const localStorage = {getItem:key=>{if(storageError)throw Error('blocked');return storage.get(key)??null;},
