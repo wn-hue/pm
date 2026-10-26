@@ -1,5 +1,5 @@
 // Run: node --test tests/pm-regression.cjs
-// DOM and Firebase are isolated test doubles. No production database is contacted.
+// DOM and browser storage are isolated test doubles. No network access is available.
 process.env.TZ = 'Asia/Seoul';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +32,7 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
   nodes.get('passTimeInput').value='7시패스';
   const storage = new Map(Object.entries(stored));
   const localStorage = {getItem:key=>{if(storageError)throw Error('blocked');return storage.get(key)??null;},
-    setItem:(key,value)=>{if(storageError)throw Error('blocked');storage.set(key,value);},get length(){return storage.size;},key:i=>[...storage.keys()][i]};
+    setItem:(key,value)=>{if(storageError)throw Error('blocked');storage.set(key,value);},removeItem:key=>{if(storageError)throw Error('blocked');storage.delete(key);},get length(){return storage.size;},key:i=>[...storage.keys()][i]};
   const sessionStorage = {getItem:()=>null,setItem(){}};
   class ClockDate extends Date {
     constructor(...args){super(...(args.length?args:[clock]));}
@@ -310,38 +310,9 @@ test('120/240/360-day schedule and reminder remain on D28, D-Day and overdue dat
   assert.equal(a.run("formatDateOnly(new Date(new Date('2026-07-01T00:00').getTime()+360*86400000))"),'2027-06-26');
 });
 
-test('remote records are cached, partial chem data keeps five lines, and empty notes really clear',()=>{
-  const a=app();a.run("acceptRemoteState({chemList:[{id:'화7',lastDone:'2026-10-01T07:00',status:'완료',note:'원격'}],manualNotes:[]})");
-  assert.equal(JSON.parse(a.storage.get('chem_data_master'))[0].note,'원격');assert.equal(a.data('chemList').length,5);
-  a.run("manualNotes=[{date:selectedDateStr,line:'디스미어 9',text:'old'}];lastLocalState=currentState();acceptRemoteState({chemList:chemList})");
-  assert.equal(a.data('manualNotes').length,0);
-});
 
-test('offline changes survive reload and server refresh without losing unrelated lines',()=>{
-  const a=app();a.run("chemList[0].note='오프라인 작업';syncDataToFirebase()");
-  assert.equal(JSON.parse(a.storage.get('pm_pending_changes_master')).length>0,true);
-  const b=app({stored:Object.fromEntries(a.storage)});
-  b.run("acceptRemoteState({chemList:[{id:'화7',lastDone:'2026-10-01T06:00',status:'완료',note:'서버'},{id:'화8',lastDone:'2026-10-01T07:00',status:'완료',note:'다른 브라우저'}]})");
-  assert.equal(b.run('chemList[0].note'),'오프라인 작업');assert.equal(b.run('chemList[1].note'),'다른 브라우저');
-});
 
-test('Firebase transactions combine independent browser edits and preserve unknown root fields',async()=>{
-  const a=app(),b=app();let remote=a.data('currentState()');remote.extra='preserve';
-  const attach=instance=>{
-    instance.context.testDb={ref:()=>({transaction:async update=>{remote=clone(update(clone(remote)));return {committed:true,snapshot:{val:()=>clone(remote)}};}})};
-    instance.run('db=testDb;isFirebaseConnected=true;remoteLoaded=true');
-  };
-  attach(a);attach(b);
-  a.run("chemList[0].note='A';syncDataToFirebase()");b.run("chemList[1].note='B';syncDataToFirebase()");
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(remote.chemList[0].note,'A');assert.equal(remote.chemList[1].note,'B');assert.equal(remote.extra,'preserve');
-  assert.equal(a.data('pendingChanges').length,0);assert.equal(b.data('pendingChanges').length,0);
-});
 
-test('remote deletion of manual notes merges with concurrent additions',()=>{
-  const a=app();a.run("manualNotes=[{date:selectedDateStr,line:'디스미어 9',text:'삭제'}];lastLocalState=currentState();manualNotes=[];syncDataToFirebase();acceptRemoteState({chemList:chemList,manualNotes:[{date:selectedDateStr,line:'디스미어 9',text:'삭제'},{date:selectedDateStr,line:'전기동 18',text:'신규'}]})");
-  assert.deepEqual(a.data('manualNotes').map(note=>note.text),['신규']);
-});
 
 test('mobile safe areas, 16px forms and touch manipulation remain',()=>{
   assert.match(html,/viewport-fit=cover/);assert.match(html,/safe-area-inset-bottom/);
@@ -356,59 +327,10 @@ test('partial pulse master fills missing lines from newest legacy sources',()=>{
   assert.equal(a.data('pulseList').length,4);
 });
 
-test('new browser caches its first Firebase snapshot before any user edit',()=>{
-  const a=app();const callbacks={};
-  const remote=a.data('currentState()');remote.chemList[0].note='중앙 기록';
-  a.context.firebase={apps:[{}],database:()=>({ref:path=>({on:(event,callback)=>{callbacks[path]=callback;}})})};
-  a.run('initFirebase()');
-  callbacks['pm_system_data']({val:()=>remote});callbacks['.info/connected']({val:()=>true});
-  assert.equal(JSON.parse(a.storage.get('chem_data_master'))[0].note,'중앙 기록');
-  assert.match(a.nodes.get('syncStatus').textContent,/실시간 서버 연결됨/);
-  const b=app({stored:Object.fromEntries(a.storage)});assert.equal(b.run('chemList[0].note'),'중앙 기록');
-});
 
-test('PM opens without requiring Google sign-in; server login remains optional',()=>{
-  assert.doesNotMatch(html,/authGate|id="appContent" hidden/);
-  assert.match(html,/id="serverLoginButton"/);
-  const a=app();
-  assert.equal(a.logs.length,0);
-  assert.equal(a.data('chemList').length,5);
-  assert.match(a.nodes.get('shareTextOutput').value,/동도금/);
-});
 
-test('denied server access retains local edits and never reports transport-only connection as synced',async()=>{
-  const a=app();const callbacks={};let denied;
-  a.context.firebase={apps:[{}],database:()=>({ref:path=>({on:(event,callback,error)=>{
-    callbacks[path]=callback;if(path==='pm_system_data') denied=error;
-  },transaction:async update=>({committed:true,snapshot:{val:()=>update(a.data('currentState()'))}})})})};
-  a.run('initFirebase()');
-  denied({code:'PERMISSION_DENIED'});
-  callbacks['.info/connected']({val:()=>true});
-  assert.match(a.nodes.get('syncStatus').textContent,/서버 접근 제한/);
-  assert.equal(a.run('remoteLoaded'),false);
-  a.run("chemList[0].note='로컬 작업';syncDataToFirebase()");
-  assert.equal(JSON.parse(a.storage.get('chem_data_master'))[0].note,'로컬 작업');
-  assert.equal(a.data('pendingChanges').length>0,true);
-  callbacks['pm_system_data']({val:()=>a.data('currentState()')});
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(a.run('databaseReadError'),false);
-  assert.match(a.nodes.get('syncStatus').textContent,/실시간 서버 연결됨/);
-});
 
-test('failed Firebase write keeps user changes for retry rather than losing them',async()=>{
-  const a=app();a.context.testDb={ref:()=>({transaction:async()=>{throw Error('permission denied');}})};
-  a.run("db=testDb;isFirebaseConnected=true;remoteLoaded=true;chemList[0].note='보관';syncDataToFirebase()");
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(a.data('pendingChanges').length>0,true);
-  assert.equal(JSON.parse(a.storage.get('chem_data_master'))[0].note,'보관');
-  assert.match(a.nodes.get('syncStatus').textContent,/서버 저장 실패/);
-});
 
-test('empty-server initialization cannot overwrite a second browser record created during the race',()=>{
-  const a=app();
-  a.run("const seed=[{field:'chemList',key:'화7',value:{...chemList[0],note:'기본'},ifMissing:true}];const race=applyChanges({chemList:[{...chemList[0],note:'먼저 입력한 기록'}]},seed)");
-  assert.equal(a.run('race.chemList[0].note'),'먼저 입력한 기록');
-});
 
 test('화8 permits exactly 48 hours and prohibits after that boundary',()=>{
   const a=app();a.run("chemList[1]={...chemList[1],status:'완료',lastDone:'2026-09-29T08:00:00+09:00'};safeRenderAll()");
@@ -429,8 +351,8 @@ test('legacy chemistry note timestamp is removed while the corrected start time 
   assert.equal(a.run("cleanChemNote('13:00 13시 촉매건욕 PM진행중')"),'촉매 건욕');
 });
 
-test('remote dirty labels and time-only manual corrections cannot reintroduce duplicate clocks',()=>{
-  const a=app();a.run("acceptRemoteState({chemList:[{id:'화13',lastDone:'2026-09-30T13:00',status:'시작',note:'13시 촉매건욕'}]});safeRenderAll()");
+test('restored dirty labels and time-only manual corrections cannot reintroduce duplicate clocks',()=>{
+  const a=app();a.run("restoreLocalState({...currentState(),chemList:[{id:'화13',lastDone:'2026-09-30T13:00',status:'시작',note:'13시 촉매건욕'}]});safeRenderAll()");
   a.run("openChemTimeEditor('화13')");
   a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditHour').value='10';a.nodes.get('chemEditMinute').value='0';
   a.run('saveChemTimeEditor()');
@@ -615,20 +537,6 @@ test('new manual anchor resets the cycle; deleting the only anchor disables auto
   assert.equal(a.run("getInlineCycle('화13')"),null);
 });
 
-test('concurrent completion records merge without losing lines or double-counting one started PM',()=>{
-  const a=app({now:'2026-10-02T12:00:00+09:00'});
-  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'},{date:'2026-10-01',line:'디스미어 14',text:'기본PM'}];setChemStepStatusById('화13','시작');setChemStepStatusById('화14','시작')");
-  const remote=a.data('currentState()');
-  a.run("completeChemPM('화13')");
-  const changes13=a.data("pendingChanges.filter(item=>item.field==='inlineDesmearFlags')");
-  const b=app({now:'2026-10-02T12:01:00+09:00'});
-  b.context.remote=remote;b.run('acceptRemoteState(remote)');
-  b.run("completeChemPM('화13');completeChemPM('화14')");
-  b.context.changes13=changes13;
-  b.run('pendingChanges=[];acceptRemoteState(applyChanges(currentState(),changes13))');
-  assert.equal(b.run("getInlineCycle('화13').count"),1);
-  assert.equal(b.run("getInlineCycle('화14').count"),1);
-});
 
 test('inline entry shortcut selects line and default PM without saving anything',()=>{
   const a=app();a.run("openInlineManualEntry('화14')");
@@ -682,10 +590,10 @@ test('Kakao desmear notices require manual registration while chemistry aliases 
   assert.equal(a.data('manualNotes').length,1);assert.equal(a.data('manualNotes')[0].line,'디스미어 7');
 });
 
-test('legacy inline metadata stays stored while remote manual registrations still merge',()=>{
+test('legacy inline metadata stays stored while local PM registrations are saved',()=>{
   const legacy={화13:{chemPmCount:2,status:'시작',startedAt:'2026-10-01T05:00:00+09:00'}};
   const a=app({stored:{inline_desmear_flags_master:JSON.stringify(legacy)}});
-  a.run("acceptRemoteState({chemList,inlineDesmearFlags,manualNotes:[{date:selectedDateStr,line:'디스미어 14',text:'망간 건욕'}]});safeRenderAll()");
+  a.run("restoreLocalState({...currentState(),chemList,inlineDesmearFlags,manualNotes:[{date:selectedDateStr,line:'디스미어 14',text:'망간 건욕'}]});savePMData();safeRenderAll()");
   assert.deepEqual(JSON.parse(a.storage.get('inline_desmear_flags_master')),legacy);
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 13/);
   assert.match(a.nodes.get('shareTextOutput').value,/디스미어 14 망간건욕/);
@@ -818,15 +726,6 @@ test('backlight completion participates in the same two-cycle inline desmear sch
   assert.deepEqual(a.data('inlineDesmearFlags'),before);
 });
 
-test('backup preserves retry queue and precise timestamps without including pasted conversations',()=>{
-  const a=app();a.parse('화8 07:17 화학동 건욕 완료');
-  a.nodes.get('kakaoRawInput').value='private conversation';
-  const backup=a.data('buildPMBackup()');
-  assert.equal(backup.format,'pm-backup');
-  assert.equal(backup.state.chemList[1].lastDone,'2026-09-30T22:17:00.000Z');
-  assert.equal(backup.pendingChanges.length>0,true);
-  assert.doesNotMatch(JSON.stringify(backup),/private conversation|apiKey/);
-});
 
 test('unverified master records cannot shadow actual legacy evidence or fabricate an inline completion',()=>{
   const a=app({stored:{chem_data_master:JSON.stringify([{id:'화13',lastDone:'2026-09-22T13:00',status:'시작',needsReview:true}]),chem_data_v45:JSON.stringify([{id:'화13',lastDone:'2026-10-26T21:30',status:'완료'}])}});
@@ -974,14 +873,6 @@ test('scheduled annotations preserve electric work and 7AM pass and do not reset
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/9시30분패스/);
 });
 
-test('pending scheduled notes merge with server notes without losing schedule metadata',()=>{
-  const a=app({now:'2026-10-27T08:00:00+09:00'});
-  a.nodes.get('scheduleRawInput').value='화7 10월 28일 촉매 점검 예정';a.run('parseScheduleInput();addManualNote()');
-  a.run("acceptRemoteState({...currentState(),manualNotes:[{date:'2026-10-28',line:'디스미어 12',text:'설비작업'}]});selectBriefingDate('2026-10-28')");
-  assert.equal(a.run('manualNotes.length'),2);
-  assert.equal(a.run("manualNotes.find(n=>n.line==='화7').kind"),'schedule');
-  assert.match(a.nodes.get('shareTextOutput').value,/화7.*\(촉매 점검\)/);
-});
 
 test('changing a schedule date retains its selected line and AM wording is not an electric line',()=>{
   const a=app({now:'2026-10-27T08:00:00+09:00'});
@@ -1140,4 +1031,73 @@ test('custom construction notices do not become chemical PM and mixed notices ke
   a.parse('2026년 10월 27일\n화8 10시 촉매 건욕 인써트 교체 완료');
   assert.equal(a.run('chemList[1].note'),'촉매 건욕');
   assert.equal(a.run("manualNotes.some(n=>n.kind==='schedule'&&n.text==='인써트 교체')"),true);
+});
+
+test('personal app has no server SDK, login, connection tools, uploader or data-management menu',()=>{
+  assert.doesNotMatch(html,/firebase|connectPMServer|syncDataToFirebase|importKakaoEvents|serverLogin|connection-tools|연결 · 데이터 관리|자동 연동 관리|동기화 저장|exportPMBackup|buildPMBackup|\bfetch\s*\(|WebSocket|XMLHttpRequest/i);
+  assert.match(html,/Content-Security-Policy" content="connect-src 'none'"/);
+  const a=app();let calls=0;
+  a.context.firebase={initializeApp:()=>{calls++;throw Error('unexpected connection');}};
+  a.context.fetch=()=>{calls++;throw Error('unexpected request');};
+  a.run('window.onload();savePMData();tick()');
+  assert.equal(calls,0);assert.equal(a.logs.length,0);
+  assert.match(a.nodes.get('localSaveStatus').textContent,/개인용.*자동 저장/);
+});
+
+test('local-only edits and deleted notes persist across reloads without a server queue',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.run("setChemStepStatusById('화13','시작')");
+  a.nodes.get('scheduleRawInput').value='디12 내일 옥사멧 점검';a.run('parseScheduleInput();addManualNote()');
+  const saved=a.data('currentState()');
+  assert.deepEqual(JSON.parse(a.storage.get('pm_local_state_master')),saved);
+  assert.equal(a.storage.has('pm_pending_changes_master'),false);
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-28T08:00:00+09:00'});
+  assert.deepEqual(b.data('currentState()'),saved);
+  assert.match(b.nodes.get('shareTextOutput').value,/디12 기본PM \(옥사멧 점검\)/);
+  b.run('removeManualNote(0)');
+  const c=app({stored:Object.fromEntries(b.storage)});assert.deepEqual(c.data('manualNotes'),[]);
+});
+
+test('old unsent notes, chemistry and flags recover locally exactly once, including deletions',()=>{
+  const old={date:'2026-10-28',line:'디스미어 12',text:'설비 점검',kind:'schedule'};
+  const added={date:'2026-10-28',line:'전기동 18',text:'인써트 교체',kind:'schedule'};
+  const changes=[{field:'manualNotes',key:JSON.stringify([old.date,old.line,old.text]),deleted:true},
+    {field:'manualNotes',key:JSON.stringify([added.date,added.line,added.text]),value:added},
+    {field:'chemList',key:'화7',value:{id:'화7',status:'완료',lastDone:'2026-10-27T07:17:00+09:00',note:'촉매 건욕'}},
+    {field:'inlineDesmearFlags',key:'legacy-evidence',value:{version:2,lineId:'화13',completedAt:'2026-10-26T10:00:00+09:00'}}];
+  const a=app({stored:{manual_notes_master:JSON.stringify([old]),pm_pending_changes_master:JSON.stringify(changes)},now:'2026-10-27T08:00:00+09:00'});
+  assert.deepEqual(a.data('manualNotes'),[added]);assert.equal(a.run('chemList[0].lastDone'),'2026-10-27T07:17:00+09:00');
+  assert.ok(a.data('inlineDesmearFlags')['legacy-evidence']);assert.equal(a.storage.has('pm_pending_changes_master'),false);
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-27T08:00:00+09:00'});
+  assert.deepEqual(b.data('currentState()'),a.data('currentState()'));
+});
+
+test('authoritative local snapshot beats stale legacy mirrors and an obsolete retry queue',()=>{
+  const a=app();a.run("chemList[0].note='내 최신 기록';savePMData()");
+  const stored=Object.fromEntries(a.storage);
+  stored.chem_data_master=JSON.stringify([{id:'화7',lastDone:'2026-09-01T00:00',status:'완료',note:'오래된 사본'}]);
+  stored.pm_pending_changes_master=JSON.stringify([{field:'chemList',key:'화7',value:{id:'화7',lastDone:'2026-09-01T00:00',status:'완료',note:'이전 대기열'}}]);
+  const b=app({stored});assert.equal(b.run('chemList[0].note'),'내 최신 기록');
+  assert.equal(b.storage.has('pm_pending_changes_master'),false);
+  for(const invalid of ['"broken"','null','{}','[]']) {
+    const c=app({stored:{pm_local_state_master:invalid,chem_data_master:a.storage.get('chem_data_master')}});
+    assert.equal(c.run('chemList[0].note'),'내 최신 기록');assert.equal(c.logs.length,0);
+  }
+});
+
+test('single snapshot survives a legacy mirror failure and storage errors remain visible without data loss',()=>{
+  const a=app();const original=a.context.localStorage.setItem;
+  a.context.localStorage.setItem=(key,value)=>{if(key==='chem_data_master')throw Error('mirror full');original(key,value);};
+  a.run("chemList[0].note='새 기록';savePMData()");
+  const b=app({stored:Object.fromEntries(a.storage)});assert.equal(b.run('chemList[0].note'),'새 기록');
+  const blocked=app({storageError:true});blocked.run("chemList[0].note='메모리 보관';savePMData()");
+  assert.equal(blocked.run('chemList[0].note'),'메모리 보관');
+  assert.match(blocked.nodes.get('localSaveStatus').textContent,/저장하지 못/);
+});
+
+test('saved local state contains PM data only, without pasted raw conversations or authentication data',()=>{
+  const a=app();a.nodes.get('kakaoRawInput').value='private conversation';a.run('savePMData()');
+  const saved=a.storage.get('pm_local_state_master');
+  assert.equal(JSON.parse(saved).chemList.length,5);
+  assert.doesNotMatch(saved,/private conversation|apiKey|authToken|pendingChanges/);
 });
