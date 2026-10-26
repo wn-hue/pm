@@ -471,14 +471,14 @@ test('briefing cards escape manual content and do not diverge from copied report
   assert.match(a.nodes.get('uiToast').textContent,/반영 완료/);
 });
 
-test('attention summary respects 7-hour and 14-hour boundaries and preferences survive reload',()=>{
+test('attention boundaries stay correct and saved custom passes migrate to fixed seven oclock',()=>{
   const a=app();
   assert.equal(a.run("chemAttention({status:'시작',lastDone:new Date(Date.now()-14*3600000).toISOString()})"),'late');
   assert.equal(a.run("chemAttention({status:'완료',lastDone:new Date(Date.now()-65*3600000).toISOString()})"),'warn');
   a.nodes.get('passTimeInput').value='7시30분패스';a.run('savePassPreference()');
   const b=app({stored:Object.fromEntries(a.storage)});
-  assert.equal(b.nodes.get('passTimeInput').value,'7시30분패스');
-  assert.match(b.nodes.get('shareTextOutput').value,/7시30분패스/);
+  assert.equal(b.nodes.get('passTimeInput').value,'7시패스');
+  assert.match(b.nodes.get('shareTextOutput').value,/7시패스/);assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/7시30분패스/);
 });
 
 test('paste parsing waits for native insertion and applies exactly the new notice',()=>{
@@ -784,12 +784,12 @@ test('dynamic legacy versions and automation evidence survive restart',()=>{
   assert.equal(b.run('chemList[1].needsReview'),false);
 });
 
-test('line-specific pass times are isolated by line and date and shown in gauges',()=>{
+test('pasted line-specific times cannot change fixed seven oclock passes in briefing or gauges',()=>{
   const a=app({now:'2026-10-27T08:00:00+09:00'});
   a.parse('10월 27일 PM일정\n전18 6시30분패스\n전22 8시패스');
-  assert.match(a.nodes.get('shareTextOutput').value,/전18 산세\.박리 \(6시30분패스\)/);
-  assert.match(a.nodes.get('shareTextOutput').value,/전22 산세\.박리 \(8시패스\)/);
-  assert.match(a.nodes.get('elecGaugesContainer').innerHTML,/전18 산세\.박리 \(6시30분패스\)/);
+  assert.match(a.nodes.get('shareTextOutput').value,/전18 산세\.박리 \(7시패스\)/);
+  assert.match(a.nodes.get('shareTextOutput').value,/전22 산세\.박리 \(7시패스\)/);
+  assert.match(a.nodes.get('elecGaugesContainer').innerHTML,/전18 산세\.박리 \(7시패스\)/);
   a.run("selectQuickDay('tomorrow')");
   assert.match(a.nodes.get('shareTextOutput').value,/전15 산세\.박리 \(7시패스\)/);
   assert.equal(a.nodes.get('passTimeInput').value,'7시패스');
@@ -836,4 +836,50 @@ test('scheduled start and completion messages remain plans rather than actual ob
   a.parse('화8 07시 PM 시작 예정');assert.equal(a.run('chemList[1].lastDone'),before);
   a.parse('화8 07시 PM 완료 예정');assert.equal(a.run('chemList[1].lastDone'),before);
   assert.equal(a.run('getChemDue(chemList[1]).getHours()'),7);
+});
+
+test('legacy pass notes and custom preference cannot leak into report, copied text, matrix or gauge',async()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00',stored:{
+    pm_ui_preferences_master:JSON.stringify({pass:'9시30분패스',otherPreference:true}),
+    manual_notes_master:JSON.stringify([
+      {date:'2026-10-27',line:'전기동 18',text:'9시30분패스'},
+      {date:'2026-10-27',line:'전기동 22',text:'산탈지.산세.박리 (9시 30분 패스) 유산동필터 교체'},
+      {date:'2026-10-27',line:'전기동 15',text:'09:30패스'}
+    ])
+  }});
+  let copied='';a.context.navigator.clipboard.writeText=async value=>{copied=value;};
+  await a.run('copyShareText()');
+  assert.match(copied,/전18 산세\.박리 \(7시패스\)/);
+  assert.match(copied,/전22 산탈지\.산세\.박리 \(7시패스\) 유산동필터 교체/);
+  assert.doesNotMatch(copied,/9시|09:30/);
+  assert.doesNotMatch(a.nodes.get('elecGaugesContainer').innerHTML,/9시|09:30/);
+  assert.equal(a.nodes.get('manualNoteList').children.length,1);
+  assert.equal(JSON.parse(a.storage.get('pm_ui_preferences_master')).pass,'7시패스');
+  assert.equal(JSON.parse(a.storage.get('pm_ui_preferences_master')).otherPreference,true);
+  assert.equal(a.data('manualNotes').length,3); // Historical source notes are preserved.
+});
+
+test('notice dialog preserves drafts on cancel and closes with scroll restored after successful import',()=>{
+  const a=app();
+  a.nodes.get('kakaoRawInput').value='화8 07:17 화학동 건욕 완료';
+  a.run('openNoticePanel()');
+  assert.equal(a.nodes.get('kakaoModal').style.display,'flex');
+  assert.equal(a.run('document.body.style.position'),'fixed');
+  a.run("closeModal('kakaoModal')");
+  assert.equal(a.nodes.get('kakaoRawInput').value,'화8 07:17 화학동 건욕 완료');
+  a.run('openNoticePanel();parseAndApplyKakaoMsg()');
+  assert.equal(a.nodes.get('kakaoModal').style.display,'none');
+  assert.notEqual(a.run('document.body.style.position'),'fixed');
+  assert.equal(a.run('new Date(chemList[1].lastDone).getMinutes()'),17);
+});
+
+test('an incomplete message stays in its dialog and opens the missing time field',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n22시 백라이트\n화13 PM\n이상입니다');
+  a.run('openNoticePanel()');
+  a.parse('화13 액수위입니다');
+  assert.equal(a.nodes.get('kakaoModal').style.display,'flex');
+  assert.equal(a.nodes.get('kakaoRawInput').value,'화13 액수위입니다');
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/날짜·시각/);
+  assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
 });
