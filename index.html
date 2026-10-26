@@ -539,6 +539,22 @@
   .chem-overview.unknown { background:#f8fafc; }
   .message-time-setting input { display:block;max-width:100%;margin-top:8px; }
   @media(max-width:767px) { .brief-actions { width:100%; }.brief-actions .btn { flex:1; } }
+  .brief-toolbar { position:sticky;top:72px;z-index:20;background:#fff;padding:8px 0;border-bottom:1px solid var(--border-light); }
+  .focus-pill { padding:10px 12px; }.focus-pill strong { font-size:24px;margin:4px 0; }.focus-pill .summary-hint { display:none; }
+  .brief-section { padding:10px 12px; }.brief-line { padding:3px 0; }.brief-section h3 { margin-bottom:4px; }
+  #tab3>.card { max-width:940px;margin:auto; }.dashboard-card { padding:0;border:0; }
+  .notice-editor { max-width:660px; }.notice-editor .modal-body { padding:12px 18px; }
+  .import-content { padding:0;border:0;background:transparent; }.import-content>summary { display:none; }
+  #kakaoRawInput { width:100%;min-height:180px;resize:vertical; }
+  #kakaoParseResult:empty { display:none; }
+  .chem-detail-settings summary { color:var(--text-secondary);font-size:13px; }
+  @media(max-width:767px) {
+    .brief-toolbar { top:env(safe-area-inset-top); }.briefing-card { padding:12px; }.brief-actions .btn { min-height:48px; }
+    .focus-pill span { font-size:11px; }.focus-pill strong { font-size:24px; }
+    .brief-grid { gap:6px; }.brief-section { border-radius:8px; }
+    .notice-editor { max-height:calc(100dvh - env(safe-area-inset-top) - 12px); }
+    #tab3>.card { padding:14px; }
+  }
 </style>
 </head>
 <body>
@@ -590,7 +606,7 @@
       <div class="card briefing-card">
         <div class="card-title">
           <span id="briefingTitle" style="font-size: 16px;">오늘 PM 브리핑</span>
-          <span class="badge badge-blue">익일 08:30 이전 취합</span>
+          <span class="badge badge-blue">전기동 7시패스 고정</span>
         </div>
 
         <div class="brief-toolbar">
@@ -598,41 +614,23 @@
             <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
             <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
           </div>
-          <div class="brief-actions"><button class="btn btn-sub" onclick="openNoticePanel()">공지 반영</button><button class="btn" onclick="copyShareText()">📋 공지 복사</button></div>
+          <div class="brief-actions"><button class="btn btn-sub" onclick="openNoticePanel()">공지 반영</button><button class="btn" id="copyBriefingButton" onclick="copyShareText()">📋 공지 복사</button></div>
         </div>
         <div id="briefingCards" class="brief-grid" aria-label="공정별 PM 일정"></div>
         <details>
-          <summary>공유 원문 · 패스 기준</summary>
+          <summary>복사할 원문 확인</summary>
           <div class="settings-inline">
             <label for="passTimeInput">패스 기준</label>
-            <input type="text" id="passTimeInput" value="7시패스" style="width:120px;" oninput="savePassPreference();generateShareText()">
+            <input type="text" id="passTimeInput" value="7시패스" aria-label="전기동 패스 고정" readonly style="width:120px;"> <span class="helper">전기동은 항상 7시패스</span>
           </div>
           <textarea id="shareTextOutput" class="report-area" aria-label="공유할 공지 원문" readonly></textarea>
         </details>
 
 
       </div>
+      <p class="helper">화학동 요약 · 누르면 바로 관리</p>
       <div id="focusSummary" class="focus-grid" aria-label="현재 화학동 상태 요약"></div>
-      <section class="dashboard-card" aria-label="일반 화학동 현황">
-        <div class="dashboard-toolbar"><div class="filter-tabs" aria-label="라인 상태 필터">
-          <button class="filter-btn active" id="filter_all" onclick="setChemFilter('all')" aria-pressed="true">전체 5개</button>
-          <button class="filter-btn" id="filter_running" onclick="setChemFilter('running')" aria-pressed="false">진행 중</button>
-          <button class="filter-btn" id="filter_warn" onclick="setChemFilter('warn')" aria-pressed="false">임박</button>
-          <button class="filter-btn" id="filter_late" onclick="setChemFilter('late')" aria-pressed="false">지연</button>
-        </div><span class="helper">급한 라인부터 표시</span></div>
-        <div id="tab1ChemStatusContainer"></div>
-        <details class="inline-section"><summary>디스미어 13 · 14 연계 PM <span class="helper">화학동 2회마다 1회</span></summary><div id="inlineDesmearStatusContainer" class="inline-grid"></div></details>
-      </section>
-      <details id="kakaoPanel" class="parser-box">
-        <summary>📲 카톡 공지 반영 <span class="helper">붙여넣으면 자동 반영</span></summary>
-        <div class="parser-content">
-          <p class="helper">시각·건욕 명칭·특이사항을 자동 반영합니다. 직접 수정한 내용은 반영 버튼을 누르세요.</p>
-          <textarea id="kakaoRawInput" rows="4" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 여기에 붙여넣으세요" onpaste="queueKakaoPaste()"></textarea>
-          <details class="message-time-setting"><summary>메시지에 날짜·시각이 없는 경우</summary><label for="kakaoMessageTime">메시지 시각</label><input id="kakaoMessageTime" type="datetime-local" aria-label="완료 메시지 시각"><p class="helper">실제 메시지 시각을 입력한 뒤 공지 반영을 누르세요.</p></details>
-          <button class="btn" onclick="parseAndApplyKakaoMsg()">공지 반영</button>
-          <details><summary>자동 연동 관리</summary><p class="helper">수집한 메시지와 시각을 반영합니다. 서버 연결이 필요합니다.</p><textarea id="kakaoEventsInput" aria-label="자동 수집 메시지 JSON" rows="4"></textarea><button class="btn" id="kakaoEventsApply" onclick="importKakaoEvents()">수집 메시지 반영</button><p id="kakaoEventsResult" role="status"></p></details>
-        </div>
-      </details>
+
 
     </div>
   </div>
@@ -669,13 +667,24 @@
   <div id="tab3" class="tab-pane">
     <div class="card">
       <div class="card-title">
-        <span>🧪 화학동 72시간 주기 & 화8 48시간 빌드업 설정</span>
+        <span>🧪 화학동 바로 관리</span>
         <span class="badge badge-blue">변경 시 자동 저장</span>
       </div>
+      <section class="dashboard-card" aria-label="일반 화학동 현황">
+        <div class="dashboard-toolbar"><div class="filter-tabs" aria-label="라인 상태 필터">
+          <button class="filter-btn active" id="filter_all" onclick="setChemFilter('all')" aria-pressed="true">전체 5개</button>
+          <button class="filter-btn" id="filter_running" onclick="setChemFilter('running')" aria-pressed="false">진행 중</button>
+          <button class="filter-btn" id="filter_warn" onclick="setChemFilter('warn')" aria-pressed="false">임박</button>
+          <button class="filter-btn" id="filter_late" onclick="setChemFilter('late')" aria-pressed="false">지연</button>
+        </div><span class="helper">급한 라인부터 표시</span></div>
+        <div id="tab1ChemStatusContainer"></div>
+        <details class="inline-section"><summary>디스미어 13 · 14 연계 PM <span class="helper">화학동 2회마다 1회</span></summary><div id="inlineDesmearStatusContainer" class="inline-grid"></div></details>
+      </section>
+
       <div style="font-size:12px; color:var(--text-secondary);">
         시간정정에서 <strong>일 · 시각</strong>을 입력하고 한 번에 저장하세요. 시작·완료는 실제 현재 시각을 저장합니다.
       </div>
-      <div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+      <details class="chem-detail-settings"><summary>상세 기준 · 현재시각 설정</summary><div id="chemListContainer" style="display:flex; flex-direction:column; gap:10px;"></div></details>
     </div>
   </div>
 
@@ -709,6 +718,22 @@
 
       <div id="manualNoteList" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;"></div>
     </div>
+  </div>
+
+  <div id="kakaoModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="kakaoModalTitle" onclick="if(event.target===this) closeModal('kakaoModal')" onkeydown="handleTimeEditorKey(event,'kakaoModal')">
+    <div class="modal-content notice-editor"><div class="modal-header"><strong id="kakaoModalTitle" tabindex="-1">📲 카톡 공지 반영</strong><button class="btn btn-sub" onclick="closeModal('kakaoModal')">닫기</button></div><div class="modal-body">
+      <details id="kakaoPanel" class="parser-box import-content">
+        <summary>📲 카톡 공지 반영 <span class="helper">붙여넣으면 자동 반영</span></summary>
+        <div class="parser-content">
+          <p class="helper">시각·건욕 명칭·특이사항을 자동 반영합니다. 직접 수정한 내용은 반영 버튼을 누르세요.</p>
+          <textarea id="kakaoRawInput" rows="7" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 여기에 붙여넣으세요" onpaste="queueKakaoPaste()"></textarea>
+          <p id="kakaoParseResult" class="helper" role="status" aria-live="polite"></p>
+          <details id="kakaoTimeDetails" class="message-time-setting"><summary>메시지에 날짜·시각이 없는 경우</summary><label for="kakaoMessageTime">메시지 시각</label><input id="kakaoMessageTime" type="datetime-local" aria-label="완료 메시지 시각"><p class="helper">실제 메시지 시각을 입력한 뒤 공지 반영을 누르세요.</p></details>
+          <button class="btn" onclick="parseAndApplyKakaoMsg()">공지 반영</button>
+          <details><summary>자동 연동 관리</summary><p class="helper">수집한 메시지와 시각을 반영합니다. 서버 연결이 필요합니다.</p><textarea id="kakaoEventsInput" aria-label="자동 수집 메시지 JSON" rows="4"></textarea><button class="btn" id="kakaoEventsApply" onclick="importKakaoEvents()">수집 메시지 반영</button><p id="kakaoEventsResult" role="status"></p></details>
+        </div>
+      </details>
+    </div></div>
   </div>
 
   <!-- [모달 팝업 1: 주간 PM 매트릭스] -->
@@ -913,6 +938,7 @@ function ensureObject(data) {
 }
 
 const REQUIRED_CHEM_IDS = ['화7', '화8', '화9', '화13', '화14'];
+const ELECTRO_PASS_TEXT = '7시패스';
 
 const DEFAULT_CHEM = [
   { id: '화7', lastDone: '2026-09-25T00:00', status: '시작', note: '0시PM' },
@@ -1333,7 +1359,7 @@ function formatDateOnly(d) {
 
 let timeEditorScrollState=null;
 function openModal(id) {
-  if(id==='chemTimeModal' && !timeEditorScrollState) {
+  if(['chemTimeModal','kakaoModal'].includes(id) && !timeEditorScrollState) {
     const style=document.body.style;
     timeEditorScrollState={y:window.scrollY,position:style.position,top:style.top,width:style.width,overflow:style.overflow};
     style.position='fixed'; style.top=`-${window.scrollY}px`; style.width='100%'; style.overflow='hidden';
@@ -1344,14 +1370,15 @@ function openModal(id) {
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'none';
-  if(id==='chemTimeModal') {
+  if(['chemTimeModal','kakaoModal'].includes(id)) {
     document.activeElement?.blur();
     if(timeEditorScrollState) {
       const {y,...styles}=timeEditorScrollState;
       Object.assign(document.body.style,styles); timeEditorScrollState=null;
       window.scrollTo(0,y);
     }
-    if(editorReturnFocus?.isConnected) editorReturnFocus.focus({preventScroll:true});
+    const returnFocus=id==='kakaoModal'?noticeReturnFocus:editorReturnFocus;
+    if(returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
   }
 }
 
@@ -1394,10 +1421,15 @@ function chemAttention(line, now = new Date()) {
 function setChemFilter(filter) {
   if(!['all','running','warn','late'].includes(filter)) return;
   chemDashboardFilter=filter;renderTab1ChemStatus();
+  switchTab('tab3');
 }
+let noticeReturnFocus=null;
 function openNoticePanel() {
-  switchTab('tab1');document.getElementById('kakaoPanel').open=true;
-  document.getElementById('kakaoRawInput').focus();
+  noticeReturnFocus=document.activeElement;
+  document.getElementById('kakaoPanel').open=true;
+  document.getElementById('kakaoParseResult').textContent='';
+  openModal('kakaoModal');
+  document.getElementById('kakaoRawInput').focus({preventScroll:true});
 }
 function relativePmDay(date,now=new Date()) {
   const target=new Date(date);target.setHours(0,0,0,0);
@@ -1517,7 +1549,7 @@ function parseAndApplyKakaoMsg() {
     if (formatDateOnly(headerDate) === formatDateOnly(now)) selectQuickDay('today');
     else if (formatDateOnly(headerDate) === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
   }
-  let updatedChemCount = 0; let updatedNoteCount = 0; let skippedInlineCount = 0; let missingTimeCount = 0; let staleCount = 0;
+  let updatedChemCount = 0; let updatedNoteCount = 0; let skippedInlineCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0; let staleCount = 0;
   const manualTime = document.getElementById('kakaoMessageTime').value;
   const featureRules = [
     ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
@@ -1610,16 +1642,7 @@ function parseAndApplyKakaoMsg() {
         if(time && changed && (ongoing||completed)) item.needsReview=false;
         if (changed) updatedChemCount++;
       } else {
-        const linePass = segment.match(/(\d{1,2}시(?:\s*\d{1,2}분)?\s*패스)/);
-        if (/^전기동 /.test(key) && linePass && extractNoticeTime(linePass[1])) {
-          const dateStr = formatDateOnly(date);
-          const passText = linePass[1].replace(/\s+/g,'');
-          const existing = manualNotes.filter(note => note.date === dateStr && note.line === key && /^\d{1,2}시(?:\d{1,2}분)?패스$/.test(note.text));
-          if (existing.length !== 1 || existing[0].text !== passText) {
-            manualNotes = manualNotes.filter(note => !existing.includes(note));
-            manualNotes.push({date:dateStr,line:key,text:passText}); updatedNoteCount++;
-          }
-        }
+        if (/^전기동 /.test(key) && /\d{1,2}(?:시|:)\s*.*?패스/.test(segment)) ignoredPassCount++;
         for (const [tag,pattern] of featureRules) {
           if (!pattern.test(segment)) continue;
           const dateStr = formatDateOnly(date);
@@ -1630,15 +1653,17 @@ function parseAndApplyKakaoMsg() {
     }
   }
   syncDataToFirebase(); safeRenderAll();
-  if (!updatedChemCount && !updatedNoteCount) {
+  if(missingTimeCount) document.getElementById('kakaoTimeDetails').open=true;
+  if (!updatedChemCount && !updatedNoteCount && !ignoredPassCount) {
     showToast(missingTimeCount ? '메시지 날짜·시각을 확인해주세요.' : staleCount ? '오래된 공지는 현재 기록에 반영하지 않았습니다.' : skippedInlineCount ? '디화13·14 디스미어 PM은 특이사항 수동에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
   }
-  showToast(`공지 반영 완료 · 일정 ${updatedChemCount}건 · 특이사항 ${updatedNoteCount}건${skippedInlineCount ? ' · 디화 디스미어는 수동 등록' : ''}`);
+  showToast(`공지 반영 완료 · 일정 ${updatedChemCount}건 · 특이사항 ${updatedNoteCount}건${ignoredPassCount?' · 전기동 7시패스 고정':''}${skippedInlineCount ? ' · 디화 디스미어는 수동 등록' : ''}`);
   savePassPreference();
   if (missingTimeCount) {showToast(`일정 ${updatedChemCount}건 반영 · ${missingTimeCount}건은 날짜·시각 확인 필요`);return;}
   input.value = '';
   document.getElementById('kakaoMessageTime').value = '';
   document.getElementById('kakaoPanel').open = false;
+  closeModal('kakaoModal');
 }
 
 function safeRenderAll() {
@@ -1658,8 +1683,7 @@ window.onload = function() {
   selectedDateStr = formatDateOnly(today);
   lastCheckedDate = selectedDateStr;
   currentDateChoice = 'today';
-  const savedPass=readStored('pm_ui_preferences_master');
-  if (savedPass && typeof savedPass.pass==='string') document.getElementById('passTimeInput').value=savedPass.pass;
+  savePassPreference();
   
   const mD = document.getElementById('manualDayInput');
   if (mD) mD.value = today.getDate();
@@ -1832,6 +1856,7 @@ function renderManualNotesInMatrix(weekDates) {
   document.querySelectorAll('[id^="custom_"]').forEach(el => el.innerHTML = '');
 
   manualNotes.forEach(item => {
+    if(!displayManualText(item)) return;
     const isInWeek = weekDates.some(w => w.dateStr === item.date);
     if (!isInWeek) return;
 
@@ -1871,7 +1896,7 @@ function renderManualNotesInMatrix(weekDates) {
     if (targetId) {
       const el = document.getElementById(targetId);
       const column = el?.closest('td')?.cellIndex;
-      if (el && weekDates[column-1]?.dateStr === item.date) el.innerHTML += `<span class="badge badge-custom">${escapeHtml(item.text)}</span>`;
+      if (el && weekDates[column-1]?.dateStr === item.date) el.innerHTML += `<span class="badge badge-custom">${escapeHtml(displayManualText(item))}</span>`;
     }
   });
 }
@@ -2032,6 +2057,7 @@ function addManualNote() {
 
   const text = document.getElementById('manualContentInput').value.trim();
 
+  if (/^(?:전기동\s*|전\d|MSF)/.test(line) && text && !stripElectroPass(text)) {showToast('전기동 패스는 7시로 고정되어 있습니다.');return;}
   if (!text) {
     alert('특이사항 내용을 입력해주세요.');
     return;
@@ -2063,10 +2089,11 @@ function renderManualNotesList() {
   if (!container) return;
   container.innerHTML = '';
   manualNotes.forEach((n, idx) => {
+    if(!displayManualText(n)) return;
     const chip = document.createElement('span');
     chip.className = 'note-chip';
     const dayOnly = Number(n.date.split('-')[2]);
-    chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(n.text)} <button onclick="removeManualNote(${idx})">&times;</button>`;
+    chip.innerHTML = `<strong>${dayOnly}일 [${escapeHtml(n.line)}]</strong>: ${escapeHtml(displayManualText(n))} <button onclick="removeManualNote(${idx})">&times;</button>`;
     container.appendChild(chip);
   });
 }
@@ -2196,14 +2223,19 @@ function getElectroLines(dateStr = selectedDateStr) {
   return numbers.map(number => ({name:`전기동 ${number}라인`,number,dateStr,isPulse:[9,20,21].includes(number)}));
 }
 
+function stripElectroPass(text) {
+  return text.replace(/\(?\s*\d{1,2}(?:시(?:\s*\d{1,2}분)?|:\d{2})\s*패스\s*\)?/g,'').trim();
+}
+function displayManualText(note) {
+  return /^(?:전기동\s*|전\d|MSF)/.test(note.line)?stripElectroPass(note.text):note.text;
+}
 function getElectroDetails(number,dateStr=selectedDateStr) {
-  const notes=manualNotes.filter(n=>n.date===dateStr&&n.line===`전기동 ${number}`);
-  const passes=notes.filter(n=>/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text));
+  const notes=manualNotes.filter(n=>n.date===dateStr&&n.line===`전기동 ${number}`).map(n=>displayManualText(n)).filter(Boolean);
   const defaultWork=[9,12,14,20,21].includes(number)?'산탈지.산세.박리':'산세.박리';
   const workPattern=/산탈지[.·]산세[.·](?:프리딥[.·])?박리|산세[.·]박리/;
-  const overrides=notes.map(n=>n.text.match(workPattern)?.[0]).filter(Boolean);
-  const extras=notes.filter(n=>!passes.includes(n)).map(n=>n.text.replace(workPattern,'').trim()).filter(Boolean);
-  return {work:overrides.at(-1)||defaultWork,pass:passes.at(-1)?.text||document.getElementById('passTimeInput')?.value||'7시패스',extra:[...new Set(extras)].join(' ')};
+  const overrides=notes.map(text=>text.match(workPattern)?.[0]).filter(Boolean);
+  const extras=notes.map(text=>text.replace(workPattern,'').trim()).filter(Boolean);
+  return {work:overrides.at(-1)||defaultWork,pass:ELECTRO_PASS_TEXT,extra:[...new Set(extras)].join(' ')};
 }
 
 function getDayLines(date) {
@@ -2941,7 +2973,7 @@ function generateShareText() {
 
   const getNote = (lineKeyword) => {
     const found = manualNotes.filter(n => n.date === selectedDateStr && !/^\d{1,2}시(?:\d{1,2}분)?패스$/.test(n.text) && (n.line === lineKeyword || (lineKeyword === '고압수세' && n.line === '고압수세 1')));
-    return found.length > 0 ? ` ${found.map(f => f.text).join(' ')}` : '';
+    return found.length > 0 ? ` ${found.map(displayManualText).filter(Boolean).join(' ')}` : '';
   };
 
 
@@ -3016,7 +3048,7 @@ function generateShareText() {
   desmear.push(...inlineBriefingLines(selectedDateStr));
 
   const regularLines = new Set([...getDayLines(targetDate),...INLINE_CHEM_IDS.map(inlineDesmearName)]);
-  const extraNotes = manualNotes.filter(note => note.date === selectedDateStr &&
+  const extraNotes = manualNotes.filter(note => displayManualText(note) && note.date === selectedDateStr &&
     !regularLines.has(note.line) && !REQUIRED_CHEM_IDS.includes(note.line));
 
   let out = `동도금 ${m}월 ${d}일 PM일정\n\n`;
@@ -3039,11 +3071,11 @@ function generateShareText() {
     out += `${ongoing.join('\n')}\n\n`;
   }
 
-  if (extraNotes.length) out += extraNotes.map(note => `${note.line} ${note.text}`).join('\n') + '\n\n';
+  if (extraNotes.length) out += extraNotes.map(note => `${note.line} ${displayManualText(note)}`).join('\n') + '\n\n';
   out += `이상입니다.`;
   const outEl = document.getElementById('shareTextOutput');
   if (outEl) outEl.value = out;
-  renderBriefingCards({equipment:[debarr,wash,etching].filter(Boolean),desmear,chemical:[blackhole,...chems].filter(Boolean),electro,ongoing,extra:extraNotes.map(note=>`${note.line} ${note.text}`)});
+  renderBriefingCards({equipment:[debarr,wash,etching].filter(Boolean),desmear,chemical:[blackhole,...chems].filter(Boolean),electro,ongoing,extra:extraNotes.map(note=>`${note.line} ${displayManualText(note)}`)});
 }
 
 async function copyShareText() {
@@ -3055,6 +3087,9 @@ async function copyShareText() {
       el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
       if (!document.execCommand('copy')) throw new Error('copy failed');
     }
+    const button=document.getElementById('copyBriefingButton');
+    button.textContent='✓ 복사 완료';
+    setTimeout(()=>{button.textContent='📋 공지 복사';},2500);
     showToast('공지 복사 완료 · 카톡에 붙여넣으세요.');
   } catch (error) {
     el.parentElement.open=true;
@@ -3078,6 +3113,7 @@ function showToast(message) {
   const el=document.getElementById('uiToast');
   if (!el) return;
   el.textContent=message; el.style.display='block';
+  if(document.getElementById('kakaoModal')?.style.display==='flex') document.getElementById('kakaoParseResult').textContent=message;
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.style.display='none';},4500);
 }
 
@@ -3088,7 +3124,8 @@ function queueKakaoPaste() {
 }
 
 function savePassPreference() {
-  try { localStorage.setItem('pm_ui_preferences_master',JSON.stringify({pass:document.getElementById('passTimeInput').value})); } catch(error) { /* PM storage remains independent. */ }
+  document.getElementById('passTimeInput').value=ELECTRO_PASS_TEXT;
+  try { localStorage.setItem('pm_ui_preferences_master',JSON.stringify({...ensureObject(readStored('pm_ui_preferences_master')),pass:ELECTRO_PASS_TEXT})); } catch(error) { /* PM storage remains independent. */ }
 }
 
 function renderBriefingCards(groups) {
@@ -3103,10 +3140,11 @@ function halfHourMinuteOptions(minute) {
   return placeholder+[0,30].map(value=>`<option value="${value}" ${value===minute?'selected':''}>${String(value).padStart(2,'0')}분</option>`).join('');
 }
 
-function handleTimeEditorKey(event) {
-  if(event.key==='Escape') {event.preventDefault();closeModal('chemTimeModal');return;}
+function handleTimeEditorKey(event,modalId='chemTimeModal') {
+  if(modalId==='kakaoModal' && event.key==='Enter' && (event.ctrlKey||event.metaKey)) {event.preventDefault();parseAndApplyKakaoMsg();return;}
+  if(event.key==='Escape') {event.preventDefault();closeModal(modalId);return;}
   if(event.key!=='Tab') return;
-  const buttons=Array.from(document.getElementById('chemTimeModal').querySelectorAll('button,input,select'));
+  const buttons=Array.from(document.getElementById(modalId).querySelectorAll('button,input,select,textarea')).filter(el=>!el.disabled && el.getClientRects?.().length!==0);
   const first=buttons[0],last=buttons[buttons.length-1];
   if(event.shiftKey && document.activeElement===first) {event.preventDefault();last.focus();}
   else if(!event.shiftKey && document.activeElement===last) {event.preventDefault();first.focus();}
