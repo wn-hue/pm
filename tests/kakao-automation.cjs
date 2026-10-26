@@ -107,3 +107,14 @@ test('collected completion records one inline cycle and production wording recog
  assert.equal(events.length,1);assert.equal(events[0].lineId,'화13');
  assert.deepEqual(reduceEvents(r.state,[msg('16:00','화13 양산하겠습니다')],now).state,r.state);
 });
+
+test('special-work notes never become inline PM anchors during automated completion',()=>{
+  const input=state();input.chemList[3].status='시작';input.chemList[3].lastDone='2026-10-07T10:00:00+09:00';
+  input.manualNotes=[{date:'2026-10-09',line:'디스미어 13',text:'인써트 교체',kind:'schedule'}];
+  const noAnchor=reduceEvents(input,[msg('16:00','화13 PM후')],now).state;
+  assert.deepEqual(noAnchor.inlineDesmearFlags||{},{});
+  input.manualNotes.unshift({date:'2026-10-01',line:'디스미어 13',text:'기본PM'});
+  input.manualNotes.push({date:'2026-10-10',line:'디스미어 13',text:'설비공사'});
+  const anchored=reduceEvents(input,[msg('16:00','화13 PM후')],now).state;
+  assert.equal(Object.keys(anchored.inlineDesmearFlags).length,1);
+});

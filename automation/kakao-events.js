@@ -16,6 +16,12 @@ function classify(text) {
     return {line:'화'+m[3],type:blocked.test(body)||explicitTime?'review':complete?'complete':running?'running':'ignore',segment};
   }).filter(Boolean);
 }
+function isInlinePMAnchor(note) {
+  if(note.kind==='schedule') return false;
+  const text=note.text;
+  const work=String(text||'').replace(/(?:건욕|산탈지|산세|박리|프리딥|촉매cs)\s*(?:탱크|배관|펌프|필터|밸브|모터|히터|설비|장치|조)(?=\s*(?:공사|점검|교체|보수|수리|설치|철거|개조))/gi,'설비');
+  return /건\s*욕|약품\s*(?:교체|교환|투입|보충)|(?:기본|정기)\s*(?:PM|피\s*엠)|\bPM\b|피\s*엠|산탈지|산세|박리|프리딥|촉매\s*(?:cs|c\/s)/i.test(work);
+}
 function reduceEvents(state,messages,now=new Date(),hashes=null) {
   if (!Array.isArray(messages)||messages.length>1000) throw Error('메시지 배열은 최대 1000건입니다.');
   const next=structuredClone(state); const result=[];
@@ -47,7 +53,7 @@ function reduceEvents(state,messages,now=new Date(),hashes=null) {
         item.kakaoTimeBasis='최초 PM 관측 시각';
       } else {
         // The same completion identity is used by manual controls and the notice parser.
-        const anchors=Object.values(next.manualNotes||{}).filter(n=>n.line==='디스미어 '+item.id.slice(1)).sort((a,b)=>b.date.localeCompare(a.date));
+        const anchors=Object.values(next.manualNotes||{}).filter(n=>n.line==='디스미어 '+item.id.slice(1)&&isInlinePMAnchor(n)).sort((a,b)=>b.date.localeCompare(a.date));
         const done=new Date(msg.postedAt);
         const localDay=`${done.getFullYear()}-${String(done.getMonth()+1).padStart(2,'0')}-${String(done.getDate()).padStart(2,'0')}`;
         if(['화13','화14'].includes(item.id)&&anchors.length&&localDay>anchors[0].date) {
