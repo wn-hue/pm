@@ -24,9 +24,11 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
     appendChild(child){this.children.push(child);}
     focus(){} blur(){} select(){} setSelectionRange(){} closest(){return null;}
   }
-  for (const match of html.matchAll(/id="([^"]+)"/g)) nodes.set(match[1],new Element(match[1]));
+  for (const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)) {
+    const node=new Element(match[1]);node.hidden=/\bhidden\b/.test(match[0]);nodes.set(match[1],node);
+  }
   // Compatibility targets for persisted timer rules; these do not exist in the app UI.
-  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) nodes.set(id,new Element(id));
+  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) nodes.set(id,new Element(id));
   nodes.get('passTimeInput').value='7시패스';
   const storage = new Map(Object.entries(stored));
   const localStorage = {getItem:key=>{if(storageError)throw Error('blocked');return storage.get(key)??null;},
@@ -888,10 +890,10 @@ test('an incomplete message stays in the inline notice box and opens the missing
 test('progress screen is removed and its summary links open chemistry management',()=>{
   assert.doesNotMatch(html,/id="(?:tab2|tabBtn2|elecGaugesContainer|activeChemGaugesContainer)"/);
   const a=app();
-  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) a.nodes.delete(id);
+  for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) a.nodes.delete(id);
   a.run("safeRenderAll();tick();switchTab('tab2')");
   assert.equal(a.logs.length,0);
-  assert.match(a.nodes.get('focusSummary').innerHTML,/switchTab\('tab3'\)/);
+  assert.match(a.nodes.get('focusSummary').innerHTML,/openChemManagement\(\)/);
   assert.doesNotMatch(a.nodes.get('focusSummary').innerHTML,/진척/);
 });
 
@@ -988,4 +990,73 @@ test('changing a schedule date retains its selected line and AM wording is not a
   assert.equal(a.nodes.get('manualContentInput').value,'오전 10시 옥사멧 점검');
   a.nodes.get('manualDateInput').value='2026-10-30';a.run('updateManualLineOptions();addManualNote()');
   assert.equal(a.run('manualNotes[0].line'),'디스미어 12');assert.equal(a.run('manualNotes[0].date'),'2026-10-30');
+});
+
+test('PM home replaces duplicate chemistry navigation and keeps direct controls and timing details',()=>{
+  assert.doesNotMatch(html,/id="(?:tab3|tabBtn3|chemListContainer)"/);
+  const a=app({now:'2026-10-01T08:00:00+09:00'});
+  for(const id of ['chemListContainer','elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) a.nodes.delete(id);
+  let scrolled=false;a.nodes.get('chemManagement').scrollIntoView=()=>{scrolled=true;};
+  a.run("switchTab('tab3');safeRenderAll();tick()");
+  assert.equal(scrolled,true);assert.equal(a.logs.length,0);
+  const home=a.nodes.get('tab1ChemStatusContainer').innerHTML;
+  assert.match(home,/화7 PM 완료/);assert.match(home,/시간정정/);
+  assert.match(home,/12시간 액이송/);assert.match(home,/14시간 PM 목표/);assert.match(home,/직전 완료/);
+});
+
+test('empty special-notes screen hides editor, parse action and empty saved list',()=>{
+  const a=app({stored:{}});
+  assert.equal(a.nodes.get('manualNoteEditor').hidden,true);
+  assert.equal(a.nodes.get('scheduleParseActions').hidden,true);
+  assert.equal(a.nodes.get('manualNoteList').hidden,true);
+  assert.equal(a.nodes.get('manualNoteList').innerHTML,'');
+  a.nodes.get('scheduleRawInput').value='디12 내일 점검';a.run('updateScheduleInput()');
+  assert.equal(a.nodes.get('scheduleParseActions').hidden,false);
+  assert.equal(a.nodes.get('manualNoteEditor').hidden,true);
+  a.run('parseScheduleInput()');assert.equal(a.nodes.get('manualNoteEditor').hidden,false);
+  a.nodes.get('scheduleRawInput').value='디12 모레 다른 점검';a.run('updateScheduleInput()');
+  assert.equal(a.nodes.get('manualNoteEditor').hidden,true); // Re-parse changed source before saving.
+  a.run('parseScheduleInput();addManualNote()');
+  assert.equal(a.nodes.get('manualNoteEditor').hidden,true);assert.equal(a.nodes.get('scheduleParseActions').hidden,true);
+  assert.equal(a.nodes.get('manualNoteList').hidden,false);
+  a.run('editManualNote(0)');assert.equal(a.nodes.get('manualNoteEditor').hidden,false);
+  a.run('cancelManualEdit()');assert.equal(a.nodes.get('manualNoteEditor').hidden,true);
+  a.run('openManualNoteEditor()');assert.equal(a.nodes.get('manualNoteEditor').hidden,false);
+});
+
+test('inline desmear only appears for work or a remembered note in the selected date window',()=>{
+  const a=app({stored:{},now:'2026-10-27T08:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'}];renderInlineDesmearStatus()");
+  assert.equal(a.nodes.get('inlineDesmearSection').hidden,true);
+  assert.equal(a.nodes.get('inlineDesmearStatusContainer').innerHTML,'');
+  a.run("manualNotes.push({date:'2026-10-27',line:'디스미어 14',text:'설비 점검',kind:'schedule'});renderInlineDesmearStatus()");
+  assert.equal(a.nodes.get('inlineDesmearSection').hidden,false);
+  assert.match(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/디스미어 14/);
+  assert.doesNotMatch(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/디스미어 13/);
+  a.run("selectQuickDay('tomorrow')");assert.equal(a.nodes.get('inlineDesmearSection').hidden,true);
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'}];inlineDesmearFlags={one:{version:2,lineId:'화13',completedAt:'2026-10-25T10:00:00+09:00'}};chemList[3]={...chemList[3],needsReview:false,status:'완료',lastDone:'2026-10-25T10:00:00+09:00'};renderInlineDesmearStatus()");
+  assert.equal(a.nodes.get('inlineDesmearSection').hidden,false);
+  assert.match(a.nodes.get('inlineDesmearStatusContainer').innerHTML,/디스미어 13/);
+});
+
+test('past notes are collapsed, current and upcoming work remains visible, and data is retained',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-01',line:'디스미어 13',text:'기본PM'},{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}];renderManualNotesList()");
+  const cards=a.nodes.get('manualNoteList').children;
+  assert.equal(cards.length,2);assert.equal(cards[0].className,'saved-note');
+  assert.match(cards[0].innerHTML,/2026-10-28/);
+  assert.equal(cards[1].className,'saved-history');assert.match(cards[1].innerHTML,/<summary>지난 기록 1건<\/summary>/);
+  assert.equal(a.run('manualNotes.length'),2);
+  a.run("selectBriefingDate('2026-10-01')");
+  assert.equal(a.nodes.get('manualNoteList').children.every(n=>n.className==='saved-note'),true);
+});
+
+test('remembered-date copy produces its full PM notice with annotations and fixed pass in one action',async()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}]");
+  let copied='';a.context.navigator.clipboard.writeText=async value=>{copied=value;};
+  await a.run('copyManualNoteDate(0)');
+  assert.match(copied,/동도금 10월 28일 PM일정/);assert.match(copied,/디12 기본PM \(옥사멧 점검\)/);
+  assert.match(copied,/7시패스/);assert.match(copied,/이상입니다\./);
+  assert.equal(copied,a.nodes.get('shareTextOutput').value);
 });
