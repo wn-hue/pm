@@ -301,7 +301,7 @@ test('electric dummy cycle ends at 90min and delay turns on at 20:30, including 
 test('120/240/360-day schedule and reminder remain on D28, D-Day and overdue dates',()=>{
   const a=app({now:'2026-10-01T12:00:00+09:00'});
   a.run("pulseList[0].lastDate='2026-07-01';renderPulseTable()");
-  assert.match(a.nodes.get('remindBannerText').innerHTML,/전기동 9라인/);
+  assert.match(a.nodes.get('remindBannerText').innerHTML,/전9/);
   assert.equal(a.nodes.get('remindBanner').style.display,'flex');
   a.setNow('2026-10-29T12:00:00+09:00');a.nodes.get('pulseTableBody').children=[];a.run('renderPulseTable()');
   assert.match(a.nodes.get('pulseTableBody').children[0].innerHTML,/D-Day/);
@@ -877,7 +877,7 @@ test('changing a schedule date retains its selected line and AM wording is not a
   assert.equal(a.run('manualNotes[0].line'),'디스미어 12');assert.equal(a.run('manualNotes[0].date'),'2026-10-30');
 });
 
-test('PM home is read-only with timing details and manual chemistry actions live in special notes',()=>{
+test('PM home restores direct chemistry controls with timing details while special-note correction remains available',()=>{
   assert.doesNotMatch(html,/id="(?:tab3|tabBtn3|chemListContainer)"/);
   const a=app({now:'2026-10-01T08:00:00+09:00'});
   for(const id of ['chemListContainer','elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) a.nodes.delete(id);
@@ -885,10 +885,55 @@ test('PM home is read-only with timing details and manual chemistry actions live
   a.run("switchTab('tab3');safeRenderAll();tick()");
   assert.equal(scrolled,true);assert.equal(a.logs.length,0);
   const home=a.nodes.get('tab1ChemStatusContainer').innerHTML;
-  assert.doesNotMatch(home,/<button|onclick|<input|<select/);
+  assert.match(home,/화7 PM 완료/);assert.match(home,/화8 PM 시작/);assert.match(home,/화7 시간정정/);
+  assert.match(home,/setChemStepStatusById\('화7','완료'\)/);assert.match(home,/openChemTimeEditor\('화8'\)/);
   a.nodes.get('manualChemLine').value='화8';a.run("manualChemAction('time')");
   assert.match(a.nodes.get('chemTimeTitle').textContent,/화8/);
   assert.match(home,/12시간 액이송/);assert.match(home,/14시간 PM 목표/);assert.match(home,/직전 완료/);
+});
+
+test('chemical card progress follows 14-hour targets and the next PM without auto-completing records',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'});
+  const start={id:'화7',status:'시작',lastDone:'2026-10-28T02:00:00+09:00'};
+  a.context.progressLine=start;
+  assert.equal(a.run('chemCardProgress(progressLine).percent'),50);
+  a.setNow('2026-10-28T16:30:00+09:00');
+  assert.equal(a.run('chemCardProgress(progressLine).percent'),100);assert.equal(start.status,'시작');
+  a.context.progressLine={...start,status:'완료',lastDone:'2026-10-26T04:30:00+09:00'};
+  assert.equal(a.run('chemCardProgress(progressLine).percent'),83.33);
+});
+
+test('pulse reminder starts one calendar month ahead including month-end clamping',()=>{
+  const a=app({now:'2026-09-28T10:00:00+09:00'});
+  a.run("pulseList=pulseList.map(p=>({...p,lastDate:'2026-07-01'}));renderPulseTable()"); // Due October 29.
+  assert.equal(a.nodes.get('remindBanner').style.display,'none');
+  a.setNow('2026-09-29T00:00:00+09:00');a.run('renderPulseTable()');
+  assert.equal(a.nodes.get('remindBanner').style.display,'flex');assert.match(a.nodes.get('remindBannerText').innerHTML,/D-30/);
+  assert.equal(a.run("formatDateOnly(pulseReminderStart(new Date('2027-03-31T00:00:00')))"),'2027-02-28');
+  assert.equal(a.run("formatDateOnly(pulseReminderStart(new Date('2028-03-31T00:00:00')))"),'2028-02-29');
+});
+
+test('top reminder dismissal lasts for the day and refreshes for changed plans or a new day',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'}),dismissed=new Map();
+  a.context.sessionStorage.getItem=key=>dismissed.get(key)||null;
+  a.context.sessionStorage.setItem=(key,value)=>dismissed.set(key,value);
+  a.run('renderPulseTable();dismissRemindBanner();renderPulseTable()');assert.equal(a.nodes.get('remindBanner').style.display,'none');
+  a.run("selectQuickDay('tomorrow');renderPulseTable()");assert.equal(a.nodes.get('remindBanner').style.display,'none');
+  a.run("manualNotes.push({date:'2026-10-31',line:'전기동 20',text:'액퍼내기 확정',kind:'pulse-plan'});renderPulseTable()");
+  assert.equal(a.nodes.get('remindBanner').style.display,'flex');
+  a.run('dismissRemindBanner()');a.setNow('2026-10-29T09:00:00+09:00');a.run('renderPulseTable()');assert.equal(a.nodes.get('remindBanner').style.display,'flex');
+});
+
+test('quick note templates open editable drafts and never save until the user confirms',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'}),before=a.data('currentState()');
+  for(const [type,text] of [['inspection','설비 점검'],['replacement','인써트 교체'],['pulse','액퍼내기 확정'],['weekday','PM 목요일로 변경']]) {
+    a.run(`startNoteTemplate('${type}')`);
+    assert.equal(a.nodes.get('manualNoteEditor').hidden,false);assert.equal(a.nodes.get('manualContentInput').value,text);
+    assert.deepEqual(a.data('currentState()'),before);
+  }
+  a.run("startNoteTemplate('pulse')");assert.equal(a.nodes.get('manualLineSelect').value,'전기동 20');
+  assert.equal(a.nodes.get('manualDateInput').value,'2026-10-30');a.run('addManualNote()');
+  assert.equal(a.run('manualNotes[0].kind'),'pulse-plan');assert.equal(a.run('manualNotes[0].date'),'2026-10-30');
 });
 
 test('empty special-notes screen hides editor, parse action and empty saved list',()=>{
