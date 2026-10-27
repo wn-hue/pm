@@ -1633,32 +1633,21 @@ test('mixed notices apply valid rows, skip missing dates and clear the whole pas
   assert.match(a.nodes.get('kakaoParseResult').textContent,/반영 완료.*1건.*1건은 제외/);
 });
 
-test('transfer mode selection presents one task at a time without writing records',()=>{
-  const a=transferApp(),before=a.data('currentState()'),stored=Object.fromEntries(a.storage);
-  assert.equal(a.nodes.get('transferSavePanel').hidden,false);assert.equal(a.nodes.get('transferLoadPanel').hidden,true);
-  a.run("selectTransferMode('load')");
-  assert.equal(a.nodes.get('transferSavePanel').hidden,true);assert.equal(a.nodes.get('transferLoadPanel').hidden,false);
-  a.run("selectTransferMode('save')");
-  assert.equal(a.nodes.get('transferSavePanel').hidden,false);assert.equal(a.nodes.get('transferLoadPanel').hidden,true);
-  assert.deepEqual(a.data('currentState()'),before);assert.deepEqual(Object.fromEntries(a.storage),stored);
-});
-
-test('transfer preview replaces the chooser, preserves its draft across modes and resets on cancellation',async()=>{
+test('transfer preview replaces action rows, keeps its draft when folded and resets on cancellation',async()=>{
   const a=transferApp();await chooseArchive(a,await archiveText(a));
-  assert.equal(a.nodes.get('transferLoadPanel').hidden,false);assert.equal(a.nodes.get('transferFileChoice').hidden,true);
-  assert.equal(a.nodes.get('transferChemDetails').open,false);assert.equal(a.nodes.get('transferChemCount').textContent,'5/5');
-  assert.equal(a.nodes.get('transferNoteCount').textContent,'0');assert.equal(a.nodes.get('transferPulseCount').textContent,'4');
-  a.run("selectTransferMode('save');selectTransferMode('load')");
-  assert.equal(a.nodes.get('transferPreview').hidden,false);assert.equal(a.nodes.get('transferFileChoice').hidden,true);
+  assert.equal(a.nodes.get('transferActions').hidden,true);
+  assert.equal(a.nodes.get('transferChemDetails').open,false);assert.match(a.nodes.get('transferPreviewCounts').innerHTML,/화학동 5\/5.*일정 0건.*액퍼내기 4개/);
+  a.nodes.get('transferTools').open=false;a.nodes.get('transferTools').open=true;a.run('openTransferTools()');
+  assert.equal(a.nodes.get('transferPreview').hidden,false);assert.equal(a.nodes.get('transferActions').hidden,true);
   a.run('cancelTransferPreview()');
-  assert.equal(a.nodes.get('transferPreview').hidden,true);assert.equal(a.nodes.get('transferFileChoice').hidden,false);
+  assert.equal(a.nodes.get('transferPreview').hidden,true);assert.equal(a.nodes.get('transferActions').hidden,false);
 });
 
 test('restore completion gives a review action while a later file attempt resets old success feedback',async()=>{
   const a=transferApp();await chooseArchive(a,await archiveText(a));await a.run('applyTransferFile()');
-  assert.equal(a.nodes.get('transferDoneAction').hidden,false);assert.equal(a.nodes.get('transferFileChoice').hidden,true);
+  assert.equal(a.nodes.get('transferDoneAction').hidden,false);assert.equal(a.nodes.get('transferActions').hidden,false);
   await chooseArchive(a,'not JSON');
-  assert.equal(a.nodes.get('transferDoneAction').hidden,true);assert.equal(a.nodes.get('transferFileChoice').hidden,false);
+  assert.equal(a.nodes.get('transferDoneAction').hidden,true);assert.equal(a.nodes.get('transferActions').hidden,false);
   assert.equal(a.nodes.get('transferPreview').hidden,true);
 });
 
