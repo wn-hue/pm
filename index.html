@@ -561,8 +561,32 @@
   .chem-panel { background:transparent;border:0;border-radius:0;padding:0;box-shadow:none; }
   .chem-panel h2 { padding:4px 2px;font-size:16px;font-weight:650;letter-spacing:-.4px; }
   .chem-panel h2 .helper { font-size:11px;color:#8a95a8;letter-spacing:0; }
-  #tab1ChemStatusContainer { gap:12px; }
-  .chem-overview { padding:16px 18px 8px;border:1px solid #e3e8f0;border-radius:20px;box-shadow:var(--surface-shadow); }
+  #tab1ChemStatusContainer { display:block;overflow:hidden;border:1px solid #e3e8f0;border-radius:20px;background:#fff;box-shadow:var(--surface-shadow); }
+  .chem-overview { padding:0;border:0;border-radius:0;box-shadow:none;position:relative;background:#fff; }
+  .chem-overview+.chem-overview { border-top:1px solid #edf0f5; }
+  .chem-overview.warn,.chem-overview.late { background:#fff; }
+  .chem-compact-details>summary { display:block;position:relative;min-height:94px;padding:16px 92px 16px 16px; }
+  .chem-compact-details>summary::after { position:absolute;right:79px;top:24px;width:6px;height:6px;margin:0; }
+  .chem-compact-head { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+  .chem-compact-head strong { font-size:17px;font-weight:650;letter-spacing:-.4px; }
+  .chem-compact-head .chem-state { padding:3px 7px;border-radius:6px;font-size:10px;font-weight:500; }
+  .chem-compact-head .chem-state::before { display:none; }
+  .chem-compact-time { display:flex;gap:6px;flex-wrap:wrap;align-items:baseline;margin-top:4px;line-height:1.5;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums; }
+  .chem-compact-time>span { color:#738198;font-size:11px;font-weight:400; }
+  .chem-compact-work { margin-top:3px;color:#738198;font-size:11px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .chem-compact-warning { margin-top:4px;color:#a13748;font-size:11px;font-weight:500; }
+  .chem-quick-action { position:absolute;top:24px;right:14px;min-width:54px;min-height:44px;padding:8px 10px;border-radius:11px;font-size:12px;font-weight:600;background:#f1f4f9;color:#65748d; }
+  .chem-quick-action:hover { background:#e8edf5;color:#475773; }
+  .chem-quick-action.chem-complete { background:var(--accent);color:#fff; }
+  .chem-quick-action.chem-complete:hover { background:#294bc1; }
+  .chem-expanded { padding:0 16px 14px;background:#fbfcfe; }
+  .chem-facts { display:grid;gap:8px;padding:14px 0 10px;border-top:1px solid #edf0f5; }
+  .chem-facts>div { display:grid;grid-template-columns:90px minmax(0,1fr);gap:10px;align-items:baseline; }
+  .chem-facts dt { color:#738198;font-size:11px; }
+  .chem-facts dd { color:#47566e;font-size:12px;overflow-wrap:anywhere; }
+  .chem-expanded .btn { min-height:44px;padding:8px 12px;background:#f0f3f8;color:#65748d;font-size:12px; }
+  .chem-expanded .btn:hover { background:#e6ecf5; }
+  .chem-detail-hint { font-size:12px;font-weight:400;color:#738198;padding-top:12px; }
   .chem-overview-head { margin-bottom:10px; }
   .chem-overview-head strong { font-size:20px;font-weight:650;letter-spacing:-.7px; }
   .chem-line-identity { gap:3px 10px; }
@@ -698,7 +722,7 @@
 
       <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
       <div id="chemManagement" class="card chem-panel">
-        <h2>화학동 <span class="helper">카톡 공지 기준</span></h2>
+        <h2>화학동</h2>
         <div id="tab1ChemStatusContainer"></div>
       </div>
 
@@ -1376,32 +1400,56 @@ function openScheduleEntry() {
   if(!document.getElementById('manualContentInput').value.trim() && !document.getElementById('scheduleRawInput').value.trim() && !editingManualNote) document.getElementById('manualDateInput').value=selectedDateStr;
   switchTab('tab4');document.getElementById('scheduleRawInput').focus();
 }
+const expandedChemIds=new Set();
+function rememberChemDetail(id,open) {
+  if(!REQUIRED_CHEM_IDS.includes(id)) return;
+  if(open) expandedChemIds.add(id);else expandedChemIds.delete(id);
+}
+function chemCompactTime(date,now=new Date()) {
+  const day=formatDateOnly(date),today=formatDateOnly(now),tomorrow=new Date(now),yesterday=new Date(now);
+  tomorrow.setDate(tomorrow.getDate()+1);yesterday.setDate(yesterday.getDate()-1);
+  const label=day===today?'오늘':day===formatDateOnly(tomorrow)?'내일':day===formatDateOnly(yesterday)?'어제':`${date.getFullYear()===now.getFullYear()?'':date.getFullYear()+'.'}${date.getMonth()+1}.${date.getDate()}.`;
+  return `${label} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+}
+function chemCompactInfo(line,now=new Date()) {
+  const state=chemAttention(line,now);
+  if(state==='unknown') return {state,label:'확인 필요',caption:'',at:null};
+  const running=line.status==='시작',start=new Date(line.lastDone);
+  const transfer=new Date(start.getTime()+12*3600000),target=new Date(start.getTime()+14*3600000);
+  return {
+    state,label:state==='late'?(running?'미완료 지연':'주기 초과'):running?'진행 중':state==='warn'?'임박':'예정',
+    caption:running?(now<transfer?'액이송':'PM 목표'):'다음 PM',
+    at:running?(now<transfer?transfer:target):getChemDue(line)
+  };
+}
 function renderTab1ChemStatus() {
   const container = document.getElementById('tab1ChemStatusContainer');
   if (!container) return;
   chemList = ensureChemIntegrity(chemList);
   const now=new Date();
+  const renderKey=JSON.stringify([chemList,Math.floor(now.getTime()/60000),chemList.map(line=>[
+    chemCompactInfo(line,now),line.id==='화8'&&!line.needsReview&&line.status!=='시작'&&(now-new Date(line.lastDone))/3600000>48
+  ])]);
+  if(container.chemRenderKey===renderKey) return;
+  const focusedId=container.contains?.(document.activeElement)?document.activeElement.id:null;
   const html=chemList.map(line=>{
     const running=!line.needsReview&&line.status==='시작';
-    const actions=`<div class="chem-card-actions"><button class="btn btn-sub btn-sm" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button><button class="btn btn-sm${running?' chem-complete':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')" aria-label="${line.id} PM ${running?'완료':'시작'}">PM ${running?'완료':'시작'}</button></div>`;
-    if(line.needsReview) return `<article class="chem-overview chem-unknown"><div class="chem-overview-head"><strong>${line.id}</strong><span class="chem-state">기록 확인 필요</span></div><div class="chem-card-footer">${actions}</div></article>`;
-
-    const state=chemAttention(line,now),progress=chemCardProgress(line,now);
-    const date=running?new Date(line.lastDone):getChemDue(line);
-    const remaining=(date-now)/3600000;
-    const label=state==='late'?(running?'미완료 지연':'주기 초과'):running?'PM 진행 중':state==='warn'?'7시간 이내 임박':`${remaining.toFixed(1)}H 남음`;
-    const runningDetail=running?`<div class="chem-meta"><span>${((now-date)/3600000).toFixed(1)}시간 경과</span></div><div class="chem-milestones"><div>12시간 액이송<time>${formatDayTimeKr(new Date(date.getTime()+12*3600000))}</time></div><div>14시간 PM 목표<time>${formatDayTimeKr(new Date(date.getTime()+14*3600000))}</time></div></div>`:`<div class="chem-meta"><span>직전 완료 ${formatDateTimeKr(new Date(line.lastDone))}</span></div>`;
-    const buildup=line.id==='화8'&&!running&&(now-new Date(line.lastDone))/3600000>48?'<div class="chem-buildup">⛔ 빌드업 금지</div>':'';
-    return `<article class="chem-overview ${state}"><div class="chem-overview-head"><div class="chem-line-identity"><strong>${line.id}</strong><span class="chem-work">${escapeHtml(line.note||'기본PM')}</span></div><span class="chem-state">${label}</span></div>
-      <div class="chem-row-main"><span class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</span><span class="chem-time">${formatDateTimeKr(date)}</span></div>${runningDetail}${buildup}<div class="chem-cycle-track" role="progressbar" aria-label="${line.id} ${progress.label}" aria-valuemin="0" aria-valuemax="${progress.max}" aria-valuenow="${Math.min(progress.max,Number(progress.value.toFixed(1)))}"><div class="chem-cycle-fill" style="width:${Math.round(progress.percent)}%"></div>${running?'<span class="chem-transfer-mark" aria-hidden="true"></span>':''}</div><div class="chem-card-footer">${actions}</div></article>`;
+    const info=chemCompactInfo(line,now),date=new Date(line.lastDone);
+    const work=String(line.note||'').split(/\s*·\s*/).filter(part=>part&&part!=='기본PM').join(' · ');
+    const workLine=work?`<p class="chem-compact-work">${escapeHtml(work)}</p>`:'';
+    const buildup=line.id==='화8'&&!line.needsReview&&!running&&(now-date)/3600000>48?'<p class="chem-compact-warning">⛔ 빌드업 금지</p>':'';
+    const time=info.at?`<p class="chem-compact-time"><span>${info.caption}</span><time datetime="${info.at.toISOString()}">${chemCompactTime(info.at,now)}</time></p>`:'<p class="chem-compact-time"><span>기록 확인 필요</span></p>';
+    const fact=(label,value)=>`<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
+    let facts=line.needsReview?'':fact('작업',line.note||'기본PM');
+    if(!line.needsReview) {
+      if(running) facts+=fact('PM 시작 시각',formatDateTimeKr(date))+fact('경과 시간',`${((now-date)/3600000).toFixed(1)}시간`)+fact('12시간 액이송',formatDateTimeKr(new Date(date.getTime()+12*3600000)))+fact('14시간 PM 목표',formatDateTimeKr(new Date(date.getTime()+14*3600000)));
+      else facts+=fact('직전 완료',formatDateTimeKr(date))+fact('차기 PM 예정',formatDateTimeKr(getChemDue(line)));
+    }
+    const detail=facts?`<dl class="chem-facts">${facts}</dl>`:'<p class="chem-detail-hint">카톡 공지를 붙여넣어 기록을 갱신해주세요.</p>';
+    return `<article class="chem-overview compact ${info.state==='unknown'?'chem-unknown':info.state}"><details id="chemDetail-${line.id}" class="chem-compact-details"${expandedChemIds.has(line.id)?' open':''} ontoggle="rememberChemDetail('${line.id}',this.open)"><summary id="chemSummary-${line.id}" aria-label="${line.id} 상세정보"><div class="chem-compact-head"><strong>${line.id}</strong><span class="chem-state">${info.label}</span></div>${time}${workLine}${buildup}</summary><div class="chem-expanded">${detail}<button id="chemEdit-${line.id}" class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></details><button id="chemAction-${line.id}" class="btn chem-quick-action${running?' chem-complete':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')" aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'완료':'시작'}</button></article>`;
   }).join('');
-  if(container.innerHTML!==html) container.innerHTML=html;
-}
-function chemCardProgress(line,now=new Date()) {
-  const running=line.status==='시작',start=new Date(line.lastDone);
-  const max=running?14:Math.max(1,(getChemDue(line)-start)/3600000);
-  const elapsed=(now-start)/3600000,value=Math.max(0,Math.min(max,elapsed));
-  return {max:Number(max.toFixed(2)),value:Number(value.toFixed(2)),percent:Number((value/max*100).toFixed(2)),label:running?'14시간 PM 목표 경과':'차기 PM 주기 경과'};
+  container.chemRenderKey=renderKey;container.innerHTML=html;
+  if(focusedId) document.getElementById(focusedId)?.focus({preventScroll:true});
 }
 function manualChemAction(action) {
   const id=document.getElementById('manualChemLine').value;
