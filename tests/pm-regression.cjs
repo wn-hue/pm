@@ -366,7 +366,7 @@ test('single-save time editor saves half-hour minutes, month rollover and start 
   const a=app({now:'2026-12-31T23:00:00+09:00'});
   a.run("chemList[3]={id:'화13',lastDone:'2026-12-31T13:00:00+09:00',status:'시작',note:'촉매 건욕'};openChemTimeEditor('화13')");
   a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditHour').value='0';a.nodes.get('chemEditMinute').value='30';
-  a.run('saveChemTimeEditor()');
+  a.setNow('2027-01-01T01:00:00+09:00');a.run('saveChemTimeEditor()');
   assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
   assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),30);
   assert.equal(a.run('chemList[3].status'),'시작');
@@ -1100,4 +1100,100 @@ test('saved local state contains PM data only, without pasted raw conversations 
   const saved=a.storage.get('pm_local_state_master');
   assert.equal(JSON.parse(saved).chemList.length,5);
   assert.doesNotMatch(saved,/private conversation|apiKey|authToken|pendingChanges/);
+});
+
+test('partially damaged local snapshots preserve valid fields and recover broken fields from master keys',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}];pulseProcessFlags={'2026-10-26_전기동 9라인':{isStarted:true,startedAt:'2026-10-26T22:17:00+09:00'}};savePMData()");
+  const stored=Object.fromEntries(a.storage),snapshot=JSON.parse(stored.pm_local_state_master);
+  snapshot.chemList[0].note='가장 최근 기록';snapshot.manualNotes=[{broken:true}];snapshot.pulseProcessFlags='damaged';snapshot.elecCompletedFlags={'broken':{invalid:true}};delete snapshot.inlineDesmearFlags;
+  stored.pm_local_state_master=JSON.stringify(snapshot);
+  const b=app({stored,now:'2026-10-27T08:00:00+09:00'});
+  assert.equal(b.run('chemList[0].note'),'가장 최근 기록');assert.equal(b.run('manualNotes[0].text'),'옥사멧 점검');
+  assert.equal(b.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt"),'2026-10-26T22:17:00+09:00');
+  assert.equal(b.run('chemList.length'),5);assert.equal(b.logs.length,0);assert.deepEqual(b.data('elecCompletedFlags'),a.data('elecCompletedFlags'));
+});
+
+test('broken nonempty note and flag masters fall back through all version keys while empty data stays empty',()=>{
+  const note={date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'};
+  const a=app({stored:{manual_notes_master:JSON.stringify([{broken:true}]),manual_notes_v73:JSON.stringify([note]),
+    pulse_process_flags_master:JSON.stringify({bad:'damaged'}),pulse_process_flags_v12:JSON.stringify({'2026-10-26_전기동 9라인':{isStarted:true,startedAt:'2026-10-26T22:00:00+09:00'}})}});
+  assert.deepEqual(a.data('manualNotes'),[note]);assert.ok(a.run("pulseProcessFlags['2026-10-26_전기동 9라인']"));
+  const stored=Object.fromEntries(a.storage),snapshot=JSON.parse(stored.pm_local_state_master);snapshot.manualNotes=[];snapshot.pulseProcessFlags={};stored.pm_local_state_master=JSON.stringify(snapshot);
+  const b=app({stored});assert.deepEqual(b.data('manualNotes'),[]);assert.deepEqual(b.data('pulseProcessFlags'),{});
+});
+
+test('unverified snapshot rows cannot shadow verified cached chemistry while keeping all five cards',()=>{
+  const a=app({now:'2026-10-27T08:00:00+09:00'}),stored=Object.fromEntries(a.storage);
+  const snapshot=JSON.parse(stored.pm_local_state_master);snapshot.chemList=snapshot.chemList.map(line=>({...line,needsReview:true,lastDone:'2026-09-01T00:00',status:'시작',note:''}));
+  stored.pm_local_state_master=JSON.stringify(snapshot);const b=app({stored,now:'2026-10-27T08:00:00+09:00'});
+  assert.deepEqual(b.data('chemList').map(n=>[n.id,n.lastDone,n.status,n.note,n.needsReview]),a.data('chemList').map(n=>[n.id,n.lastDone,n.status,n.note,n.needsReview]));
+  assert.equal(b.run('chemList.length'),5);
+});
+
+test('compact electric controls expose four 90-minute stages without a progress tab and survive reload',()=>{
+  const a=app({now:'2026-10-26T10:00:00+09:00'});
+  assert.doesNotMatch(html,/id="(?:tab2|tabBtn2|elecGaugesContainer|activeChemGaugesContainer)"/);
+  assert.match(html,/id="electricWorkPanel"/);assert.equal(a.nodes.get('electricWorkPanel').open,undefined);
+  a.run("electricWorkAction('전기동 9라인','2026-10-26','start')");
+  const start=a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt");
+  a.setNow('2026-10-26T10:01:00+09:00');a.run("electricWorkAction('전기동 9라인','2026-10-26','start')");
+  assert.equal(a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt"),start);
+  const stages=['1/4 0.5 DC','2/4 1.5 DC','3/4 펄스패스','4/4 펄스더미'];
+  for(let i=0;i<4;i++) {
+    a.setNow(new Date(new Date(start).getTime()+i*90*60000).toISOString());a.run('tick()');
+    assert.equal(a.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,stages[i]);
+  }
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-26T16:00:00+09:00'});
+  assert.equal(b.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,'6시간 경과');
+  assert.equal(Boolean(b.run("elecCompletedFlags['2026-10-26_전기동 9라인']")),false);
+  assert.match(b.nodes.get('shareTextOutput').value,/7시패스/);
+});
+
+test('compact normal electric warns at 20:30, supports completion undo, and never changes the notice pass',()=>{
+  const a=app({now:'2026-10-27T19:00:00+09:00'});
+  a.run("electricWorkAction('전기동 18라인','2026-10-27','start')");
+  const started=a.run("elecDummyFlags['2026-10-27_전기동 18라인'].startedAt");
+  a.setNow('2026-10-27T20:29:00+09:00');a.run('tick()');
+  assert.equal(a.nodes.get('electric_status_2026-10-27_전기동 18라인').textContent,'더미 진행 중');
+  a.setNow('2026-10-27T20:30:00+09:00');a.run('tick()');
+  assert.equal(a.nodes.get('electric_status_2026-10-27_전기동 18라인').textContent,'12시간 초과 지연');
+  a.run("electricWorkAction('전기동 18라인','2026-10-27','complete')");
+  assert.equal(a.nodes.get('electric_status_2026-10-27_전기동 18라인').textContent,'완료');
+  a.run("electricWorkAction('전기동 18라인','2026-10-27','undo')");
+  assert.equal(a.run("elecDummyFlags['2026-10-27_전기동 18라인'].startedAt"),started);
+  assert.match(a.nodes.get('shareTextOutput').value,/전18 산세\.박리 \(7시패스\)/);
+});
+
+test('electric work stays date-scoped, preserves active carryover, and cannot start tomorrow or unknown lines',()=>{
+  const a=app({now:'2026-10-26T23:00:00+09:00'});
+  a.run("electricWorkAction('전기동 9라인','2026-10-26','start');selectQuickDay('tomorrow');electricWorkAction('전기동 18라인','2026-10-27','start');electricWorkAction('전기동 99라인','2026-10-26','start')");
+  assert.equal(a.run("Object.keys(elecDummyFlags).length"),0);assert.equal(a.run('Object.keys(pulseProcessFlags).length'),1);
+  a.setNow('2026-10-27T00:00:00+09:00');a.run('tick()');
+  assert.match(a.nodes.get('electricWorkList').innerHTML,/2026-10-26 미완료/);
+  assert.equal(a.nodes.get('briefingDateInput').value,a.run('selectedDateStr'));
+  assert.match(a.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,/0.5 DC/);
+});
+
+test('day-only chemistry corrections preview the full year and month and refuse future actual timestamps',()=>{
+  const a=app({now:'2026-12-31T23:00:00+09:00'});
+  a.run("chemList[3]={...chemList[3],lastDone:'2026-12-31T13:00:00+09:00',status:'시작'};openChemTimeEditor('화13')");
+  const before=a.data('chemList[3]');
+  a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditHour').value='0';a.nodes.get('chemEditMinute').value='30';
+  a.run('updateChemTimePreview();saveChemTimeEditor()');
+  assert.match(a.nodes.get('chemTimePreview').textContent,/2027년 1월 1일 0시 30분/);
+  assert.match(a.nodes.get('chemTimeError').textContent,/미래/);assert.deepEqual(a.data('chemList[3]'),before);
+  a.setNow('2027-01-01T01:00:00+09:00');a.run('saveChemTimeEditor()');
+  assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
+});
+
+test('completing a carried-over pulse keeps its completion undo available on the current day',()=>{
+  const a=app({now:'2026-10-26T23:00:00+09:00'});
+  a.run("electricWorkAction('전기동 9라인','2026-10-26','start')");
+  const started=a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt");
+  a.setNow('2026-10-27T06:00:00+09:00');a.run("tick();electricWorkAction('전기동 9라인','2026-10-26','complete')");
+  assert.match(a.nodes.get('electricWorkList').innerHTML,/2026-10-26 완료/);
+  assert.equal(a.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,'완료');
+  a.run("electricWorkAction('전기동 9라인','2026-10-26','undo')");
+  assert.equal(a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt"),started);
 });

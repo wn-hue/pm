@@ -476,6 +476,11 @@
   @media(max-width:640px) { .brief-toolbar { flex-wrap:wrap; } .brief-actions { margin-left:auto; } }
   [hidden] { display:none !important; }
   .saved-history summary { font-size:13px; color:var(--text-secondary); }
+  .electric-work-row { padding:12px 0; border-bottom:1px solid var(--border-light); }
+  .electric-work-row:last-child { border-bottom:0; }
+  .electric-work-heading,.electric-work-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+  .electric-work-actions { justify-content:flex-start; margin-top:8px; }
+  .electric-work-actions select { width:auto; }
 </style>
 </head>
 <body>
@@ -552,6 +557,8 @@
           </div>
           <textarea id="shareTextOutput" class="report-area" aria-label="공유할 공지 원문" readonly></textarea>
         </details>
+
+        <details id="electricWorkPanel" hidden><summary><span id="electricWorkSummary">전기동 작업 확인</span></summary><p class="helper">0.5 DC·더미 시작 시각을 이 기기에 기록합니다. 타이머가 끝나면 실제 작업을 확인한 뒤 완료하세요. 공지는 7시패스로 고정합니다.</p><div id="electricWorkList"></div></details>
 
         <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div id="chemManagement" style="margin-top: 4px; scroll-margin-top:90px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
@@ -767,7 +774,8 @@
     <div class="modal-header"><strong id="chemTimeTitle" tabindex="-1">화학동 시간정정</strong><button class="btn btn-sub" onclick="closeModal('chemTimeModal')" aria-label="시간정정 닫기">닫기</button></div>
     <div class="modal-body">
       <p id="chemTimeHint" class="helper"></p>
-      <div class="time-fields"><label>일<input id="chemEditDay" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<span class="clock-selects"><select id="chemEditHour" aria-label="PM 시"></select><select id="chemEditMinute" aria-label="PM 분"></select></span></label></div>
+      <div class="time-fields"><label>일<input id="chemEditDay" oninput="updateChemTimePreview()" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<span class="clock-selects"><select id="chemEditHour" onchange="updateChemTimePreview()" aria-label="PM 시"></select><select id="chemEditMinute" onchange="updateChemTimePreview()" aria-label="PM 분"></select></span></label></div>
+      <p id="chemTimePreview" class="helper" role="status" aria-live="polite"></p>
       <p id="chemTimeError" role="alert" style="color:var(--danger)"></p>
       <button class="btn" onclick="saveChemTimeEditor()">시간 저장</button>
     </div>
@@ -833,7 +841,7 @@ function recoverStored(master, legacyPrefix, fallback, valid) {
 }
 
 function storageSourceKeys(master,prefix) {
-  const versions=new Set(Array.from({length:28},(_,i)=>i+18));
+  const versions=new Set(Array.from({length:45},(_,i)=>i+1));
   try {
     for(let i=0;i<localStorage.length;i++) {
       const key=localStorage.key(i);
@@ -861,7 +869,8 @@ function cleanChemNote(note) {
 }
 
 function normalizeChem(item, fallback) {
-  const value = item && typeof item === 'object' ? item : {};
+  let value = item && typeof item === 'object' ? item : {};
+  if(value.needsReview===true && fallback.needsReview===false && validDateTime(fallback.lastDone)) value={...fallback,plannedDue:validDateTime(value.plannedDue)?value.plannedDue:fallback.plannedDue};
   return {
     ...fallback, ...value, id: fallback.id,
     needsReview: typeof value.needsReview==='boolean' ? value.needsReview : validDateTime(value.lastDone) ? false : fallback.needsReview===true,
@@ -929,6 +938,30 @@ function recoverPulseListFromAllSources() {
   return ensurePulseIntegrity([...found.values()]);
 }
 
+function validNotesSource(value) {
+  if(!value || typeof value!=='object') return false;
+  const items=ensureArray(value,[]);
+  return !items.length || normalizeNotes(items).length>0;
+}
+function validFlagEntry(field, value) {
+  if(field==='elecCompletedFlags') return typeof value==='boolean' || Boolean(value && typeof value==='object' && !Array.isArray(value) && validDateTime(value.completedAt));
+  if(field==='equipWorkFlags') return typeof value==='boolean' || Boolean(value && typeof value==='object' && !Array.isArray(value));
+  return Boolean(value && typeof value==='object' && !Array.isArray(value));
+}
+function validFlagsSource(field,value) {
+  return Boolean(value && typeof value==='object' && !Array.isArray(value) && (!Object.keys(value).length || Object.values(value).some(item=>validFlagEntry(field,item))));
+}
+function recoverSnapshotField(field,value,fallback) {
+  if(field==='manualNotes') return validNotesSource(value)?normalizeNotes(value):fallback;
+  if(field==='chemList' || field==='pulseList') return Array.isArray(value)?value:fallback;
+  if(!validFlagsSource(field,value)) return fallback;
+  const result={};
+  for(const [key,item] of Object.entries(value)) {
+    if(validFlagEntry(field,item)) result[key]=item;
+    else if(key in fallback) result[key]=fallback[key];
+  }
+  return result;
+}
 function normalizeNotes(list) {
   const seen = new Set();
   return ensureArray(list, []).map(item => item && REQUIRED_CHEM_IDS.includes(item.line) ? {...item,text:cleanChemNote(item.text)} : item).filter(item => {
@@ -942,8 +975,8 @@ function normalizeNotes(list) {
 
 let chemList = recoverChemListFromAllSources();
 let pulseList = recoverPulseListFromAllSources();
-let manualNotes = normalizeNotes(recoverStored('manual_notes_master','manual_notes',[], value => Array.isArray(value) || (value && typeof value === 'object')));
-const recoverFlags = prefix => ensureObject(recoverStored(prefix + '_master',prefix,{}, value => value && typeof value === 'object' && !Array.isArray(value)));
+let manualNotes = normalizeNotes(recoverStored('manual_notes_master','manual_notes',[], validNotesSource));
+const recoverFlags = prefix => {const field=prefix.replace(/_([a-z])/g,(_,letter)=>letter.toUpperCase());return ensureObject(recoverStored(prefix+'_master',prefix,{},value=>validFlagsSource(field,value)));};
 let equipWorkFlags = recoverFlags('equip_work_flags');
 let elecDummyFlags = recoverFlags('elec_dummy_flags');
 let pulseProcessFlags = recoverFlags('pulse_process_flags');
@@ -1008,8 +1041,12 @@ function persistLocalState() {
 }
 function initializeLocalData() {
   const saved=readStored(LOCAL_STATE_KEY);
-  const valid=saved && typeof saved==='object' && !Array.isArray(saved) && STATE_FIELDS.every(field=>field in saved) && ['chemList','pulseList','manualNotes'].every(field=>Array.isArray(saved[field]));
-  if(valid) restoreLocalState(saved);
+  const valid=saved && typeof saved==='object' && !Array.isArray(saved) && STATE_FIELDS.some(field=>field in saved);
+  if(valid) {
+    const fallback=currentState(), recovered={};
+    STATE_FIELDS.forEach(field=>{recovered[field]=recoverSnapshotField(field,saved[field],fallback[field]);});
+    restoreLocalState(recovered);
+  }
   else {
     // Recover unsent changes once, entirely inside this browser.
     const changes=ensureArray(readStored('pm_pending_changes_master'),[]).filter(change=>change && STATE_FIELDS.includes(change.field) && typeof change.key==='string');
@@ -1401,7 +1438,7 @@ function safeRenderAll() {
   try { renderChemList(); } catch(e){ console.error(e); }
   try { renderPulseTable(); } catch(e){ console.error(e); }
   try { renderActiveChemGauges(new Date()); } catch(e){ console.error(e); }
-  try { renderElectroGauges(new Date()); } catch(e){ console.error(e); }
+  try { renderElectroGauges(new Date()); renderElectricWorkPanel(); } catch(e){ console.error(e); }
 }
 
 window.onload = function() {
@@ -1434,9 +1471,11 @@ function tick() {
   try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e) { console.error(e); }
   if (now.getSeconds() === 0) {
     renderPulseTable();
+    generateShareText();
     if (!document.querySelector('#tab2 input:focus, #tab2 select:focus')) renderActiveChemGauges(now);
   }
 
+  renderElectricWorkPanel(now);
   const currentTodayStr = formatDateOnly(now);
   if (lastCheckedDate !== currentTodayStr) {
     lastCheckedDate = currentTodayStr;
@@ -1449,7 +1488,7 @@ function tick() {
     }
     const mD = document.getElementById('manualDateInput');
     if (mD && !editingManualNote) mD.value = selectedDateStr;
-    safeRenderAll();
+    updateDateToggleUI();safeRenderAll();
   }
 }
 
@@ -2133,6 +2172,78 @@ function getGaugeElectroLines() {
   return lines;
 }
 
+function getElectricWorkLines() {
+  const lines=getGaugeElectroLines(),seen=new Set(lines.map(line=>timerKey(line.name,line.dateStr))),today=formatDateOnly(new Date());
+  for(const [key,done] of Object.entries(elecCompletedFlags)) {
+    const match=key.match(/^(\d{4}-\d{2}-\d{2})_(전기동 (\d+)라인)$/);
+    if(!match||seen.has(key)||!done?.previousTimer||!validDateTime(done.completedAt)||formatDateOnly(new Date(done.completedAt))!==today) continue;
+    lines.push({dateStr:match[1],name:match[2],number:Number(match[3]),isPulse:[9,20,21].includes(Number(match[3])),carryover:true});seen.add(key);
+  }
+  return lines;
+}
+let electricPanelSignature='';
+function electricWorkState(line,now=new Date()) {
+  const key=timerKey(line.name,line.dateStr), completed=elecCompletedFlags[key];
+  if(completed) return {label:'완료',detail:validDateTime(completed.completedAt)?`완료 ${formatDateTimeKr(new Date(completed.completedAt))}`:'완료 처리된 PM',tone:'green'};
+  const flag=getTimerFlag(line.isPulse?pulseProcessFlags:elecDummyFlags,line.name,line.dateStr);
+  const started=Boolean(flag && (line.isPulse?flag.isStarted:flag.isDummy));
+  const deadline=new Date(line.dateStr+'T20:30:00'),late=!line.isPulse && now>=deadline;
+  if(!started) return {label:line.dateStr>formatDateOnly(now)?'예정':late?'12시간 초과 지연':'시작 전',detail:line.isPulse?'0.5 DC → 1.5 DC → 펄스패스 → 펄스더미 · 단계별 1.5시간':'08:30 기준 · 20:30까지 미완료 시 지연 경고',tone:late?'red':'sub'};
+  const start=timerStart(flag), elapsed=(now-start)/60000;
+  if(elapsed<0) return {label:'시작 대기',detail:`시작 ${formatDateTimeKr(start)} · 저장 시각을 확인하세요.`,tone:'yellow'};
+  if(line.isPulse) {
+    const end=new Date(start.getTime()+360*60000);
+    if(elapsed>=360) return {label:'6시간 경과',detail:`4단계 타이머 종료 ${formatDateTimeKr(end)} · 실제 완료를 확인해주세요.`,tone:'yellow'};
+    const step=Math.floor(elapsed/90),next=new Date(start.getTime()+(step+1)*90*60000);
+    return {label:`${step+1}/4 ${['0.5 DC','1.5 DC','펄스패스','펄스더미'][step]}`,detail:`다음 전환 ${formatDateTimeKr(next)} · 총 6시간 종료 ${formatDateTimeKr(end)}`,tone:'purple'};
+  }
+  const end=new Date(start.getTime()+90*60000);
+  return {label:late?'12시간 초과 지연':elapsed>=90?'더미 1.5시간 경과':'더미 진행 중',detail:`더미 종료 ${formatDateTimeKr(end)}${elapsed>=90?' · 실제 완료를 확인해주세요.':` · ${Math.ceil(90-elapsed)}분 남음`}`,tone:late?'red':elapsed>=90?'yellow':'blue'};
+}
+function renderElectricWorkPanel(now=new Date()) {
+  const panel=document.getElementById('electricWorkPanel'),container=document.getElementById('electricWorkList');if(!panel||!container) return;
+  const lines=getElectricWorkLines();panel.hidden=!lines.length;if(!lines.length) return;
+  const complete=lines.filter(line=>elecCompletedFlags[timerKey(line.name,line.dateStr)]).length;
+  document.getElementById('electricWorkSummary').textContent=`전기동 작업 확인 · ${lines.length}개 라인${complete?` · 완료 ${complete}개`:''}`;
+  const signature=JSON.stringify({lines,pulseProcessFlags,elecDummyFlags,elecCompletedFlags});
+  if(signature!==electricPanelSignature && !document.querySelector('#electricWorkList select:focus')) {
+    electricPanelSignature=signature;
+    container.innerHTML=lines.map(line=>{
+      const key=timerKey(line.name,line.dateStr),completed=elecCompletedFlags[key];
+      const flag=getTimerFlag(line.isPulse?pulseProcessFlags:elecDummyFlags,line.name,line.dateStr);
+      const started=Boolean(flag&&(line.isPulse?flag.isStarted:flag.isDummy)),future=line.dateStr>formatDateOnly(now);
+      const action=name=>`electricWorkAction('${line.name}','${line.dateStr}','${name}')`;
+      const start=started?timerStart(flag):null;
+      const hours=start?Array.from({length:24},(_,h)=>`<option value="${h}" ${h===start.getHours()?'selected':''}>${h}시</option>`).join(''):'';
+      return `<div class="electric-work-row"><div class="electric-work-heading"><strong>전${line.number}${line.isPulse?' · 펄스':''}${line.carryover?` · ${line.dateStr} ${completed?'완료':'미완료'}`:''}</strong><span id="electric_status_${key}" class="badge"></span></div><p id="electric_detail_${key}" class="helper"></p><div class="electric-work-actions">${completed?`<button class="btn btn-sub btn-sm" onclick="${action('undo')}">완료 취소</button>`:`${!started?`<button class="btn btn-sub btn-sm" ${future?'disabled':''} onclick="${action('start')}">${line.isPulse?'0.5 DC 시작':'더미 투입'}</button>`:`<span class="helper">시작 ${formatDateTimeKr(start)}</span><select aria-label="전${line.number} 시작 시" onchange="${line.isPulse?'updatePulseProcessTime':'updateElecDummyTimeSelect'}('${line.name}','h',this.value,'${line.dateStr}')">${hours}</select><select aria-label="전${line.number} 시작 분" onchange="${line.isPulse?'updatePulseProcessTime':'updateElecDummyTimeSelect'}('${line.name}','m',this.value,'${line.dateStr}')">${halfHourMinuteOptions(start.getMinutes())}</select><button class="btn btn-sub btn-sm" onclick="${action('reset')}">시작 취소</button>`}<button class="btn btn-sub btn-sm" ${future?'disabled':''} onclick="${action('complete')}">PM 완료</button>`}</div></div>`;
+    }).join('');
+  }
+  updateElectricWorkStatuses(now);
+}
+function updateElectricWorkStatuses(now=new Date()) {
+  for(const line of getElectricWorkLines()) {
+    const key=timerKey(line.name,line.dateStr),badge=document.getElementById('electric_status_'+key),detail=document.getElementById('electric_detail_'+key);
+    if(!badge||!detail) continue;
+    const state=electricWorkState(line,now);badge.className='badge badge-'+state.tone;badge.textContent=state.label;detail.textContent=state.detail;
+  }
+}
+function electricWorkAction(name,date,action) {
+  const line=getElectricWorkLines().find(item=>item.name===name&&item.dateStr===date);if(!line||date>formatDateOnly(new Date())) return;
+  const key=timerKey(name,date),flags=line.isPulse?pulseProcessFlags:elecDummyFlags;
+  if(action==='start') {
+    if(flags[key] && (line.isPulse?flags[key].isStarted:flags[key].isDummy)) return;
+    if(line.isPulse) togglePulseProcess(name,true,date);else toggleElecDummy(name,true,date);
+  } else if(action==='complete') completeElecPM(name,date);
+  else if(action==='reset') {
+    if(!confirm(`전${line.number} 시작 기록을 취소할까요?`)) return;
+    delete flags[key];savePMData();renderElectricWorkPanel();
+  } else if(action==='undo') {
+    const previous=elecCompletedFlags[key]?.previousTimer;
+    delete elecCompletedFlags[key];if(previous) flags[key]=previous;
+    savePMData();renderElectricWorkPanel();
+  }
+}
+
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   if (!container) return;
@@ -2538,7 +2649,7 @@ function togglePulseProcess(lineName,isChecked,dateStr = selectedDateStr) {
     const now = new Date();
     pulseProcessFlags[key] = {isStarted:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
   } else delete pulseProcessFlags[key];
-  savePMData(); renderElectroGauges(new Date());
+  savePMData(); renderElectroGauges(new Date());renderElectricWorkPanel();
 }
 
 function updatePulseProcessTime(lineName,part,val,dateStr = selectedDateStr) {
@@ -2546,21 +2657,21 @@ function updatePulseProcessTime(lineName,part,val,dateStr = selectedDateStr) {
 }
 
 function completeElecPM(lineName,dateStr = selectedDateStr) {
-  if (!confirm(`[${lineName}] PM을 완료하시겠습니까?\n진척 게이지 목록에서 제외됩니다.`)) return;
+  if (!confirm(`[${lineName}] PM을 완료하시겠습니까?\n실제 작업이 완료되었는지 확인해주세요.`)) return;
 
   const key = timerKey(lineName,dateStr);
-  elecCompletedFlags[key] = true;
+  elecCompletedFlags[key] = {completedAt:new Date().toISOString(),previousTimer:JSON.parse(JSON.stringify(pulseProcessFlags[key]||elecDummyFlags[key]||null))};
 
   delete elecDummyFlags[key];
   delete pulseProcessFlags[key];
 
   savePMData();
-  renderElectroGauges(new Date());
+  renderElectroGauges(new Date());renderElectricWorkPanel();
 }
 
 function restoreCompletedElec() {
   getElectroLines().forEach(line => { delete elecCompletedFlags[timerKey(line.name)]; });
-  savePMData(); renderElectroGauges(new Date());
+  savePMData(); renderElectroGauges(new Date());renderElectricWorkPanel();
 }
 
 function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
@@ -2569,7 +2680,7 @@ function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
     const now = new Date();
     elecDummyFlags[key] = {isDummy:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
   } else delete elecDummyFlags[key];
-  savePMData(); renderElectroGauges(new Date());
+  savePMData(); renderElectroGauges(new Date());renderElectricWorkPanel();
 }
 
 function updateElecDummyTimeSelect(lineName,part,val,dateStr = selectedDateStr) {
@@ -2585,7 +2696,7 @@ function updateTimerTime(flags,lineName,part,val,dateStr = selectedDateStr) {
   if (part === 'h') start.setHours(value); else start.setMinutes(value);
   start.setSeconds(0,0);
   flag.h = start.getHours(); flag.m = start.getMinutes(); flag.startedAt = start.toISOString();
-  savePMData(); updateLiveTimesOnly(new Date());
+  savePMData(); updateLiveTimesOnly(new Date());updateElectricWorkStatuses(new Date());
 }
 
 function renderChemList() {
@@ -3009,7 +3120,7 @@ function openChemTimeEditor(id) {
   editingChemBaseline=JSON.stringify(line);
   editorReturnFocus=document.activeElement;
   const t=line.needsReview?new Date():new Date(line.lastDone);
-  document.getElementById('chemTimeTitle').textContent=`${id} ${line.status==='시작'?'시작':'직전 완료'} 시간정정`;
+  document.getElementById('chemTimeTitle').textContent=`${id} ${!line.needsReview&&line.status==='시작'?'시작':'직전 완료'} 시간정정`;
   document.getElementById('chemTimeHint').textContent=!line.needsReview&&line.status==='시작'?'시작 시각을 정정합니다. 진행 시간과 브리핑에 함께 반영됩니다.':'직전 완료 시각을 정정합니다. 차기 예정은 이 시각에서 72시간 후로 계산됩니다.';
   document.getElementById('chemEditDay').value=t.getDate();
   document.getElementById('chemEditHour').innerHTML=Array.from({length:24},(_,hour)=>`<option value="${hour}" ${hour===t.getHours()?'selected':''}>${hour}시</option>`).join('');
@@ -3017,11 +3128,21 @@ function openChemTimeEditor(id) {
   document.getElementById('chemEditMinute').innerHTML=halfHourMinuteOptions(t.getMinutes());
   document.getElementById('chemEditMinute').value=[0,30].includes(t.getMinutes())?String(t.getMinutes()):'';
   if(![0,30].includes(t.getMinutes())) document.getElementById('chemTimeHint').textContent+=` 현재 저장 시각은 ${formatTimeKr(t.getHours(),t.getMinutes())}입니다. 정정하려면 00분 또는 30분을 선택해주세요.`;
-  document.getElementById('chemTimeError').textContent='';
+  document.getElementById('chemTimeError').textContent='';updateChemTimePreview();
   openModal('chemTimeModal');
   document.getElementById('chemTimeTitle').focus({preventScroll:true});
 }
 
+function chemEditDate(line) {
+  const h=document.getElementById('chemEditHour').value,m=document.getElementById('chemEditMinute').value;
+  if(!/^(?:[0-9]|1[0-9]|2[0-3])$/.test(h)||!['0','30'].includes(m)) return null;
+  return resolveDayInput(Number(document.getElementById('chemEditDay').value),line.needsReview?new Date():new Date(line.lastDone),Number(h),Number(m));
+}
+function updateChemTimePreview() {
+  const line=chemList.find(item=>item.id===editingChemId),el=document.getElementById('chemTimePreview');if(!line||!el) return;
+  const date=chemEditDate(line);
+  el.textContent=date?`저장할 시각: ${date.getFullYear()}년 ${formatDateTimeKr(date)}${!line.needsReview&&line.status==='시작'?'':` · 차기 PM ${formatDateTimeKr(new Date(date.getTime()+72*3600000))}`}${date>new Date()?' · 미래 시각입니다. 입력을 확인해주세요.':''}`:'일·시·분을 선택하면 실제 저장 날짜를 확인할 수 있습니다.';
+}
 function saveChemTimeEditor() {
   const line=chemList.find(item=>item.id===editingChemId); if(!line) return;
   const error=document.getElementById('chemTimeError');
@@ -3032,6 +3153,7 @@ function saveChemTimeEditor() {
   const hour=Number(hourValue),minute=Number(minuteValue);
   const date=resolveDayInput(Number(document.getElementById('chemEditDay').value),line.needsReview?new Date():new Date(line.lastDone),hour,minute);
   if(!date) {error.textContent='유효한 일자를 입력해주세요.';return;}
+  if(date>new Date()) {error.textContent='실제 시작·완료 시각은 미래로 저장할 수 없습니다. 날짜와 시각을 확인해주세요.';return;}
   if(line.needsReview) line.status='완료';
   delete line.plannedDue; line.needsReview=false; line.lastDone=date.toISOString();
   savePMData(); safeRenderAll(); closeModal('chemTimeModal');
