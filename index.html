@@ -98,17 +98,7 @@
     align-items: center;
     gap: 5px;
   }
-  .live-clock-box {
-    font-size: 13.5px;
-    font-weight: 800;
-    color: var(--accent);
-    font-family: -apple-system, monospace;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* 메인 탭 4개 */
+  /* PM 관리 · 특이사항 */
   .main-nav {
     display: flex;
     gap: 6px;
@@ -391,19 +381,8 @@
   .helper { color:var(--text-secondary); font-size:12px; }
   .brief-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .day-switch { display:flex; gap:4px; background:#edf2f7; padding:4px; border-radius:12px; }
-  .day-switch .btn { min-width:70px; }
+  .day-switch .btn { min-width:60px; }
   .day-switch .btn-sub { background:transparent; color:var(--text-secondary); }
-  .brief-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-  .brief-section { background:#f7f9fc; border:1px solid var(--border-light); padding:14px; border-radius:12px; min-width:0; }
-  .brief-section h3 { font-size:12px; color:var(--text-secondary); margin-bottom:8px; }
-  .brief-line { padding:5px 0; overflow-wrap:anywhere; font-weight:600; }
-  .brief-section.running { background:#effaf5; border-color:#bbf7d0; }
-  .focus-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .focus-pill { background:#fff; border:1px solid var(--border-light); border-radius:12px; padding:12px; text-align:left; color:var(--text-primary); cursor:pointer; }
-  .focus-pill strong { display:block; font-size:24px; line-height:1.2; }
-  .focus-pill span { font-size:12px; color:var(--text-secondary); }
-  .focus-pill.warn strong { color:var(--warning); }
-  .focus-pill.late strong { color:var(--danger); }
   #tab1ChemStatusContainer { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
   .chem-overview { padding:14px; border:1px solid var(--border-light); border-left:4px solid var(--accent); background:#fff; border-radius:12px; min-width:0; }
   .chem-overview.running { border-left-color:var(--success); }
@@ -415,7 +394,7 @@
   .chem-time { font-weight:800; font-size:16px; margin:4px 0 10px; }
   .chem-actions { display:flex; gap:6px; }
   .chem-actions .btn { flex:1; padding:6px 8px; }
-  .report-area { min-height:240px; height:320px; margin-top:8px; font-family:inherit; }
+  .report-area { min-height:240px; height:auto; margin:0; padding:8px 0; border:0; border-radius:0; background:#fff; font-family:inherit; font-size:16px; overflow:hidden; resize:none; }
   .note-chip { font-size:13px; padding:8px 10px; border-radius:9px; }
   .note-chip button { min-width:32px; min-height:32px; }
   #dynamicTagsContainer .btn-sub { background:#edf4fa; color:var(--accent); white-space:normal; }
@@ -439,13 +418,13 @@
     .header-top h1 { font-size:20px; }
     .header-top-buttons { width:100%; }
     .header-top-buttons .btn { flex:1; }
-    .live-clock-box,.local-save-badge { font-size:11.5px; }
+    .local-save-badge { font-size:11.5px; }
     .main-nav { position:fixed; top:auto; bottom:0; left:0; right:0; border-radius:16px 16px 0 0; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); border-top:1px solid var(--border-light); box-shadow:0 -4px 20px #0f172a08; }
     .nav-btn { font-size:11px; padding:5px 2px; }
     .nav-icon { display:block; font-size:20px; margin:0 0 2px; }
     .nav-btn .nav-full { display:none; }
     .card { padding:16px; }
-    .brief-grid,#tab1ChemStatusContainer { grid-template-columns:1fr !important; }
+    #tab1ChemStatusContainer { grid-template-columns:1fr !important; }
     .chem-overview { position:relative; }
     .chem-actions { max-width:260px; }
     .modal-overlay { align-items:flex-end; padding:0; }
@@ -459,13 +438,17 @@
   @media(min-width:768px) { .nav-short { display:none; } }
 
   /* Small usability adjustments within the original layout. */
-  .brief-actions { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
   #kakaoRawInput { width:100%;min-height:120px;resize:vertical; }
   #kakaoParseResult:empty { display:none; }
   .message-time-setting input { display:block;max-width:100%;margin-top:6px; }
-  @media(max-width:767px) { .brief-toolbar { flex-wrap:wrap; }.brief-actions { margin-left:auto; } }
+
   .day-switch { flex-wrap:wrap; align-items:center; }
-  #briefingDateInput { width:150px; min-width:0; }
+  #briefingDateInput { width:140px; min-width:0; }
+  @media(max-width:600px) {
+    .brief-toolbar { flex-direction:column; align-items:stretch; }
+    .day-switch { justify-content:space-between; }
+    #copyBriefingButton { width:100%; }
+  }
   #scheduleRawInput { width:100%; margin-top:10px; }
   .manual-fields { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin:12px 0; }
   .manual-fields label { display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
@@ -473,14 +456,9 @@
   .saved-note { padding:12px; border:1px solid var(--border-light); border-radius:8px; overflow-wrap:anywhere; }
   .saved-note p { margin:6px 0; white-space:pre-wrap; }
   .saved-note .settings-inline { gap:6px; }
-  @media(max-width:640px) { .brief-toolbar { flex-wrap:wrap; } .brief-actions { margin-left:auto; } }
+
   [hidden] { display:none !important; }
   .saved-history summary { font-size:13px; color:var(--text-secondary); }
-  .electric-work-row { padding:12px 0; border-bottom:1px solid var(--border-light); }
-  .electric-work-row:last-child { border-bottom:0; }
-  .electric-work-heading,.electric-work-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-  .electric-work-actions { justify-content:flex-start; margin-top:8px; }
-  .electric-work-actions select { width:auto; }
 </style>
 </head>
 <body>
@@ -493,7 +471,7 @@
 
   <header>
     <div class="header-top">
-      <h1>동도금 PM 모니터링</h1>
+      <h1>동도금 PM</h1>
       <div class="header-top-buttons">
         <button class="btn btn-sub btn-sm" onclick="openModal('matrixModal')">🗓️ 주간 매트릭스</button>
         <button class="btn btn-sub btn-sm" onclick="openModal('pulseModal')">💧 액퍼내기</button>
@@ -502,9 +480,6 @@
     <div class="header-bottom-bar">
       <div id="localSaveStatus" class="local-save-badge">
         💾 개인용 · 자동 저장
-      </div>
-      <div class="live-clock-box">
-        <span>🕒</span> <span id="liveClock">로딩 중...</span>
       </div>
     </div>
   </header>
@@ -522,11 +497,10 @@
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
       
-      <div id="focusSummary" class="focus-grid" aria-label="현재 화학동 상태 요약"></div>
       <details id="kakaoPanel" class="parser-box">
-        <summary>📲 카톡 공지 반영 <span class="helper">붙여넣으면 자동 반영</span></summary>
+        <summary>카톡 공지 붙여넣기</summary>
         <div class="parser-content">
-          <p class="helper">시각·건욕 명칭·특이사항을 자동 반영합니다. 직접 수정한 내용은 반영 버튼을 누르세요.</p>
+          <p class="helper">붙여넣으면 자동 반영됩니다. 직접 입력·수정한 경우 아래 버튼을 누르세요.</p>
           <textarea id="kakaoRawInput" rows="4" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 여기에 붙여넣으세요" onpaste="queueKakaoPaste()"></textarea>
           <p id="kakaoParseResult" class="helper" role="status" aria-live="polite"></p>
           <details id="kakaoTimeDetails" class="message-time-setting"><summary>메시지에 날짜·시각이 없는 경우</summary><label for="kakaoMessageTime">메시지 시각</label><input id="kakaoMessageTime" type="datetime-local" aria-label="완료 메시지 시각"><p class="helper">실제 메시지 시각을 입력한 뒤 공지 반영을 누르세요.</p></details>
@@ -535,36 +509,20 @@
       </details>
 
       <div class="card">
-        <div class="card-title">
-          <span id="briefingTitle" style="font-size: 16px;">오늘 PM 브리핑</span>
-          <span class="badge badge-blue">익일 08:30 이전 취합</span>
-        </div>
-
         <div class="brief-toolbar">
           <div class="day-switch" aria-label="브리핑 날짜">
             <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
             <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
             <input type="date" id="briefingDateInput" aria-label="브리핑 날짜 선택" onchange="selectBriefingDate(this.value)">
           </div>
-          <div class="brief-actions"><button class="btn btn-sub btn-sm" onclick="openScheduleEntry()">특이사항 추가</button><button class="btn btn-sub btn-sm" onclick="openNoticePanel()">공지 입력</button><button class="btn" id="copyBriefingButton" onclick="copyShareText()">📋 공지 복사</button></div>
+          <button class="btn" id="copyBriefingButton" onclick="copyShareText()">카톡 공지 복사</button>
         </div>
-        <div id="briefingCards" class="brief-grid" aria-label="공정별 PM 일정"></div>
-        <details>
-          <summary>공유 원문 · 7시패스 고정</summary>
-          <div class="settings-inline">
-            <label for="passTimeInput">패스 기준</label>
-            <input type="text" id="passTimeInput" value="7시패스" style="width:120px;" readonly aria-label="전기동 패스 고정">
-          </div>
-          <textarea id="shareTextOutput" class="report-area" aria-label="공유할 공지 원문" readonly></textarea>
-        </details>
-
-        <details id="electricWorkPanel" hidden><summary><span id="electricWorkSummary">전기동 작업 확인</span></summary><p class="helper">0.5 DC·더미 시작 시각을 이 기기에 기록합니다. 타이머가 끝나면 실제 작업을 확인한 뒤 완료하세요. 공지는 7시패스로 고정합니다.</p><div id="electricWorkList"></div></details>
+        <textarea id="shareTextOutput" class="report-area" aria-label="공유할 카톡 공지" readonly></textarea>
 
         <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
         <div id="chemManagement" style="margin-top: 4px; scroll-margin-top:90px; background: #ffffff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px;">
           <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🧪 화학동 현재 상태</span>
-            <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">시간정정 · 시작/완료 바로 처리</span>
+            <span>화학동</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
           <details id="inlinePMEntry" ontoggle="if(this.open) openInlinePMForm()"><summary>디스미어 13·14 PM 기록</summary><p class="helper">건욕·기본 PM의 실제 작업일을 등록합니다. 별도 공사·점검 일정은 특이사항에 기록하세요.</p><div class="settings-inline"><label for="inlinePMDate">작업일</label><input type="date" id="inlinePMDate" aria-label="디스미어 PM 작업일"><select id="inlinePMLine" aria-label="디스미어 PM 라인"><option value="디스미어 13">디스미어 13</option><option value="디스미어 14">디스미어 14</option></select><input id="inlinePMWork" aria-label="디스미어 PM 작업 내용" value="기본PM" placeholder="기본PM 또는 스웰러·망간 건욕"><button class="btn btn-sub btn-sm" onclick="addInlinePMRecord()">PM 기록 저장</button></div><p id="inlinePMResult" class="helper" role="status"></p><div id="inlinePMHistory"></div></details>
@@ -1192,16 +1150,6 @@ function openScheduleEntry() {
   if(!document.getElementById('manualContentInput').value.trim() && !document.getElementById('scheduleRawInput').value.trim() && !editingManualNote) document.getElementById('manualDateInput').value=selectedDateStr;
   switchTab('tab4');document.getElementById('scheduleRawInput').focus();
 }
-function renderFocusSummary() {
-  const el = document.getElementById('focusSummary');
-  if (!el) return;
-  const counts = {running:0,warn:0,late:0};
-  chemList.forEach(line => { const state=chemAttention(line); if (!line.needsReview && line.status==='시작') counts.running++; if (state==='warn'||state==='late') counts[state]++; });
-  const html = [['running','진행 중'],['warn','7시간 이내 임박'],['late','지연 · 주기 초과']].map(([key,label])=>
-    `<button class="focus-pill ${key}" onclick="openChemManagement()" aria-label="화학동 ${label} ${counts[key]}개, 첫 화면 화학동 관리로 이동"><strong>${counts[key]}<small style="font-size:12px;font-weight:500">개</small></strong><span>${label}</span></button>`).join('');
-  if(el.innerHTML!==html) el.innerHTML=html;
-}
-
 function renderTab1ChemStatus() {
   const container = document.getElementById('tab1ChemStatusContainer');
   if (!container) return;
@@ -1224,7 +1172,6 @@ function renderTab1ChemStatus() {
       <button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></article>`;
   }).join('');
   if(container.innerHTML!==html) container.innerHTML=html;
-  renderFocusSummary();
 }
 
 // [스마트 파서 고도화: 화학동 건욕 명칭 정확 추출 & 디스미어/전기동 수동 특이사항 자동 등록]
@@ -1438,7 +1385,7 @@ function safeRenderAll() {
   try { renderChemList(); } catch(e){ console.error(e); }
   try { renderPulseTable(); } catch(e){ console.error(e); }
   try { renderActiveChemGauges(new Date()); } catch(e){ console.error(e); }
-  try { renderElectroGauges(new Date()); renderElectricWorkPanel(); } catch(e){ console.error(e); }
+  try { renderElectroGauges(new Date()); } catch(e){ console.error(e); }
 }
 
 window.onload = function() {
@@ -1464,8 +1411,6 @@ window.onload = function() {
 
 function tick() {
   const now = new Date();
-  const clockEl = document.getElementById('liveClock');
-  if (clockEl) clockEl.innerText = formatClock(now);
 
   try { updateLiveTimesOnly(now); } catch(e) { console.error(e); }
   try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e) { console.error(e); }
@@ -1475,7 +1420,6 @@ function tick() {
     if (!document.querySelector('#tab2 input:focus, #tab2 select:focus')) renderActiveChemGauges(now);
   }
 
-  renderElectricWorkPanel(now);
   const currentTodayStr = formatDateOnly(now);
   if (lastCheckedDate !== currentTodayStr) {
     lastCheckedDate = currentTodayStr;
@@ -1490,15 +1434,6 @@ function tick() {
     if (mD && !editingManualNote) mD.value = selectedDateStr;
     updateDateToggleUI();safeRenderAll();
   }
-}
-
-function formatClock(d) {
-  const M = String(d.getMonth() + 1).padStart(2, '0');
-  const D = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  const s = String(d.getSeconds()).padStart(2, '0');
-  return `${M}/${D} ${h}:${m}:${s}`;
 }
 
 function switchTab(t) {
@@ -2172,78 +2107,6 @@ function getGaugeElectroLines() {
   return lines;
 }
 
-function getElectricWorkLines() {
-  const lines=getGaugeElectroLines(),seen=new Set(lines.map(line=>timerKey(line.name,line.dateStr))),today=formatDateOnly(new Date());
-  for(const [key,done] of Object.entries(elecCompletedFlags)) {
-    const match=key.match(/^(\d{4}-\d{2}-\d{2})_(전기동 (\d+)라인)$/);
-    if(!match||seen.has(key)||!done?.previousTimer||!validDateTime(done.completedAt)||formatDateOnly(new Date(done.completedAt))!==today) continue;
-    lines.push({dateStr:match[1],name:match[2],number:Number(match[3]),isPulse:[9,20,21].includes(Number(match[3])),carryover:true});seen.add(key);
-  }
-  return lines;
-}
-let electricPanelSignature='';
-function electricWorkState(line,now=new Date()) {
-  const key=timerKey(line.name,line.dateStr), completed=elecCompletedFlags[key];
-  if(completed) return {label:'완료',detail:validDateTime(completed.completedAt)?`완료 ${formatDateTimeKr(new Date(completed.completedAt))}`:'완료 처리된 PM',tone:'green'};
-  const flag=getTimerFlag(line.isPulse?pulseProcessFlags:elecDummyFlags,line.name,line.dateStr);
-  const started=Boolean(flag && (line.isPulse?flag.isStarted:flag.isDummy));
-  const deadline=new Date(line.dateStr+'T20:30:00'),late=!line.isPulse && now>=deadline;
-  if(!started) return {label:line.dateStr>formatDateOnly(now)?'예정':late?'12시간 초과 지연':'시작 전',detail:line.isPulse?'0.5 DC → 1.5 DC → 펄스패스 → 펄스더미 · 단계별 1.5시간':'08:30 기준 · 20:30까지 미완료 시 지연 경고',tone:late?'red':'sub'};
-  const start=timerStart(flag), elapsed=(now-start)/60000;
-  if(elapsed<0) return {label:'시작 대기',detail:`시작 ${formatDateTimeKr(start)} · 저장 시각을 확인하세요.`,tone:'yellow'};
-  if(line.isPulse) {
-    const end=new Date(start.getTime()+360*60000);
-    if(elapsed>=360) return {label:'6시간 경과',detail:`4단계 타이머 종료 ${formatDateTimeKr(end)} · 실제 완료를 확인해주세요.`,tone:'yellow'};
-    const step=Math.floor(elapsed/90),next=new Date(start.getTime()+(step+1)*90*60000);
-    return {label:`${step+1}/4 ${['0.5 DC','1.5 DC','펄스패스','펄스더미'][step]}`,detail:`다음 전환 ${formatDateTimeKr(next)} · 총 6시간 종료 ${formatDateTimeKr(end)}`,tone:'purple'};
-  }
-  const end=new Date(start.getTime()+90*60000);
-  return {label:late?'12시간 초과 지연':elapsed>=90?'더미 1.5시간 경과':'더미 진행 중',detail:`더미 종료 ${formatDateTimeKr(end)}${elapsed>=90?' · 실제 완료를 확인해주세요.':` · ${Math.ceil(90-elapsed)}분 남음`}`,tone:late?'red':elapsed>=90?'yellow':'blue'};
-}
-function renderElectricWorkPanel(now=new Date()) {
-  const panel=document.getElementById('electricWorkPanel'),container=document.getElementById('electricWorkList');if(!panel||!container) return;
-  const lines=getElectricWorkLines();panel.hidden=!lines.length;if(!lines.length) return;
-  const complete=lines.filter(line=>elecCompletedFlags[timerKey(line.name,line.dateStr)]).length;
-  document.getElementById('electricWorkSummary').textContent=`전기동 작업 확인 · ${lines.length}개 라인${complete?` · 완료 ${complete}개`:''}`;
-  const signature=JSON.stringify({lines,pulseProcessFlags,elecDummyFlags,elecCompletedFlags});
-  if(signature!==electricPanelSignature && !document.querySelector('#electricWorkList select:focus')) {
-    electricPanelSignature=signature;
-    container.innerHTML=lines.map(line=>{
-      const key=timerKey(line.name,line.dateStr),completed=elecCompletedFlags[key];
-      const flag=getTimerFlag(line.isPulse?pulseProcessFlags:elecDummyFlags,line.name,line.dateStr);
-      const started=Boolean(flag&&(line.isPulse?flag.isStarted:flag.isDummy)),future=line.dateStr>formatDateOnly(now);
-      const action=name=>`electricWorkAction('${line.name}','${line.dateStr}','${name}')`;
-      const start=started?timerStart(flag):null;
-      const hours=start?Array.from({length:24},(_,h)=>`<option value="${h}" ${h===start.getHours()?'selected':''}>${h}시</option>`).join(''):'';
-      return `<div class="electric-work-row"><div class="electric-work-heading"><strong>전${line.number}${line.isPulse?' · 펄스':''}${line.carryover?` · ${line.dateStr} ${completed?'완료':'미완료'}`:''}</strong><span id="electric_status_${key}" class="badge"></span></div><p id="electric_detail_${key}" class="helper"></p><div class="electric-work-actions">${completed?`<button class="btn btn-sub btn-sm" onclick="${action('undo')}">완료 취소</button>`:`${!started?`<button class="btn btn-sub btn-sm" ${future?'disabled':''} onclick="${action('start')}">${line.isPulse?'0.5 DC 시작':'더미 투입'}</button>`:`<span class="helper">시작 ${formatDateTimeKr(start)}</span><select aria-label="전${line.number} 시작 시" onchange="${line.isPulse?'updatePulseProcessTime':'updateElecDummyTimeSelect'}('${line.name}','h',this.value,'${line.dateStr}')">${hours}</select><select aria-label="전${line.number} 시작 분" onchange="${line.isPulse?'updatePulseProcessTime':'updateElecDummyTimeSelect'}('${line.name}','m',this.value,'${line.dateStr}')">${halfHourMinuteOptions(start.getMinutes())}</select><button class="btn btn-sub btn-sm" onclick="${action('reset')}">시작 취소</button>`}<button class="btn btn-sub btn-sm" ${future?'disabled':''} onclick="${action('complete')}">PM 완료</button>`}</div></div>`;
-    }).join('');
-  }
-  updateElectricWorkStatuses(now);
-}
-function updateElectricWorkStatuses(now=new Date()) {
-  for(const line of getElectricWorkLines()) {
-    const key=timerKey(line.name,line.dateStr),badge=document.getElementById('electric_status_'+key),detail=document.getElementById('electric_detail_'+key);
-    if(!badge||!detail) continue;
-    const state=electricWorkState(line,now);badge.className='badge badge-'+state.tone;badge.textContent=state.label;detail.textContent=state.detail;
-  }
-}
-function electricWorkAction(name,date,action) {
-  const line=getElectricWorkLines().find(item=>item.name===name&&item.dateStr===date);if(!line||date>formatDateOnly(new Date())) return;
-  const key=timerKey(name,date),flags=line.isPulse?pulseProcessFlags:elecDummyFlags;
-  if(action==='start') {
-    if(flags[key] && (line.isPulse?flags[key].isStarted:flags[key].isDummy)) return;
-    if(line.isPulse) togglePulseProcess(name,true,date);else toggleElecDummy(name,true,date);
-  } else if(action==='complete') completeElecPM(name,date);
-  else if(action==='reset') {
-    if(!confirm(`전${line.number} 시작 기록을 취소할까요?`)) return;
-    delete flags[key];savePMData();renderElectricWorkPanel();
-  } else if(action==='undo') {
-    const previous=elecCompletedFlags[key]?.previousTimer;
-    delete elecCompletedFlags[key];if(previous) flags[key]=previous;
-    savePMData();renderElectricWorkPanel();
-  }
-}
-
 function renderElectroGauges(now) {
   const container = document.getElementById('elecGaugesContainer');
   if (!container) return;
@@ -2649,7 +2512,7 @@ function togglePulseProcess(lineName,isChecked,dateStr = selectedDateStr) {
     const now = new Date();
     pulseProcessFlags[key] = {isStarted:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
   } else delete pulseProcessFlags[key];
-  savePMData(); renderElectroGauges(new Date());renderElectricWorkPanel();
+  savePMData(); renderElectroGauges(new Date());
 }
 
 function updatePulseProcessTime(lineName,part,val,dateStr = selectedDateStr) {
@@ -2666,12 +2529,12 @@ function completeElecPM(lineName,dateStr = selectedDateStr) {
   delete pulseProcessFlags[key];
 
   savePMData();
-  renderElectroGauges(new Date());renderElectricWorkPanel();
+  renderElectroGauges(new Date());
 }
 
 function restoreCompletedElec() {
   getElectroLines().forEach(line => { delete elecCompletedFlags[timerKey(line.name)]; });
-  savePMData(); renderElectroGauges(new Date());renderElectricWorkPanel();
+  savePMData(); renderElectroGauges(new Date());
 }
 
 function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
@@ -2680,7 +2543,7 @@ function toggleElecDummy(lineName,isChecked,dateStr = selectedDateStr) {
     const now = new Date();
     elecDummyFlags[key] = {isDummy:true,h:now.getHours(),m:now.getMinutes(),startedAt:now.toISOString()};
   } else delete elecDummyFlags[key];
-  savePMData(); renderElectroGauges(new Date());renderElectricWorkPanel();
+  savePMData(); renderElectroGauges(new Date());
 }
 
 function updateElecDummyTimeSelect(lineName,part,val,dateStr = selectedDateStr) {
@@ -2696,7 +2559,7 @@ function updateTimerTime(flags,lineName,part,val,dateStr = selectedDateStr) {
   if (part === 'h') start.setHours(value); else start.setMinutes(value);
   start.setSeconds(0,0);
   flag.h = start.getHours(); flag.m = start.getMinutes(); flag.startedAt = start.toISOString();
-  savePMData(); updateLiveTimesOnly(new Date());updateElectricWorkStatuses(new Date());
+  savePMData(); updateLiveTimesOnly(new Date());
 }
 
 function renderChemList() {
@@ -2914,9 +2777,6 @@ function generateShareText() {
   const m = targetDate.getMonth() + 1;
   const d = targetDate.getDate();
 
-  const bTitle = document.getElementById('briefingTitle');
-  if (bTitle) bTitle.innerText = `동도금 ${m}월 ${d}일 PM일정`;
-
   const windowStart = new Date(targetDate.getTime() + 8.5 * 3600000);
   const windowEnd = new Date(targetDate.getTime() + 32.5 * 3600000);
 
@@ -3047,8 +2907,11 @@ function generateShareText() {
   if(scheduledExtras.length) out+=scheduledExtras.join('\n')+'\n\n';
   out += `이상입니다.`;
   const outEl = document.getElementById('shareTextOutput');
-  if (outEl) outEl.value = out;
-  renderBriefingCards({equipment:[debarr,wash,etching].filter(Boolean),desmear,chemical:[blackhole,...chems].filter(Boolean),electro,ongoing,extra:[...extraNotes.map(note=>`${note.line} ${displayManualText(note)}`),...scheduledExtras]});
+  if (outEl) {
+    outEl.value = out;
+    outEl.style.height='auto';
+    if(outEl.scrollHeight) outEl.style.height=outEl.scrollHeight+'px';
+  }
 }
 
 async function copyShareText() {
@@ -3062,10 +2925,9 @@ async function copyShareText() {
     }
     const button=document.getElementById('copyBriefingButton');
     button.textContent='✓ 복사 완료';
-    setTimeout(()=>{button.textContent='📋 공지 복사';},2500);
+    setTimeout(()=>{button.textContent='카톡 공지 복사';},2500);
     showToast('공지 복사 완료 · 카톡에 붙여넣으세요.');
   } catch (error) {
-    el.parentElement.open=true;
     el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
     showToast('자동 복사가 제한되었습니다. 선택된 원문을 길게 눌러 복사해주세요.');
   }
@@ -3087,15 +2949,7 @@ function queueKakaoPaste() {
 }
 
 function savePassPreference() {
-  document.getElementById('passTimeInput').value=ELECTRO_PASS_TEXT;
   try { localStorage.setItem('pm_ui_preferences_master',JSON.stringify({...ensureObject(readStored('pm_ui_preferences_master')),pass:ELECTRO_PASS_TEXT})); } catch(error) { /* PM storage remains independent. */ }
-}
-
-function renderBriefingCards(groups) {
-  const el=document.getElementById('briefingCards'); if(!el) return;
-  const titles={equipment:'에칭 · 데버링 · 고압수세',desmear:'디스미어',chemical:'화학동 · 블랙홀',electro:'전기동',ongoing:'현재 진행 중',extra:'추가 특이사항'};
-  el.innerHTML=Object.entries(titles).filter(([key])=>groups[key].length).map(([key,title])=>
-    `<section class="brief-section ${key==='ongoing'?'running':''}"><h3>${title}</h3>${groups[key].map(line=>`<div class="brief-line">${escapeHtml(line.replace(/^-/,''))}</div>`).join('')}</section>`).join('');
 }
 
 function halfHourMinuteOptions(minute) {
