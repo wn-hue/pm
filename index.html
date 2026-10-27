@@ -691,6 +691,15 @@
   .saved-note .settings-inline .btn { min-height:44px; }
   .saved-history,.schedule-tools { border:0;padding:0; }
   .saved-history>summary,.schedule-tools>summary { min-height:50px;padding:10px 4px; }
+  .transfer-tools { display:block;border-top:1px solid var(--border-light);padding-top:5px; }
+  .transfer-tools>summary { min-height:50px;padding:10px 4px;color:var(--text-secondary);font-size:13px;font-weight:400; }
+  .transfer-content { display:grid;gap:12px;padding:4px 0 16px; }
+  .transfer-content .helper { font-size:13px;line-height:1.7; }
+  .transfer-actions { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .transfer-actions .btn { padding:10px 8px;font-size:13px; }
+  .transfer-preview { display:grid;gap:12px;padding:16px;border-radius:16px;background:#fff; }
+  #transferChemPreview { padding-left:18px;color:var(--text-secondary);font-size:12px;line-height:1.9; }
+  #transferResult:empty { display:none; }
   .modal-overlay { align-items:flex-end;padding:0;background:#00000045; }
   .modal-content,.time-editor { width:100%;max-width:480px;max-height:90dvh;border-radius:25px 25px 0 0;padding-bottom:env(safe-area-inset-bottom); }
   .sheet-grip { display:flex;justify-content:center;padding:11px 0 4px;touch-action:none; }
@@ -797,6 +806,15 @@
       <div id="manualEmptyState" class="note-empty"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM8 8h8m-8 4h8m-8 4h5"/></svg><h2>기억할 일정을 모아두세요</h2><p>공사·점검·교체를 기록하면<br>해당 날짜 공지에 함께 담깁니다.</p><button class="btn btn-sub" onclick="openNoteComposer()">첫 일정 기록하기</button></div>
       <div id="manualNoteList" class="saved-notes" hidden></div>
       <details class="schedule-tools"><summary>적용 중 일정 · 기록 정정</summary><p id="scheduleSettingsSummary" class="helper"></p><p class="helper">화학동도 카톡 공지로 갱신합니다. 직접 정정해야 할 때만 아래에서 선택하세요.</p><div class="settings-inline"><select id="manualChemLine" aria-label="정정할 화학동"><option value="화7">화7</option><option value="화8">화8</option><option value="화9">화9</option><option value="화13">화13</option><option value="화14">화14</option></select><button class="btn btn-sub btn-sm" onclick="manualChemAction('시작')">PM 시작</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('완료')">PM 완료</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('time')">시간정정</button></div></details>
+      <details id="transferTools" class="transfer-tools"><summary>앱 데이터 옮기기</summary><div class="transfer-content">
+        <p class="helper">기존 앱에서 백업을 파일 앱에 저장한 뒤, 새 앱에서 불러오세요. 화학동·특이사항·변경한 일정을 함께 옮깁니다.</p>
+        <div class="transfer-actions"><button id="transferSaveButton" class="btn btn-sub" onclick="saveTransferFile()">백업 파일 저장</button><button id="transferLoadButton" class="btn btn-sub" onclick="document.getElementById('transferFileInput').click()">백업 불러오기</button></div>
+        <input id="transferFileInput" type="file" accept=".json,application/json" aria-label="PM 백업 파일 선택" onchange="readTransferFile(this.files[0]);this.value=''" hidden>
+        <div id="transferPreview" class="transfer-preview" hidden><strong>불러올 기록 확인</strong><p id="transferPreviewMeta" class="helper"></p><ul id="transferChemPreview"></ul><p class="helper">현재 앱의 기록을 백업 시점으로 바꿉니다. 복원 직전 기록은 되돌릴 수 있습니다.</p><div class="transfer-actions"><button id="transferApplyButton" class="btn" onclick="applyTransferFile()">이 기록으로 복원</button><button class="btn btn-sub" onclick="cancelTransferPreview()">취소</button></div></div>
+        <button id="transferUndoButton" class="btn btn-sub" onclick="previewPreviousTransfer()" hidden>복원 전 기록 확인</button>
+        <p id="transferResult" class="helper" role="status" aria-live="polite"></p>
+        <p class="helper">새 앱에서 기록을 확인할 때까지 기존 앱을 삭제하지 마세요.</p>
+      </div></details>
     </div>
   </div>
 
@@ -1231,8 +1249,7 @@ function restoreLocalState(state) {
   inlineDesmearFlags=ensureObject(state.inlineDesmearFlags);
   lastLocalState=currentState();
 }
-function persistLocalState() {
-  const state=currentState();
+function persistLocalState(state=currentState()) {
   try {
     // One atomic storage write is sufficient to recover every field after a reload.
     localStorage.setItem(LOCAL_STATE_KEY,JSON.stringify(state));
@@ -1247,6 +1264,135 @@ function persistLocalState() {
   document.getElementById('localSaveStatus').textContent='';
   document.getElementById('localSaveStatus').hidden=true;
   return true;
+}
+
+// Explicit, local file transfer between isolated Home Screen installations.
+const TRANSFER_FORMAT='pm-local-transfer',TRANSFER_VERSION=1;
+const PRE_TRANSFER_KEY='pm_before_transfer_master';
+let pendingTransfer=null,transferReadVersion=0,transferBusy=false;
+async function transferDigest(state) {
+  const bytes=new TextEncoder().encode(JSON.stringify(state));
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+async function createTransferArchive(state=currentState()) {
+  const snapshot=JSON.parse(JSON.stringify(state));
+  assertTransferState(snapshot);
+  return {format:TRANSFER_FORMAT,version:TRANSFER_VERSION,createdAt:new Date().toISOString(),state:snapshot,sha256:await transferDigest(snapshot)};
+}
+function assertTransferState(state) {
+  const object=value=>Boolean(value && typeof value==='object' && !Array.isArray(value));
+  if(!object(state) || Object.keys(state).length!==STATE_FIELDS.length || STATE_FIELDS.some(key=>!Object.hasOwn(state,key))) throw Error('백업에 필요한 기록이 빠져 있습니다.');
+  const forbidden=(value,depth=0)=>{
+    if(depth>40) return true;
+    if(!value || typeof value!=='object') return false;
+    return Object.entries(value).some(([key,item])=>['__proto__','constructor','prototype'].includes(key)||forbidden(item,depth+1));
+  };
+  if(forbidden(state)) throw Error('지원하지 않는 백업 형식입니다.');
+  const chem=state.chemList;
+  if(!Array.isArray(chem)||chem.length!==5||new Set(chem.map(item=>item?.id)).size!==5||chem.some(item=>!object(item)||!REQUIRED_CHEM_IDS.includes(item.id)||!validDateTime(item.lastDone)||!['시작','완료'].includes(item.status)||typeof item.note!=='string'||(item.needsReview!==undefined&&typeof item.needsReview!=='boolean')||['plannedDue','backlightPmAt'].some(key=>item[key]!=null&&!validDateTime(item[key])))) throw Error('화학동 기록이 올바르지 않습니다.');
+  const pulse=state.pulseList;
+  if(!Array.isArray(pulse)||pulse.length!==DEFAULT_PULSE.length||new Set(pulse.map(item=>item?.line)).size!==DEFAULT_PULSE.length||pulse.some(item=>!object(item)||!DEFAULT_PULSE.some(line=>line.line===item.line)||!validDateTime(item.lastDate+'T00:00'))) throw Error('액퍼내기 기록이 올바르지 않습니다.');
+  if(!Array.isArray(state.manualNotes)||state.manualNotes.some(item=>!object(item)||typeof item.line!=='string'||!item.line.trim()||typeof item.text!=='string'||!item.text.trim()||!validDateTime(item.date+'T00:00'))) throw Error('일정 기록이 올바르지 않습니다.');
+  for(const field of STATE_FIELDS.slice(3)) if(!object(state[field])||Object.values(state[field]).some(item=>!validFlagEntry(field,item))) throw Error('진행 기록이 올바르지 않습니다.');
+}
+async function parseTransferArchive(text) {
+  if(typeof text!=='string'||text.length>5*1024*1024) throw Error('5MB 이하의 PM 백업 파일을 선택해주세요.');
+  let archive;
+  try {archive=JSON.parse(text);} catch(error) {throw Error('읽을 수 없는 파일입니다. PM 백업 JSON 파일을 선택해주세요.');}
+  if(archive?.format!==TRANSFER_FORMAT||archive.version!==TRANSFER_VERSION||!validDateTime(archive.createdAt)||typeof archive.sha256!=='string') throw Error('이 앱에서 저장한 백업 파일이 아닙니다.');
+  assertTransferState(archive.state);
+  if(await transferDigest(archive.state)!==archive.sha256) throw Error('파일 내용이 변경되었거나 손상되었습니다. 기존 앱에서 다시 백업해주세요.');
+  return archive;
+}
+function setTransferBusy(busy) {
+  transferBusy=busy;
+  for(const id of ['transferSaveButton','transferLoadButton','transferApplyButton','transferUndoButton']) document.getElementById(id).disabled=busy;
+}
+function showTransferPreview(archive,previous=false) {
+  pendingTransfer={archive,previous};
+  const state=archive.state,savedAt=new Date(archive.createdAt);
+  document.getElementById('transferPreviewMeta').textContent=`${formatDateOnly(savedAt)} ${formatTimeKr(savedAt.getHours(),savedAt.getMinutes())} 백업 · 화학동 ${state.chemList.filter(item=>!item.needsReview).length}/5개 확인 · 일정 기록 ${state.manualNotes.length}건 · 액퍼내기 ${state.pulseList.length}개`;
+  document.getElementById('transferChemPreview').innerHTML=state.chemList.map(item=>`<li>${escapeHtml(item.id)} · ${item.needsReview?'기록 확인 필요':escapeHtml(item.status+' '+formatDateTimeKr(new Date(item.lastDone)))}</li>`).join('');
+  document.getElementById('transferApplyButton').textContent=previous?'복원 전으로 되돌리기':'이 기록으로 복원';
+  document.getElementById('transferPreview').hidden=false;
+}
+function cancelTransferPreview() {
+  if(transferBusy) return;
+  transferReadVersion++;pendingTransfer=null;document.getElementById('transferPreview').hidden=true;
+  document.getElementById('transferResult').textContent='불러오기를 취소했습니다. 현재 기록을 유지합니다.';
+}
+async function readTransferFile(file) {
+  if(!file||transferBusy) return;
+  const version=++transferReadVersion;pendingTransfer=null;
+  document.getElementById('transferPreview').hidden=true;
+  const result=document.getElementById('transferResult');result.textContent='백업 파일 확인 중…';
+  try {
+    if(file.size>5*1024*1024) throw Error('5MB 이하의 PM 백업 파일을 선택해주세요.');
+    const archive=await parseTransferArchive(await file.text());
+    if(version!==transferReadVersion) return;
+    showTransferPreview(archive);result.textContent='아직 변경하지 않았습니다. 백업 시각과 화학동 기록을 확인해주세요.';
+  } catch(error) {if(version===transferReadVersion) result.textContent=error.message;}
+}
+async function saveTransferFile() {
+  if(transferBusy) return;
+  const result=document.getElementById('transferResult');
+  let ownsBusy=true;
+  setTransferBusy(true);
+  try {
+    const archive=await createTransferArchive();
+    const stamp=archive.createdAt.replace(/[-:]/g,'').replace(/\.\d+Z$/,'Z');
+    const file=new File([JSON.stringify(archive,null,2)],`PM-backup-${stamp}.json`,{type:'application/json'});
+    // A dismissed system share sheet must never leave the app's controls locked.
+    setTransferBusy(false);ownsBusy=false;
+    result.textContent='공유 창에서는 파일에 저장을 선택하세요. 다운로드가 시작되면 파일 앱에서 확인하세요.';
+    let shared=false;
+    if(navigator.canShare?.({files:[file]})) {
+      try {await navigator.share({files:[file],title:'PM 기록 백업'});shared=true;}
+      catch(error) {if(error.name==='AbortError') throw error;}
+    }
+    if(shared) {
+      result.textContent='백업 파일 공유를 마쳤습니다. 파일 앱에 저장한 파일을 확인해주세요.';
+    } else {
+      const url=URL.createObjectURL(file),link=document.createElement('a');
+      link.href=url;link.download=file.name;document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      result.textContent='백업 파일 다운로드를 요청했습니다. 파일 앱의 다운로드 항목을 확인해주세요.';
+    }
+  } catch(error) {result.textContent=error.name==='AbortError'?'저장을 취소했습니다. 기존 기록은 그대로입니다.':'백업 파일을 저장하지 못했습니다. 파일 저장 권한을 확인하고 다시 시도해주세요.';}
+  finally {if(ownsBusy) setTransferBusy(false);}
+}
+async function applyTransferFile() {
+  if(!pendingTransfer||transferBusy) return;
+  setTransferBusy(true);
+  const result=document.getElementById('transferResult'),pending=pendingTransfer,baseline=JSON.stringify(currentState());
+  try {
+    // Verify again at commit; never mutate current data just by choosing a file.
+    const archive=await parseTransferArchive(JSON.stringify(pending.archive));
+    const previous=await createTransferArchive(JSON.parse(baseline));
+    if(JSON.stringify(currentState())!==baseline) throw Error('현재 기록이 바뀌었습니다. 백업 내용을 다시 확인한 뒤 복원해주세요.');
+    // Both operations are local. The previous snapshot must be saved before replacement.
+    try {localStorage.setItem(PRE_TRANSFER_KEY,JSON.stringify(previous));}
+    catch(error) {throw Error('복원 전 기록을 보관하지 못했습니다. 저장 공간을 확인해주세요. 현재 기록은 유지합니다.');}
+    if(!persistLocalState(archive.state)) throw Error('저장 공간을 확인해주세요. 현재 기록은 바꾸지 않았습니다.');
+    // Restore exactly this installation's snapshot, including intentionally unknown lines.
+    chemList=DEFAULT_CHEM.map(item=>({...item}));pulseList=DEFAULT_PULSE.map(item=>({...item}));
+    restoreLocalState(archive.state);
+    pendingTransfer=null;document.getElementById('transferPreview').hidden=true;
+    document.getElementById('transferUndoButton').hidden=false;
+    expandedChemIds.clear();document.getElementById('tab1ChemStatusContainer').chemRenderKey='';safeRenderAll();
+    result.textContent='기록을 복원했습니다. PM 관리에서 화학동·일정을 확인한 뒤 기존 앱을 정리하세요.';
+  } catch(error) {result.textContent=error.message||'복원하지 못했습니다. 기존 기록을 유지합니다.';}
+  finally {setTransferBusy(false);}
+}
+async function previewPreviousTransfer() {
+  if(transferBusy) return;
+  const version=++transferReadVersion;pendingTransfer=null;document.getElementById('transferPreview').hidden=true;
+  try {
+    const previous=await parseTransferArchive(localStorage.getItem(PRE_TRANSFER_KEY));
+    if(version!==transferReadVersion) return;
+    showTransferPreview(previous,true);document.getElementById('transferResult').textContent='복원 직전 기록입니다. 확인 후 되돌리기를 누르세요.';
+  } catch(error) {if(version===transferReadVersion) document.getElementById('transferResult').textContent='되돌릴 기록을 읽지 못했습니다. 현재 기록은 유지합니다.';}
 }
 function initializeLocalData() {
   const saved=readStored(LOCAL_STATE_KEY);
@@ -1769,6 +1915,7 @@ window.onload = function() {
   savePassPreference();
   initializeSheetDismissal();
   initializeMobileLayout();
+  document.getElementById('transferUndoButton').hidden=!readStored(PRE_TRANSFER_KEY);
 
   const mD = document.getElementById('manualDateInput');
   if (mD) mD.value = selectedDateStr;
