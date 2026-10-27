@@ -301,11 +301,11 @@ test('electric dummy cycle ends at 90min and delay turns on at 20:30, including 
 test('120/240/360-day schedule and reminder remain on D28, D-Day and overdue dates',()=>{
   const a=app({now:'2026-10-01T12:00:00+09:00'});
   a.run("pulseList[0].lastDate='2026-07-01';renderPulseTable()");
-  assert.match(a.nodes.get('remindBannerText').innerHTML,/전9/);
+  assert.match(a.run('activePulseReminds.join(" ")'),/전9/);
   assert.equal(a.nodes.get('remindBanner').style.display,'flex');
   a.setNow('2026-10-29T12:00:00+09:00');a.nodes.get('pulseTableBody').children=[];a.run('renderPulseTable()');
   assert.match(a.nodes.get('pulseTableBody').children[0].innerHTML,/D-Day/);
-  a.setNow('2026-10-30T12:00:00+09:00');a.run('renderPulseTable()');assert.match(a.nodes.get('remindBannerText').innerHTML,/D\+1/);
+  a.setNow('2026-10-30T12:00:00+09:00');a.run('renderPulseTable()');assert.match(a.run('activePulseReminds.join(" ")'),/D\+1/);
   assert.equal(a.run("formatDateOnly(new Date(new Date('2026-07-01T00:00').getTime()+360*86400000))"),'2027-06-26');
 });
 
@@ -394,7 +394,7 @@ test('notice is rendered as plain text and retains pasted work and manual conten
   assert.doesNotMatch(a.nodes.get('noticePreview').innerHTML,/<img/);
   assert.match(a.nodes.get('shareTextOutput').value,/화13 13시 PM 진행중/);
   assert.equal(a.nodes.get('kakaoPanel').open,true);
-  assert.match(a.nodes.get('uiToast').textContent,/반영 완료/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/반영 완료/);
 });
 
 test('attention boundaries stay correct and saved custom passes migrate to fixed seven oclock',()=>{
@@ -466,7 +466,7 @@ test('copy gives nonblocking feedback and invalid notices remain available for c
   assert.match(a.nodes.get('uiToast').textContent,/복사 완료/);
   a.parse('아무 일정 없음');
   assert.equal(a.nodes.get('kakaoRawInput').value,'아무 일정 없음');
-  assert.match(a.nodes.get('uiToast').textContent,/찾지 못/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/찾지 못/);
   assert.equal(a.alerts.length,0);
 });
 
@@ -585,7 +585,7 @@ test('undated inline notices require a date while chemistry aliases still update
   a.parse('디화13 12:20 디스미어 PM 스웰러 건욕\n디14 13시 망간 건욕');
   assert.deepEqual(a.data('chemList'),original);assert.deepEqual(a.data('manualNotes'),[]);
   assert.deepEqual(a.data('inlineDesmearFlags'),{});
-  assert.match(a.nodes.get('uiToast').textContent,/날짜·시각/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/날짜·시각/);
   a.parse('디화14 06시 화학동 건욕 진행중');
   assert.equal(a.run('chemList[4].status'),'시작');assert.equal(a.run('chemList[4].note'),'화학동 건욕');
   a.parse('디화14 07시 화학동 건욕 완료');
@@ -1354,4 +1354,118 @@ test('rule and pulse drafts reject ambiguity and unsupported lines without chang
   assert.equal(a.nodes.get('dynamicTagsContainer').hidden,true);a.run('addManualNote()');
   a.nodes.get('scheduleRawInput').value='전12 PM 매주 수요일로 변경';a.run('parseScheduleInput();addManualNote()');
   assert.equal(a.run("manualNotes.filter(n=>n.kind==='pm-rule').length"),1);
+});
+
+test('mobile dock switches its primary action and copy date follows year boundaries',()=>{
+  const a=app({now:'2026-12-31T09:00:00+09:00'});
+  assert.equal(a.nodes.get('pmCopyAction').hidden,false);
+  assert.equal(a.nodes.get('noteCreateButton').hidden,true);
+  a.run("selectQuickDay('tomorrow')");
+  assert.equal(a.nodes.get('copyBriefingDate').textContent,'1. 1.');
+  assert.match(a.nodes.get('briefingDateContext').textContent,/금요일 · 내일/);
+  assert.equal(a.run('selectedDateStr'),'2027-01-01');
+  a.run("switchTab('tab4')");
+  assert.equal(a.nodes.get('pmCopyAction').hidden,true);
+  assert.equal(a.nodes.get('noteCreateButton').hidden,false);
+  assert.equal(a.nodes.get('pmHeader').hidden,true);
+  a.run("switchTab('tab1')");
+  assert.equal(a.nodes.get('pmCopyAction').hidden,false);
+  assert.equal(a.nodes.get('copyBriefingDate').textContent,'1. 1.');
+});
+
+test('mobile page navigation restores each scroll position and active-tab tap goes to the top',()=>{
+  const a=app();
+  a.context.window.scrollTo=(options,y)=>{a.context.window.scrollY=typeof options==='object'?options.top:y;};
+  a.context.window.scrollY=760;
+  a.run("switchTab('tab4')");assert.equal(a.context.window.scrollY,0);
+  a.context.window.scrollY=120;
+  a.run("switchTab('tab1')");assert.equal(a.context.window.scrollY,760);
+  a.run("switchTab('tab4')");assert.equal(a.context.window.scrollY,120);
+  a.run("switchTab('tab4')");assert.equal(a.context.window.scrollY,0);
+  a.run("switchTab('tab1',{top:true})");assert.equal(a.context.window.scrollY,0);
+});
+
+test('note sheet preserves a dismissed draft and saves only after date-line review',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'}),before=a.data('currentState()');
+  a.run('openNoteComposer()');assert.equal(a.run('activeModalId'),'noteComposerModal');
+  a.nodes.get('scheduleRawInput').value='디12 10월 28일 옥사멧 점검';
+  a.run("closeModal('noteComposerModal');openNoteComposer()");
+  assert.equal(a.nodes.get('scheduleRawInput').value,'디12 10월 28일 옥사멧 점검');
+  assert.deepEqual(a.data('currentState()'),before);
+  a.run('parseScheduleInput()');assert.equal(a.nodes.get('noteDraftEntry').hidden,true);
+  assert.equal(a.nodes.get('manualNoteEditor').hidden,false);
+  assert.equal(a.run('activeModalId'),'noteComposerModal');
+  assert.deepEqual(a.data('currentState()'),before);
+  a.run('addManualNote()');assert.equal(a.run('activeModalId'),null);
+  assert.equal(a.nodes.get('manualEmptyState').hidden,true);
+  assert.match(a.run('generateShareText();document.getElementById("shareTextOutput").value'),/디12 기본PM \(옥사멧 점검\)/);
+  const reloaded=app({stored:Object.fromEntries(a.storage),now:'2026-10-28T09:00:00+09:00'});
+  assert.equal(reloaded.run('manualNotes[0].text'),'옥사멧 점검');
+});
+
+test('invalid note stays in the sheet and cancelling review restores sentence input',()=>{
+  const a=app(),before=a.data('currentState()');
+  a.run('openManualNoteEditor()');a.nodes.get('manualContentInput').value='';
+  a.run('addManualNote()');assert.equal(a.run('activeModalId'),'noteComposerModal');
+  assert.deepEqual(a.data('currentState()'),before);
+  a.run('cancelManualEdit()');assert.equal(a.nodes.get('noteDraftEntry').hidden,false);
+  assert.equal(a.nodes.get('manualNoteEditor').hidden,true);
+});
+
+test('editing a saved note opens its sheet and closing it leaves the saved record intact',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}];editManualNote(0)");
+  assert.equal(a.run('activeModalId'),'noteComposerModal');
+  assert.equal(a.nodes.get('noteDraftEntry').hidden,true);
+  a.nodes.get('manualContentInput').value='인써트 교체';
+  a.run("closeModal('noteComposerModal');openNoteComposer()");
+  assert.equal(a.nodes.get('manualContentInput').value,'인써트 교체');
+  assert.equal(a.run('manualNotes[0].text'),'옥사멧 점검');
+});
+
+test('paste completion reveals the missing timestamp only when required',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,true);
+  a.parse('2026년 10월 2일\n22시 백라이트 입니다\n화8 PM\n이상입니다');
+  a.parse('화학동8 양산 진행하겠습니다');
+  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,false);
+  assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
+  a.nodes.get('kakaoMessageTime').value='2026-10-03T10:20';a.run('parseAndApplyKakaoMsg()');
+  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,true);
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
+});
+
+test('compact pulse banner prioritizes overdue then nearest dates without dropping reminders',()=>{
+  const a=app();
+  a.run("activePulseReminds=['전20 · 10/30 확정 · D-2','전9 · 10/25 · D+3 초과','전21 · 11/25 예정 · D-28'];checkPulseBannerTrigger()");
+  assert.match(a.nodes.get('remindBannerText').innerHTML,/전9 · 10\/25 · D\+3/);
+  assert.match(a.nodes.get('remindBannerText').innerHTML,/외 2건/);
+  assert.equal(a.run('activePulseReminds.length'),3);
+  a.run("activePulseReminds=['전21 · 11/25 예정 · D-28','전20 · 10/30 확정 · D-2'];checkPulseBannerTrigger()");
+  assert.match(a.nodes.get('remindBannerText').innerHTML,/전20/);
+});
+
+test('keyboard viewport changes hide the dock and size the sheet without altering records',()=>{
+  const a=app(),classes=new Set(),vars={};
+  a.context.document.body.classList={add:value=>classes.add(value),remove:value=>classes.delete(value)};
+  a.context.document.body.style.setProperty=(key,value)=>{vars[key]=value;};
+  a.context.window.innerHeight=844;
+  a.context.window.visualViewport={height:480,offsetTop:20};
+  const before=a.data('currentState()');a.run('syncMobileKeyboard()');
+  assert.equal(classes.has('keyboard-open'),true);assert.equal(vars['--viewport-height'],'480px');assert.equal(vars['--viewport-top'],'20px');
+  a.context.window.visualViewport.height=844;a.run('syncMobileKeyboard()');
+  assert.equal(classes.has('keyboard-open'),false);assert.deepEqual(a.data('currentState()'),before);
+});
+
+test('successful paste releases the keyboard and reports once while incomplete input stays editable',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'});let blurs=0;
+  a.nodes.get('kakaoRawInput').blur=()=>{blurs++;};
+  a.parse('2026년 10월 28일\n1시 백라이트 입니다\n화9 PM\n이상입니다.');
+  assert.equal(blurs,1);assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/공지 반영 완료/);
+  assert.doesNotMatch(a.nodes.get('kakaoParseResult').textContent,/0건/);
+  assert.notEqual(a.nodes.get('uiToast').style.display,'block');
+  a.parse('화9 양산 진행하겠습니다');
+  assert.equal(blurs,1);assert.equal(a.nodes.get('kakaoRawInput').value,'화9 양산 진행하겠습니다');
+  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,false);
 });
