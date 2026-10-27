@@ -29,7 +29,6 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
   }
   // Compatibility targets for persisted timer rules; these do not exist in the app UI.
   for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) nodes.set(id,new Element(id));
-  nodes.get('passTimeInput').value='7시패스';
   const storage = new Map(Object.entries(stored));
   const localStorage = {getItem:key=>{if(storageError)throw Error('blocked');return storage.get(key)??null;},
     setItem:(key,value)=>{if(storageError)throw Error('blocked');storage.set(key,value);},removeItem:key=>{if(storageError)throw Error('blocked');storage.delete(key);},get length(){return storage.size;},key:i=>[...storage.keys()][i]};
@@ -386,12 +385,11 @@ test('time editor refuses invalid input and concurrent remote edits instead of o
   assert.match(a.nodes.get('chemTimeError').textContent,/다른 곳/);
 });
 
-test('briefing cards escape manual content and do not diverge from copied report',()=>{
+test('notice is rendered as plain text and retains pasted work and manual content',()=>{
   const a=app();a.parse('화13 13시 촉매건욕 PM 진행중');
   a.run("manualNotes.push({date:selectedDateStr,line:'기타',text:'<img src=x onerror=alert(1)>'});generateShareText()");
-  const cards=a.nodes.get('briefingCards').innerHTML;
-  assert.match(cards,/화13 13시 PM 진행중/);
-  assert.match(cards,/&lt;img/);assert.doesNotMatch(cards,/<img/);
+  assert.match(a.nodes.get('shareTextOutput').value,/<img src=x onerror=alert\(1\)>/);
+  assert.equal(a.nodes.get('shareTextOutput').innerHTML,'');
   assert.match(a.nodes.get('shareTextOutput').value,/화13 13시 PM 진행중/);
   assert.equal(a.nodes.get('kakaoPanel').open,false);
   assert.match(a.nodes.get('uiToast').textContent,/반영 완료/);
@@ -401,9 +399,9 @@ test('attention boundaries stay correct and saved custom passes migrate to fixed
   const a=app();
   assert.equal(a.run("chemAttention({status:'시작',lastDone:new Date(Date.now()-14*3600000).toISOString()})"),'late');
   assert.equal(a.run("chemAttention({status:'완료',lastDone:new Date(Date.now()-65*3600000).toISOString()})"),'warn');
-  a.nodes.get('passTimeInput').value='7시30분패스';a.run('savePassPreference()');
+  a.storage.set('pm_ui_preferences_master',JSON.stringify({pass:'7시30분패스'}));a.run('savePassPreference()');
   const b=app({stored:Object.fromEntries(a.storage)});
-  assert.equal(b.nodes.get('passTimeInput').value,'7시패스');
+  assert.equal(JSON.parse(b.storage.get('pm_ui_preferences_master')).pass,'7시패스');
   assert.match(b.nodes.get('shareTextOutput').value,/7시패스/);assert.doesNotMatch(b.nodes.get('shareTextOutput').value,/7시30분패스/);
 });
 
@@ -462,7 +460,7 @@ test('one manual anchor enables an inline PM on every second chemistry cycle inc
   assert.match(share,/화14 익일\(5일\) 7시 30분/);
   assert.match(share,/디스미어 14 5일 기본PM/);
   assert.equal(share.split('디스미어 14').length-1,1);
-  assert.match(a.nodes.get('briefingCards').innerHTML,/디스미어 14 5일 기본PM/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디스미어 14 5일 기본PM/);
   assert.match(a.run("inlineControlsHtml('화14')"),/2회마다 1회/);
   const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-04T12:00:00+09:00'});
   assert.equal(b.run("getInlineCycle('화14').count"),1);
@@ -496,8 +494,8 @@ test('briefing uses the requested desmear wording and includes next-morning manu
   const a=app({now:'2026-10-04T12:00:00+09:00'});
   a.run("manualNotes=[{date:'2026-10-04',line:'디스미어 13',text:'망간 건욕'},{date:'2026-10-05',line:'디스미어 14',text:'기본PM'}];chemList[4].plannedDue='2026-10-05T07:30:00+09:00';safeRenderAll()");
   assert.deepEqual(a.data("inlineBriefingLines('2026-10-04')"),['디스미어 13 망간건욕','디스미어 14 5일 기본PM']);
-  assert.match(a.nodes.get('briefingCards').innerHTML,/디스미어 13 망간건욕/);
-  assert.match(a.nodes.get('briefingCards').innerHTML,/디스미어 14 5일 기본PM/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디스미어 13 망간건욕/);
+  assert.match(a.nodes.get('shareTextOutput').value,/디스미어 14 5일 기본PM/);
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디화|화학동 분리 요청/);
   a.run("chemList[4].plannedDue='2026-10-05T08:30:00+09:00';safeRenderAll()");
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/디스미어 14/);
@@ -669,7 +667,7 @@ test('a new browser shows five unverified lines without invented running PM or o
   assert.equal(a.run('chemList.every(line=>line.needsReview)'),true);
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/PM 진행중/);
   assert.match(a.nodes.get('tab1ChemStatusContainer').innerHTML,/기록 확인 필요/);
-  assert.match(a.nodes.get('focusSummary').innerHTML,/진행 중 0개/);
+  assert.doesNotMatch(a.nodes.get('tab1ChemStatusContainer').innerHTML,/PM 진행 중|주기 초과/);
   a.run("setChemStepStatusById('화7','시작')");
   assert.equal(a.run('chemList[0].needsReview'),false);
   assert.equal(a.run('chemList[0].lastDone'),'2026-10-26T23:00:00.000Z');
@@ -704,7 +702,7 @@ test('pasted line-specific times cannot change fixed seven oclock passes in brie
   assert.match(a.nodes.get('elecGaugesContainer').innerHTML,/전18 산세\.박리 \(7시패스\)/);
   a.run("selectQuickDay('tomorrow')");
   assert.match(a.nodes.get('shareTextOutput').value,/전15 산세\.박리 \(7시패스\)/);
-  assert.equal(a.nodes.get('passTimeInput').value,'7시패스');
+  assert.equal(JSON.parse(a.storage.get('pm_ui_preferences_master')).pass,'7시패스');
 });
 
 test('electric manual PM override replaces default once and retains filter add-on',()=>{
@@ -786,14 +784,15 @@ test('an incomplete message stays in the inline notice box and opens the missing
   assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
 });
 
-test('progress screen is removed and its summary links open chemistry management',()=>{
-  assert.doesNotMatch(html,/id="(?:tab2|tabBtn2|elecGaugesContainer|activeChemGaugesContainer)"/);
+test('minimal screen keeps paste and copy while duplicate views and progress controls stay removed',()=>{
+  assert.doesNotMatch(html,/id="(?:tab2|tabBtn2|elecGaugesContainer|activeChemGaugesContainer|electricWorkPanel|focusSummary|briefingCards|passTimeInput|liveClock)"/);
+  assert.match(html,/id="kakaoRawInput"[^>]+onpaste="queueKakaoPaste\(\)"/);
+  assert.match(html,/id="copyBriefingButton"[^>]+onclick="copyShareText\(\)"/);
   const a=app();
   for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) a.nodes.delete(id);
   a.run("safeRenderAll();tick();switchTab('tab2')");
   assert.equal(a.logs.length,0);
-  assert.match(a.nodes.get('focusSummary').innerHTML,/openChemManagement\(\)/);
-  assert.doesNotMatch(a.nodes.get('focusSummary').innerHTML,/진척/);
+  assert.equal((a.nodes.get('tab1ChemStatusContainer').innerHTML.match(/<article class="chem-overview/g)||[]).length,5);
 });
 
 test('Korean schedule sentence is previewed then saved, reloaded and copied only on its date',async()=>{
@@ -1131,50 +1130,6 @@ test('unverified snapshot rows cannot shadow verified cached chemistry while kee
   assert.equal(b.run('chemList.length'),5);
 });
 
-test('compact electric controls expose four 90-minute stages without a progress tab and survive reload',()=>{
-  const a=app({now:'2026-10-26T10:00:00+09:00'});
-  assert.doesNotMatch(html,/id="(?:tab2|tabBtn2|elecGaugesContainer|activeChemGaugesContainer)"/);
-  assert.match(html,/id="electricWorkPanel"/);assert.equal(a.nodes.get('electricWorkPanel').open,undefined);
-  a.run("electricWorkAction('전기동 9라인','2026-10-26','start')");
-  const start=a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt");
-  a.setNow('2026-10-26T10:01:00+09:00');a.run("electricWorkAction('전기동 9라인','2026-10-26','start')");
-  assert.equal(a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt"),start);
-  const stages=['1/4 0.5 DC','2/4 1.5 DC','3/4 펄스패스','4/4 펄스더미'];
-  for(let i=0;i<4;i++) {
-    a.setNow(new Date(new Date(start).getTime()+i*90*60000).toISOString());a.run('tick()');
-    assert.equal(a.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,stages[i]);
-  }
-  const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-26T16:00:00+09:00'});
-  assert.equal(b.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,'6시간 경과');
-  assert.equal(Boolean(b.run("elecCompletedFlags['2026-10-26_전기동 9라인']")),false);
-  assert.match(b.nodes.get('shareTextOutput').value,/7시패스/);
-});
-
-test('compact normal electric warns at 20:30, supports completion undo, and never changes the notice pass',()=>{
-  const a=app({now:'2026-10-27T19:00:00+09:00'});
-  a.run("electricWorkAction('전기동 18라인','2026-10-27','start')");
-  const started=a.run("elecDummyFlags['2026-10-27_전기동 18라인'].startedAt");
-  a.setNow('2026-10-27T20:29:00+09:00');a.run('tick()');
-  assert.equal(a.nodes.get('electric_status_2026-10-27_전기동 18라인').textContent,'더미 진행 중');
-  a.setNow('2026-10-27T20:30:00+09:00');a.run('tick()');
-  assert.equal(a.nodes.get('electric_status_2026-10-27_전기동 18라인').textContent,'12시간 초과 지연');
-  a.run("electricWorkAction('전기동 18라인','2026-10-27','complete')");
-  assert.equal(a.nodes.get('electric_status_2026-10-27_전기동 18라인').textContent,'완료');
-  a.run("electricWorkAction('전기동 18라인','2026-10-27','undo')");
-  assert.equal(a.run("elecDummyFlags['2026-10-27_전기동 18라인'].startedAt"),started);
-  assert.match(a.nodes.get('shareTextOutput').value,/전18 산세\.박리 \(7시패스\)/);
-});
-
-test('electric work stays date-scoped, preserves active carryover, and cannot start tomorrow or unknown lines',()=>{
-  const a=app({now:'2026-10-26T23:00:00+09:00'});
-  a.run("electricWorkAction('전기동 9라인','2026-10-26','start');selectQuickDay('tomorrow');electricWorkAction('전기동 18라인','2026-10-27','start');electricWorkAction('전기동 99라인','2026-10-26','start')");
-  assert.equal(a.run("Object.keys(elecDummyFlags).length"),0);assert.equal(a.run('Object.keys(pulseProcessFlags).length'),1);
-  a.setNow('2026-10-27T00:00:00+09:00');a.run('tick()');
-  assert.match(a.nodes.get('electricWorkList').innerHTML,/2026-10-26 미완료/);
-  assert.equal(a.nodes.get('briefingDateInput').value,a.run('selectedDateStr'));
-  assert.match(a.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,/0.5 DC/);
-});
-
 test('day-only chemistry corrections preview the full year and month and refuse future actual timestamps',()=>{
   const a=app({now:'2026-12-31T23:00:00+09:00'});
   a.run("chemList[3]={...chemList[3],lastDone:'2026-12-31T13:00:00+09:00',status:'시작'};openChemTimeEditor('화13')");
@@ -1185,15 +1140,4 @@ test('day-only chemistry corrections preview the full year and month and refuse 
   assert.match(a.nodes.get('chemTimeError').textContent,/미래/);assert.deepEqual(a.data('chemList[3]'),before);
   a.setNow('2027-01-01T01:00:00+09:00');a.run('saveChemTimeEditor()');
   assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
-});
-
-test('completing a carried-over pulse keeps its completion undo available on the current day',()=>{
-  const a=app({now:'2026-10-26T23:00:00+09:00'});
-  a.run("electricWorkAction('전기동 9라인','2026-10-26','start')");
-  const started=a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt");
-  a.setNow('2026-10-27T06:00:00+09:00');a.run("tick();electricWorkAction('전기동 9라인','2026-10-26','complete')");
-  assert.match(a.nodes.get('electricWorkList').innerHTML,/2026-10-26 완료/);
-  assert.equal(a.nodes.get('electric_status_2026-10-26_전기동 9라인').textContent,'완료');
-  a.run("electricWorkAction('전기동 9라인','2026-10-26','undo')");
-  assert.equal(a.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt"),started);
 });
