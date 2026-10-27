@@ -390,6 +390,8 @@ test('notice is rendered as plain text and retains pasted work and manual conten
   a.run("manualNotes.push({date:selectedDateStr,line:'기타',text:'<img src=x onerror=alert(1)>'});generateShareText()");
   assert.match(a.nodes.get('shareTextOutput').value,/<img src=x onerror=alert\(1\)>/);
   assert.equal(a.nodes.get('shareTextOutput').innerHTML,'');
+  assert.match(a.nodes.get('noticePreview').innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(a.nodes.get('noticePreview').innerHTML,/<img/);
   assert.match(a.nodes.get('shareTextOutput').value,/화13 13시 PM 진행중/);
   assert.equal(a.nodes.get('kakaoPanel').open,false);
   assert.match(a.nodes.get('uiToast').textContent,/반영 완료/);
@@ -753,6 +755,39 @@ test('minimal screen keeps paste and copy while duplicate views and progress con
   a.run("safeRenderAll();tick();switchTab('tab2')");
   assert.equal(a.logs.length,0);
   assert.equal((a.nodes.get('tab1ChemStatusContainer').innerHTML.match(/<article class="chem-overview/g)||[]).length,5);
+});
+
+test('top schedule buttons belong only to PM management and return when switching back',()=>{
+  const a=app();assert.equal(a.nodes.get('homeScheduleTools').hidden,false);
+  a.run("switchTab('tab4')");assert.equal(a.nodes.get('homeScheduleTools').hidden,true);
+  a.run("switchTab('tab1')");assert.equal(a.nodes.get('homeScheduleTools').hidden,false);
+  assert.equal(a.nodes.get('copySource').hidden,true);
+  assert.match(a.nodes.get('noticePreview').innerHTML,/notice-group/);
+});
+
+test('compact notice copies the unchanged full Kakao source including blank lines and annotations',async()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'});
+  a.run("manualNotes=[{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}];generateShareText()");
+  let copied='';a.context.navigator.clipboard.writeText=async value=>{copied=value;};
+  await a.run('copyShareText()');
+  assert.equal(copied,a.nodes.get('shareTextOutput').value);
+  assert.match(copied,/동도금 10월 28일 PM일정\n\n데3\n\n/);
+  assert.match(copied,/디12 기본PM \(옥사멧 점검\)/);assert.match(copied,/7시패스/);
+  assert.match(copied,/이상입니다\.$/);
+  assert.equal(a.nodes.get('copySource').hidden,true);assert.equal(a.nodes.get('noticePreview').hidden,false);
+});
+
+test('copy fallback reveals a selectable source only when necessary and restores the compact view on success',async()=>{
+  const a=app();a.context.window.isSecureContext=false;
+  let selected=false;a.context.document.execCommand=()=>{selected=!a.nodes.get('copySource').hidden;return true;};
+  await a.run('copyShareText()');assert.equal(selected,true);
+  assert.equal(a.nodes.get('copySource').hidden,true);assert.equal(a.nodes.get('noticePreview').hidden,false);
+  a.context.navigator.clipboard.writeText=async()=>{throw Error('clipboard denied');};a.context.window.isSecureContext=true;
+  await a.run('copyShareText()');
+  assert.equal(a.nodes.get('copySource').hidden,false);assert.equal(a.nodes.get('noticePreview').hidden,true);
+  assert.match(a.nodes.get('uiToast').textContent,/길게 눌러 복사/);
+  a.run('generateShareText()');assert.equal(a.nodes.get('copySource').hidden,false);
+  a.run('showCopySource(false)');assert.equal(a.nodes.get('noticePreview').hidden,false);
 });
 
 test('Korean schedule sentence is previewed then saved, reloaded and copied only on its date',async()=>{
