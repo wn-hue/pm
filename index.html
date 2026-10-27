@@ -676,11 +676,8 @@
   .chem-compact-details>summary { min-height:94px;padding-top:16px;padding-bottom:16px; }
   #tab4>.card { padding:0;background:transparent;gap:20px; }
   .card-title { font-size:29px;font-weight:650;letter-spacing:-.9px;min-height:54px;align-items:center; }
-  .note-empty { display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:54px 12px; }
-  .note-empty>.ui-icon { width:38px;height:38px;color:#93939e;stroke-width:1.2; }
-  .note-empty h2 { font-size:18px;font-weight:600;letter-spacing:-.4px; }
-  .note-empty p { color:var(--text-secondary);font-size:14px;line-height:1.8; }
-  .note-empty .btn { margin-top:6px; }
+  .note-empty { padding:4px 4px 12px; }
+  .note-empty p { color:var(--text-secondary);font-size:14px;line-height:1.6;text-align:left; }
   .saved-notes { margin-top:0;gap:12px; }
   .saved-note { padding:16px;background:#fff;border-radius:16px; }
   .saved-note .settings-inline .btn { min-height:44px; }
@@ -688,32 +685,31 @@
   .saved-history>summary,.schedule-tools>summary { min-height:50px;padding:10px 4px; }
   .transfer-tools { display:block;border-top:1px solid var(--border-light);padding-top:5px;scroll-margin-top:16px; }
   .transfer-tools>summary { min-height:50px;padding:10px 4px;color:var(--text-secondary);font-size:13px;font-weight:400; }
-  .transfer-content { display:grid;gap:18px;padding:16px;border-radius:20px;background:#fff; }
-  .transfer-content .helper { font-size:13px;line-height:1.7; }
-  .transfer-mode { display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:13px;background:#eeeef3; }
-  .transfer-mode button { min-width:0;min-height:44px;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--text-secondary);font:inherit;font-size:13px;cursor:pointer; }
-  .transfer-mode button[aria-pressed="true"] { background:#fff;color:var(--text-primary);font-weight:600;box-shadow:0 1px 4px #0000000d; }
-  .transfer-mode button:focus-visible { outline:2px solid #91bff1;outline-offset:2px; }
-  .transfer-step { display:grid;gap:12px; }
-  .transfer-eyebrow { color:var(--text-secondary);font-size:11px;font-weight:500;letter-spacing:.7px; }
-  .transfer-step h3 { color:var(--text-primary);font-size:17px;font-weight:600;letter-spacing:-.4px;line-height:1.5; }
-  .transfer-main-action { display:flex;justify-content:center;align-items:center;gap:9px;width:100%;min-height:49px;padding:12px;font-size:14px;border-radius:13px; }
-  .transfer-main-action .ui-icon { width:18px;height:18px; }
-  .transfer-caption { color:var(--text-secondary);font-size:12px;line-height:1.7; }
-  .transfer-preview { display:grid;gap:14px;padding:0;background:transparent; }
-  .transfer-preview-heading { display:flex;align-items:center;justify-content:space-between;gap:8px; }
-  .transfer-preview-heading strong { font-size:17px;font-weight:600; }
-  .transfer-text-action { min-height:44px;padding:8px 4px;background:transparent;color:var(--accent);font-size:12px;font-weight:400; }
-  .transfer-text-action:hover { background:var(--accent-light);color:var(--accent); }
-  .transfer-counts { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:14px 6px;border-radius:13px;background:#f5f5f8; }
-  .transfer-counts>div { display:grid;gap:3px;text-align:center; }
-  .transfer-counts strong { color:var(--text-primary);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums; }
-  .transfer-counts span { color:var(--text-secondary);font-size:11px; }
+  .transfer-content { display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:12px;padding:0 0 12px; }
+  .transfer-content .helper { font-size:12px;line-height:1.7; }
+  .transfer-rows { overflow:hidden;border-radius:14px;background:#fff; }
+  .transfer-row { display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:54px;padding:14px 16px;border:0;background:#fff;color:var(--text-primary);font:inherit;font-size:14px;text-align:left;cursor:pointer; }
+  .transfer-row+.transfer-row { border-top:1px solid var(--border-light); }
+  .transfer-row>.ui-icon,.transfer-row>span:last-child:not(:first-child) { color:var(--accent);width:18px;flex-shrink:0; }
+  .transfer-row:active { background:#f5f5f8; }
+  .transfer-row:disabled { opacity:.45;cursor:default; }
+  .transfer-row:focus-visible,.transfer-cancel:focus-visible { outline:2px solid #91bff1;outline-offset:-3px; }
+  .transfer-preview { display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:14px;padding:16px;border-radius:14px;background:#fff; }
+  #transferPreviewTitle { font-size:14px;font-weight:600; }
+  .transfer-facts { display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:10px;margin:0; }
+  .transfer-facts>div { display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;font-size:12px;line-height:1.7; }
+  .transfer-facts dt { color:var(--text-secondary);font-weight:400; }
+  .transfer-facts dd { min-width:0;margin:0;color:var(--text-primary);font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere;word-break:keep-all; }
+  .transfer-main-action { width:100%;min-height:46px;padding:10px;font-size:14px;border-radius:10px; }
+  .transfer-cancel { width:100%;min-height:44px;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--text-secondary);font:inherit;font-size:13px;cursor:pointer; }
+  .transfer-cancel:active { background:#f5f5f8; }
   #transferChemDetails>summary { min-height:44px;color:var(--text-secondary);font-size:12px;font-weight:400; }
-  #transferChemPreview { display:grid;gap:0;padding:0;list-style:none;color:var(--text-secondary);font-size:12px;line-height:1.8; }
-  #transferChemPreview li { padding:8px 0;border-top:1px solid var(--border-light); }
-  .transfer-safety { padding-top:14px;border-top:1px solid var(--border-light);color:var(--text-secondary);font-size:12px;line-height:1.8; }
-  #transferResult { color:var(--accent); }
+  #transferChemPreview { display:grid;gap:0;margin:0;padding:0;list-style:none;color:var(--text-secondary);font-size:12px;line-height:1.8; }
+  #transferChemPreview li { display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--border-light); }
+  #transferChemPreview strong { font-weight:500;color:var(--text-primary); }
+  .transfer-caption { padding:0 4px;color:var(--text-secondary);font-size:12px;line-height:1.7;text-align:left; }
+  .transfer-preview .transfer-caption { padding:0; }
+  #transferResult { padding:0 4px;color:var(--text-secondary); }
   #transferResult:empty { display:none; }
   .modal-overlay { align-items:flex-end;padding:0;background:#00000045; }
   .modal-content,.time-editor { width:100%;max-width:480px;max-height:90dvh;border-radius:25px 25px 0 0;padding-bottom:env(safe-area-inset-bottom); }
@@ -817,20 +813,30 @@
         <span>특이사항</span>
       </div>
 
-      <div id="manualEmptyState" class="note-empty"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM8 8h8m-8 4h8m-8 4h5"/></svg><h2>기억할 일정을 모아두세요</h2><p>공사·점검·교체를 기록하면<br>해당 날짜 공지에 함께 담깁니다.</p><button class="btn btn-sub" onclick="openNoteComposer()">첫 일정 기록하기</button></div>
+      <div id="manualEmptyState" class="note-empty"><p>저장한 특이사항이 없습니다.</p></div>
       <div id="manualNoteList" class="saved-notes" hidden></div>
       <details class="schedule-tools"><summary>적용 중 일정 · 기록 정정</summary><p id="scheduleSettingsSummary" class="helper"></p><p class="helper">화학동도 카톡 공지로 갱신합니다. 직접 정정해야 할 때만 아래에서 선택하세요.</p><div class="settings-inline"><select id="manualChemLine" aria-label="정정할 화학동"><option value="화7">화7</option><option value="화8">화8</option><option value="화9">화9</option><option value="화13">화13</option><option value="화14">화14</option></select><button class="btn btn-sub btn-sm" onclick="manualChemAction('시작')">PM 시작</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('완료')">PM 완료</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('time')">시간정정</button></div></details>
-      <details id="transferTools" class="transfer-tools" ontoggle="if(this.open) openTransferTools()"><summary>앱 데이터 옮기기</summary><div class="transfer-content">
-        <div class="transfer-mode" role="group" aria-label="데이터를 옮길 앱 선택"><button id="transferModeSave" aria-pressed="true" onclick="selectTransferMode('save')">기존 앱</button><button id="transferModeLoad" aria-pressed="false" onclick="selectTransferMode('load')">새 앱</button></div>
-        <div id="transferSavePanel" class="transfer-step"><span class="transfer-eyebrow">STEP 1</span><h3>기록을 파일에 저장하세요</h3><p id="transferCurrentSummary" class="helper"></p><button id="transferSaveButton" class="btn transfer-main-action" onclick="saveTransferFile()"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>백업 파일 저장</button><p class="transfer-caption">공유 창에서 ‘파일에 저장’을 선택하세요.</p></div>
-        <div id="transferLoadPanel" class="transfer-step" hidden><div id="transferFileChoice" class="transfer-step"><span class="transfer-eyebrow">STEP 2</span><h3>새 앱으로 기록을 가져오세요</h3><p class="helper">기존 앱에서 저장한 백업 파일을 선택하세요.</p><button id="transferLoadButton" class="btn transfer-main-action" onclick="document.getElementById('transferFileInput').click()"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m-4-4 4 4 4-4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>백업 파일 선택</button></div>
-        <input id="transferFileInput" type="file" accept=".json,application/json" aria-label="PM 백업 파일 선택" onchange="readTransferFile(this.files[0]);this.value=''" hidden>
-        <div id="transferPreview" class="transfer-preview" hidden><div class="transfer-preview-heading"><strong id="transferPreviewTitle">복원할 기록</strong><button class="btn transfer-text-action" onclick="document.getElementById('transferFileInput').click()">파일 변경</button></div><p id="transferPreviewMeta" class="helper"></p><div class="transfer-counts"><div><strong id="transferChemCount"></strong><span>화학동</span></div><div><strong id="transferNoteCount"></strong><span>일정 기록</span></div><div><strong id="transferPulseCount"></strong><span>액퍼내기</span></div></div><details id="transferChemDetails"><summary>화학동 시각 확인</summary><ul id="transferChemPreview"></ul></details><p class="transfer-caption">현재 기록을 이 백업으로 바꿉니다.</p><button id="transferApplyButton" class="btn transfer-main-action" onclick="applyTransferFile()">이 기록으로 복원</button><button class="btn transfer-text-action" onclick="cancelTransferPreview()">불러오기 취소</button></div></div>
-        <p id="transferResult" class="helper" role="status" aria-live="polite"></p>
-        <button id="transferDoneAction" class="btn transfer-main-action" onclick="openChemManagement()" hidden>PM 관리에서 확인</button>
-        <button id="transferUndoButton" class="btn transfer-text-action" onclick="previewPreviousTransfer()" hidden>복원 전 기록 확인</button>
-        <p class="transfer-safety">새 앱에서 기록을 확인한 뒤 기존 앱을 정리하세요.</p>
-      </div></details>
+      <details id="transferTools" class="transfer-tools" ontoggle="if(this.open) openTransferTools()"><summary>앱 데이터 옮기기</summary>
+        <div class="transfer-content">
+          <div id="transferActions" class="transfer-rows">
+            <button id="transferSaveButton" class="transfer-row" onclick="saveTransferFile()"><span>백업 저장</span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button id="transferLoadButton" class="transfer-row" onclick="document.getElementById('transferFileInput').click()"><span>백업 불러오기</span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m-4-4 4 4 4-4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button id="transferUndoButton" class="transfer-row" onclick="previewPreviousTransfer()" hidden><span>복원 전 기록 확인</span><span aria-hidden="true">↶</span></button>
+            <button id="transferDoneAction" class="transfer-row" onclick="openChemManagement()" hidden><span>PM 관리에서 확인</span><span aria-hidden="true">›</span></button>
+          </div>
+          <input id="transferFileInput" type="file" accept=".json,application/json" aria-label="PM 백업 파일 선택" onchange="readTransferFile(this.files[0]);this.value=''" hidden>
+          <div id="transferPreview" class="transfer-preview" hidden>
+            <strong id="transferPreviewTitle">복원할 기록</strong>
+            <dl class="transfer-facts"><div><dt>백업 시각</dt><dd id="transferPreviewMeta"></dd></div><div><dt>포함 기록</dt><dd id="transferPreviewCounts"></dd></div></dl>
+            <details id="transferChemDetails"><summary>화학동 시각 확인</summary><ul id="transferChemPreview"></ul></details>
+            <p class="transfer-caption">현재 기록을 이 백업으로 바꿉니다.</p>
+            <button id="transferApplyButton" class="btn transfer-main-action" onclick="applyTransferFile()">이 기록으로 복원</button>
+            <button class="transfer-cancel" onclick="cancelTransferPreview()">취소</button>
+          </div>
+          <p id="transferResult" class="helper" role="status" aria-live="polite"></p>
+          <p class="transfer-caption">새 앱에서 복원을 확인한 뒤 기존 앱을 정리하세요.</p>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -1287,25 +1293,8 @@ const TRANSFER_FORMAT='pm-local-transfer',TRANSFER_VERSION=1;
 const PRE_TRANSFER_KEY='pm_before_transfer_master';
 let pendingTransfer=null,transferReadVersion=0,transferBusy=false;
 function openTransferTools() {
-  refreshTransferSummary();
   const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   document.getElementById('transferTools').scrollIntoView?.({behavior:reduceMotion?'instant':'smooth',block:'start'});
-}
-function refreshTransferSummary() {
-  document.getElementById('transferCurrentSummary').textContent=`화학동 ${chemList.filter(item=>!item.needsReview).length}/5 · 일정 ${manualNotes.length}건 · 액퍼내기 ${pulseList.length}개`;
-}
-function selectTransferMode(mode,resetFeedback=true) {
-  if(transferBusy||!['save','load'].includes(mode)) return;
-  document.getElementById('transferSavePanel').hidden=mode!=='save';
-  document.getElementById('transferLoadPanel').hidden=mode!=='load';
-  document.getElementById('transferModeSave').setAttribute?.('aria-pressed',String(mode==='save'));
-  document.getElementById('transferModeLoad').setAttribute?.('aria-pressed',String(mode==='load'));
-  if(resetFeedback) {
-    document.getElementById('transferResult').textContent='';
-    document.getElementById('transferDoneAction').hidden=true;
-    document.getElementById('transferFileChoice').hidden=Boolean(pendingTransfer);
-  }
-  refreshTransferSummary();
 }
 async function transferDigest(state) {
   const bytes=new TextEncoder().encode(JSON.stringify(state));
@@ -1344,21 +1333,18 @@ async function parseTransferArchive(text) {
 }
 function setTransferBusy(busy) {
   transferBusy=busy;
-  for(const id of ['transferSaveButton','transferLoadButton','transferApplyButton','transferUndoButton','transferModeSave','transferModeLoad']) document.getElementById(id).disabled=busy;
+  for(const id of ['transferSaveButton','transferLoadButton','transferApplyButton','transferUndoButton']) document.getElementById(id).disabled=busy;
 }
 function showTransferPreview(archive,previous=false) {
   pendingTransfer={archive,previous};
-  selectTransferMode('load',false);
   const state=archive.state,savedAt=new Date(archive.createdAt);
   document.getElementById('transferPreviewTitle').textContent=previous?'복원 전 기록':'복원할 기록';
-  document.getElementById('transferPreviewMeta').textContent=`${formatDateOnly(savedAt)} ${String(savedAt.getHours()).padStart(2,'0')}:${String(savedAt.getMinutes()).padStart(2,'0')} 백업`;
-  document.getElementById('transferChemCount').textContent=`${state.chemList.filter(item=>!item.needsReview).length}/5`;
-  document.getElementById('transferNoteCount').textContent=String(state.manualNotes.length);
-  document.getElementById('transferPulseCount').textContent=String(state.pulseList.length);
-  document.getElementById('transferChemPreview').innerHTML=state.chemList.map(item=>`<li>${escapeHtml(item.id)} · ${item.needsReview?'기록 확인 필요':escapeHtml(item.status+' '+formatDateTimeKr(new Date(item.lastDone)))}</li>`).join('');
+  document.getElementById('transferPreviewMeta').textContent=`${formatDateOnly(savedAt).replace(/-/g,'.')} ${String(savedAt.getHours()).padStart(2,'0')}:${String(savedAt.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('transferPreviewCounts').innerHTML=`화학동 ${state.chemList.filter(item=>!item.needsReview).length}/5 · 일정 ${state.manualNotes.length}건<br>액퍼내기 ${state.pulseList.length}개`;
+  document.getElementById('transferChemPreview').innerHTML=state.chemList.map(item=>`<li><strong>${escapeHtml(item.id)}</strong><span>${item.needsReview?'기록 확인 필요':escapeHtml(item.status+' · '+formatDateTimeKr(new Date(item.lastDone)))}</span></li>`).join('');
   document.getElementById('transferApplyButton').textContent=previous?'복원 전으로 되돌리기':'이 기록으로 복원';
   document.getElementById('transferPreview').hidden=false;
-  document.getElementById('transferFileChoice').hidden=true;
+  document.getElementById('transferActions').hidden=true;
   document.getElementById('transferChemDetails').open=false;
   document.getElementById('transferDoneAction').hidden=true;
   openTransferTools();
@@ -1366,13 +1352,15 @@ function showTransferPreview(archive,previous=false) {
 function cancelTransferPreview() {
   if(transferBusy) return;
   transferReadVersion++;pendingTransfer=null;document.getElementById('transferPreview').hidden=true;
-  document.getElementById('transferFileChoice').hidden=false;
+  document.getElementById('transferActions').hidden=false;
   document.getElementById('transferResult').textContent='불러오기를 취소했어요. 현재 기록을 유지합니다.';
 }
 async function readTransferFile(file) {
   if(!file||transferBusy) return;
   const version=++transferReadVersion;pendingTransfer=null;
-  selectTransferMode('load');
+  document.getElementById('transferActions').hidden=false;
+  document.getElementById('transferDoneAction').hidden=true;
+  document.getElementById('transferResult').textContent='';
   document.getElementById('transferPreview').hidden=true;
   const result=document.getElementById('transferResult');result.textContent='백업 파일 확인 중…';
   try {
@@ -1427,7 +1415,7 @@ async function applyTransferFile() {
     chemList=DEFAULT_CHEM.map(item=>({...item}));pulseList=DEFAULT_PULSE.map(item=>({...item}));
     restoreLocalState(archive.state);
     pendingTransfer=null;document.getElementById('transferPreview').hidden=true;
-    document.getElementById('transferFileChoice').hidden=true;
+    document.getElementById('transferActions').hidden=false;
     document.getElementById('transferDoneAction').hidden=false;
     document.getElementById('transferUndoButton').hidden=false;
     expandedChemIds.clear();document.getElementById('tab1ChemStatusContainer').chemRenderKey='';safeRenderAll();
@@ -1939,7 +1927,7 @@ function safeRenderAll() {
   try { generateShareText(); } catch(e){ console.error(e); }
   try { renderTab1ChemStatus(); } catch(e){ console.error(e); }
   try { renderWeeklyMatrix(); } catch(e){ console.error(e); }
-  try { updateManualLineOptions(); renderScheduleSettings(); refreshTransferSummary(); } catch(e){ console.error(e); }
+  try { updateManualLineOptions(); renderScheduleSettings(); } catch(e){ console.error(e); }
   try { renderManualNotesList(); } catch(e){ console.error(e); }
   try { renderChemList(); } catch(e){ console.error(e); }
   try { renderPulseTable(); } catch(e){ console.error(e); }
