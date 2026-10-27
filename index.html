@@ -373,12 +373,11 @@
   .day-switch { display:flex; gap:4px; background:#edf2f7; padding:4px; border-radius:12px; }
   .day-switch .btn { min-width:60px; }
   .day-switch .btn-sub { background:transparent; color:var(--text-secondary); }
-  .notice-preview { font-size:16px;line-height:1.5; }
-  .notice-title { font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:10px; }
+  .notice-preview { font-family:inherit;font-size:16px;font-weight:400;line-height:1.6;color:var(--text-primary); }
+  .notice-title { font:inherit;color:inherit;margin-bottom:10px; }
   .notice-group + .notice-group { margin-top:6px; }
   .notice-line { padding:2px 0;overflow-wrap:anywhere; }
-  .notice-line strong { font-weight:750; }
-  .notice-ending { font-size:12px;color:var(--text-secondary);margin-top:8px; }
+  .notice-ending { font:inherit;color:inherit;margin-top:8px; }
   .chem-panel { scroll-margin-top:80px;gap:10px;background:transparent;border:0;padding:0; }
   .chem-panel h2 { display:flex;align-items:center;justify-content:space-between;font-size:15px; }
   .chem-panel h2 .helper { font-weight:400; }
@@ -603,7 +602,6 @@
           <strong id="matrixTitle" tabindex="-1" style="font-size: 16px;">🗓️ 주간 정기 PM 매트릭스</strong>
           <span class="badge badge-blue" id="weekRangeBadge">금주</span>
         </div>
-        <button class="btn btn-sub btn-sm" onclick="closeModal('matrixModal')">✕ 닫기</button>
       </div>
       <div class="modal-body">
         <div class="table-responsive">
@@ -707,7 +705,6 @@
       <div class="sheet-grip" aria-hidden="true"></div>
       <div class="modal-header">
         <strong id="pulseTitle" tabindex="-1" style="font-size: 16px;">🧪 액퍼내기 예정일 · 120일 주기</strong>
-        <button class="btn btn-sub btn-sm" onclick="closeModal('pulseModal')">✕ 닫기</button>
       </div>
       <div class="modal-body">
         <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
@@ -3098,8 +3095,7 @@ function renderNoticePreview(text) {
     if(index===0) return `<p class="notice-title">${escapeHtml(block)}</p>`;
     if(block==='이상입니다.') return `<p class="notice-ending">${escapeHtml(block)}</p>`;
     return `<div class="notice-group">${block.split('\n').map(line=>{
-      const label=line.match(/^-?(?:디스미어\s*\d+|[화전디데에]\d+(?:[.·]\d+)?|고압수세\s*\d?(?:라인)?)/)?.[0]||'';
-      return `<p class="notice-line">${label?'<strong>'+escapeHtml(label)+'</strong>':''}${escapeHtml(line.slice(label.length))}</p>`;
+      return `<p class="notice-line">${escapeHtml(line)}</p>`;
     }).join('')}</div>`;
   }).join('');
   if(preview.innerHTML!==html) preview.innerHTML=html;
@@ -3168,6 +3164,7 @@ function handleTimeEditorKey(event,modalId='chemTimeModal') {
   if(event.key!=='Tab') return;
   const buttons=Array.from(document.getElementById(modalId).querySelectorAll('button,input,select,textarea')).filter(el=>!el.disabled && el.getClientRects?.().length!==0);
   const first=buttons[0],last=buttons[buttons.length-1];
+  if(!first) {event.preventDefault();return;}
   if(event.shiftKey && document.activeElement===first) {event.preventDefault();last.focus();}
   else if(!event.shiftKey && document.activeElement===last) {event.preventDefault();first.focus();}
 }
