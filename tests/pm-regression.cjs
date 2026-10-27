@@ -25,7 +25,7 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
     focus(){} blur(){} select(){} setSelectionRange(){} closest(){return null;}
   }
   for (const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)) {
-    const node=new Element(match[1]);node.hidden=/\bhidden\b/.test(match[0]);nodes.set(match[1],node);
+    const node=new Element(match[1]);node.hidden=/\bhidden\b/.test(match[0]);node.open=/\bopen\b/.test(match[0]);nodes.set(match[1],node);
   }
   // Compatibility targets for persisted timer rules; these do not exist in the app UI.
   for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) nodes.set(id,new Element(id));
@@ -393,7 +393,7 @@ test('notice is rendered as plain text and retains pasted work and manual conten
   assert.match(a.nodes.get('noticePreview').innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(a.nodes.get('noticePreview').innerHTML,/<img/);
   assert.match(a.nodes.get('shareTextOutput').value,/화13 13시 PM 진행중/);
-  assert.equal(a.nodes.get('kakaoPanel').open,false);
+  assert.equal(a.nodes.get('kakaoPanel').open,true);
   assert.match(a.nodes.get('uiToast').textContent,/반영 완료/);
 });
 
@@ -415,6 +415,50 @@ test('paste parsing waits for native insertion and applies exactly the new notic
   assert.equal(a.run('chemList[3].note'),'촉매 건욕');
   assert.equal(a.nodes.get('kakaoRawInput').value,'');
   assert.equal(a.alerts.length,0);
+  assert.equal(a.nodes.get('kakaoPanel').open,true);
+  assert.equal(a.nodes.get('noticeDetails').open,true);
+  assert.equal(a.nodes.get('kakaoApplyButton').hidden,true);
+});
+
+test('briefing month-day label preserves full dates through year rollover and date selection',()=>{
+  const a=app({now:'2026-12-31T09:00:00+09:00'});
+  assert.equal(a.nodes.get('briefingDateLabel').textContent,'12. 31.');
+  a.run("selectQuickDay('tomorrow')");
+  assert.equal(a.nodes.get('briefingDateLabel').textContent,'1. 1.');
+  assert.equal(a.nodes.get('briefingDateInput').value,'2027-01-01');
+  assert.match(a.nodes.get('shareTextOutput').value,/1월 1일 PM일정/);
+  a.run("selectBriefingDate('2026-12-31')");assert.equal(a.run('currentDateChoice'),'today');
+  a.run("selectBriefingDate('2027-01-01')");assert.equal(a.run('currentDateChoice'),'tomorrow');
+  a.run("selectBriefingDate('2027-02-03')");assert.equal(a.run('currentDateChoice'),'custom');
+  assert.equal(a.nodes.get('briefingDateLabel').textContent,'2. 3.');
+});
+
+test('sheet downward dismissal restores the page while horizontal, short and scrolled gestures keep it open',()=>{
+  const a=app();const content={style:{}},body={scrollTop:0};
+  for(const id of ['matrixModal','pulseModal']) a.nodes.get(id).querySelector=selector=>selector==='.modal-content'?content:body;
+  let prevented=0,restored=null;
+  a.context.window.scrollTo=(x,y)=>{restored=y;};
+  a.context.headerTarget={closest:selector=>selector.includes('.modal-header')?{}:null};
+  a.context.bodyTarget={closest:()=>null};
+  a.context.buttonTarget={closest:()=>({})};
+  a.context.touch=(target,x,y)=>({target,touches:[{clientX:x,clientY:y}],cancelable:true,preventDefault(){prevented++;}});
+  a.run("openModal('matrixModal');startSheetSwipe(touch(headerTarget,100,20),'matrixModal');moveSheetSwipe(touch(headerTarget,102,115),'matrixModal');endSheetSwipe('matrixModal')");
+  assert.equal(a.nodes.get('matrixModal').style.display,'none');assert.equal(content.style.transform,'');
+  assert.equal(restored,320);assert.equal(prevented,1);
+  a.run("openModal('pulseModal');startSheetSwipe(touch(bodyTarget,20,20),'pulseModal');moveSheetSwipe(touch(bodyTarget,130,30),'pulseModal');endSheetSwipe('pulseModal')");
+  assert.equal(a.nodes.get('pulseModal').style.display,'flex');assert.equal(prevented,1);
+  a.run("startSheetSwipe(touch(headerTarget,20,20),'pulseModal');moveSheetSwipe(touch(headerTarget,20,65),'pulseModal');endSheetSwipe('pulseModal')");
+  assert.equal(a.nodes.get('pulseModal').style.display,'flex');assert.equal(content.style.transform,'');
+  body.scrollTop=100;
+  a.run("startSheetSwipe(touch(bodyTarget,20,20),'pulseModal');moveSheetSwipe(touch(bodyTarget,20,150),'pulseModal');endSheetSwipe('pulseModal')");
+  assert.equal(a.nodes.get('pulseModal').style.display,'flex');
+  body.scrollTop=0;
+  a.run("startSheetSwipe(touch(buttonTarget,20,20),'pulseModal');moveSheetSwipe(touch(buttonTarget,20,150),'pulseModal');endSheetSwipe('pulseModal')");
+  assert.equal(a.nodes.get('pulseModal').style.display,'flex');
+  a.run("startSheetSwipe(touch(bodyTarget,20,20),'pulseModal');moveSheetSwipe(touch(bodyTarget,20,150),'pulseModal');resetSheetSwipe('pulseModal');endSheetSwipe('pulseModal')");
+  assert.equal(a.nodes.get('pulseModal').style.display,'flex');assert.equal(content.style.transform,'');
+  a.run("startSheetSwipe(touch(bodyTarget,20,20),'pulseModal');moveSheetSwipe(touch(bodyTarget,20,150),'pulseModal');endSheetSwipe('pulseModal')");
+  assert.equal(a.nodes.get('pulseModal').style.display,'none');
 });
 
 test('copy gives nonblocking feedback and invalid notices remain available for correction',async()=>{
@@ -722,8 +766,10 @@ test('legacy pass notes and custom preference cannot leak into report, copied te
   assert.equal(a.data('manualNotes').length,3); // Historical source notes are preserved.
 });
 
-test('inline notice input preserves draft when folded and folds after a successful import',()=>{
+test('inline notice input and preview start open and remain available after a successful import',()=>{
   const a=app();
+  assert.equal(a.nodes.get('noticeDetails').open,true);assert.equal(a.nodes.get('kakaoPanel').open,true);
+  assert.equal(a.nodes.get('kakaoApplyButton').hidden,true);
   a.nodes.get('kakaoRawInput').value='화8 07:17 화학동 건욕 완료';
   a.run('openNoticePanel()');
   assert.equal(a.nodes.get('kakaoPanel').open,true);
@@ -731,7 +777,8 @@ test('inline notice input preserves draft when folded and folds after a successf
   a.nodes.get('kakaoPanel').open=false;
   assert.equal(a.nodes.get('kakaoRawInput').value,'화8 07:17 화학동 건욕 완료');
   a.run('openNoticePanel();parseAndApplyKakaoMsg()');
-  assert.equal(a.nodes.get('kakaoPanel').open,false);
+  assert.equal(a.nodes.get('kakaoPanel').open,true);
+  assert.equal(a.nodes.get('kakaoApplyButton').hidden,true);
   assert.equal(a.run('new Date(chemList[1].lastDone).getMinutes()'),17);
 });
 
