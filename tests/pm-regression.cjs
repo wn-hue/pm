@@ -77,15 +77,14 @@ test('repeated backlight PM, repeated completion and old replay do not move the 
   assert.equal(a.run('chemList[2].lastDone'),done);
 });
 
-test('PM evidence survives reload; completion requires time and retains input for correction',()=>{
+test('PM evidence survives reload; an untimed completion clears without changing records',()=>{
   const a=app({now:'2026-10-03T12:00:00+09:00'});
   a.parse('2026년 10월 2일\n22시 빽라이트 입니다\n화13 PM\n이상입니다');
   const b=app({stored:Object.fromEntries(a.storage),now:'2026-10-03T12:00:00+09:00'});
   b.parse('화학동13 액수위입니다');
   assert.equal(b.run('chemList[3].status'),'시작');
-  assert.equal(b.nodes.get('kakaoRawInput').value,'화학동13 액수위입니다');
-  b.nodes.get('kakaoMessageTime').value='2026-10-03T10:20';
-  b.run('parseAndApplyKakaoMsg()');
+  assert.equal(b.nodes.get('kakaoRawInput').value,'');
+  b.parse('2026년 10월 3일\n[작업자] [오전 10:20] 화학동13 액수위입니다');
   assert.equal(b.run('chemList[3].status'),'완료');
   assert.equal(b.run('new Date(chemList[3].lastDone).getMinutes()'),20);
 });
@@ -122,13 +121,12 @@ test('PC export date and AM/PM times distinguish midnight and noon across messag
   assert.equal(a.run('chemList[2].status'),'완료');
 });
 
-test('completion needs a calendar date and uses manual time when copied date is missing',()=>{
+test('completion needs a copied calendar date and time without a manual time field',()=>{
   const a=app({now:'2026-10-03T12:00:00+09:00'});
   a.parse('2026년 10월 2일\n22시 빽라이트 입니다\n화8 PM\n이상입니다');
   a.parse('[작업자] [오전 10:20] 화8 액수위입니다');
   assert.equal(a.run('chemList[1].status'),'시작');
-  a.nodes.get('kakaoMessageTime').value='2026-10-03T10:20';
-  a.run('parseAndApplyKakaoMsg()');
+  a.parse('2026년 10월 3일\n[작업자] [오전 10:20] 화8 액수위입니다');
   assert.equal(a.run('chemList[1].lastDone'),'2026-10-03T01:20:00.000Z');
 });
 
@@ -461,11 +459,11 @@ test('sheet downward dismissal restores the page while horizontal, short and scr
   assert.equal(a.nodes.get('pulseModal').style.display,'none');
 });
 
-test('copy gives nonblocking feedback and invalid notices remain available for correction',async()=>{
+test('copy gives nonblocking feedback and unrecognized notices clear without a blocking prompt',async()=>{
   const a=app();await a.run('copyShareText()');
   assert.match(a.nodes.get('uiToast').textContent,/복사 완료/);
   a.parse('아무 일정 없음');
-  assert.equal(a.nodes.get('kakaoRawInput').value,'아무 일정 없음');
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
   assert.match(a.nodes.get('kakaoParseResult').textContent,/찾지 못/);
   assert.equal(a.alerts.length,0);
 });
@@ -782,15 +780,16 @@ test('inline notice input and preview start open and remain available after a su
   assert.equal(a.run('new Date(chemList[1].lastDone).getMinutes()'),17);
 });
 
-test('an incomplete message stays in the inline notice box and opens the missing time field',()=>{
+test('an incomplete message clears and reports skipped entries without a time supplement',()=>{
   const a=app({now:'2026-10-03T12:00:00+09:00'});
   a.parse('2026년 10월 2일\n22시 백라이트\n화13 PM\n이상입니다');
   a.run('openNoticePanel()');
   a.parse('화13 액수위입니다');
   assert.equal(a.nodes.get('kakaoPanel').open,true);
-  assert.equal(a.nodes.get('kakaoRawInput').value,'화13 액수위입니다');
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
   assert.match(a.nodes.get('kakaoParseResult').textContent,/날짜·시각/);
-  assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/제외/);
+  assert.equal(a.run('chemList[3].status'),'시작');
 });
 
 test('minimal screen keeps paste and copy while duplicate views and progress controls stay removed',()=>{
@@ -1423,15 +1422,15 @@ test('editing a saved note opens its sheet and closing it leaves the saved recor
   assert.equal(a.run('manualNotes[0].text'),'옥사멧 점검');
 });
 
-test('paste completion reveals the missing timestamp only when required',()=>{
+test('the time supplement is removed and a dated replacement notice can complete PM',()=>{
   const a=app({now:'2026-10-03T12:00:00+09:00'});
-  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,true);
+  assert.doesNotMatch(html,/id="(?:kakaoTimeDetails|kakaoMessageTime)"|날짜·시각 보완/);
   a.parse('2026년 10월 2일\n22시 백라이트 입니다\n화8 PM\n이상입니다');
   a.parse('화학동8 양산 진행하겠습니다');
-  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,false);
-  assert.equal(a.nodes.get('kakaoTimeDetails').open,true);
-  a.nodes.get('kakaoMessageTime').value='2026-10-03T10:20';a.run('parseAndApplyKakaoMsg()');
-  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,true);
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  assert.equal(a.run('chemList[1].status'),'시작');
+  a.parse('2026년 10월 3일\n화학동8 10:20 양산 진행하겠습니다');
+  assert.equal(a.run('chemList[1].status'),'완료');
   assert.equal(a.nodes.get('kakaoRawInput').value,'');
 });
 
@@ -1457,7 +1456,7 @@ test('keyboard viewport changes hide the dock and size the sheet without alterin
   assert.equal(classes.has('keyboard-open'),false);assert.deepEqual(a.data('currentState()'),before);
 });
 
-test('successful paste releases the keyboard and reports once while incomplete input stays editable',()=>{
+test('all consumed pastes release the keyboard and clear while reporting once',()=>{
   const a=app({now:'2026-10-28T09:00:00+09:00'});let blurs=0;
   a.nodes.get('kakaoRawInput').blur=()=>{blurs++;};
   a.parse('2026년 10월 28일\n1시 백라이트 입니다\n화9 PM\n이상입니다.');
@@ -1466,8 +1465,8 @@ test('successful paste releases the keyboard and reports once while incomplete i
   assert.doesNotMatch(a.nodes.get('kakaoParseResult').textContent,/0건/);
   assert.notEqual(a.nodes.get('uiToast').style.display,'block');
   a.parse('화9 양산 진행하겠습니다');
-  assert.equal(blurs,1);assert.equal(a.nodes.get('kakaoRawInput').value,'화9 양산 진행하겠습니다');
-  assert.equal(a.nodes.get('kakaoTimeDetails').hidden,false);
+  assert.equal(blurs,2);assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/제외/);
 });
 
 function transferApp(options={}) {
@@ -1598,4 +1597,75 @@ test('a system share sheet that never resolves cannot leave transfer controls lo
   assert.equal(a.run('transferBusy'),false);
   assert.equal(a.nodes.get('transferSaveButton').disabled,false);
   assert.equal(a.nodes.get('transferLoadButton').disabled,false);
+});
+
+test('input-only native paste applies once, clears and opens the notice preview',()=>{
+  const a=app();a.nodes.get('noticeDetails').open=false;
+  a.nodes.get('kakaoRawInput').value='화13 07:17 촉매 건욕 PM 진행중';
+  a.run("handleKakaoInput({inputType:'insertFromPaste'})");a.timers.at(-1)();
+  assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),17);
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');assert.equal(a.nodes.get('kakaoApplyButton').hidden,true);
+  assert.equal(a.nodes.get('noticeDetails').open,true);
+  assert.equal(a.run('kakaoPastePending'),false);
+});
+
+test('paste and input events together cannot apply the same clipboard twice or consume typed drafts',()=>{
+  const a=app();a.context.pasteCalls=0;
+  a.run('const originalPasteParser=parseAndApplyKakaoMsg;parseAndApplyKakaoMsg=function(){pasteCalls++;return originalPasteParser();}');
+  a.run('queueKakaoPaste()');const first=a.timers.at(-1);
+  a.nodes.get('kakaoRawInput').value='화13 07:17 촉매 건욕 PM 진행중';
+  a.run("handleKakaoInput({inputType:'insertFromPaste'})");const second=a.timers.at(-1);
+  first();second();assert.equal(a.context.pasteCalls,1);assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  const before=a.timers.length;a.nodes.get('kakaoRawInput').value='디12';
+  a.run("handleKakaoInput({inputType:'insertCompositionText'})");
+  assert.equal(a.nodes.get('kakaoRawInput').value,'디12');assert.equal(a.timers.length,before);
+  assert.equal(a.nodes.get('kakaoApplyButton').hidden,false);
+});
+
+test('mixed notices apply valid rows, skip missing dates and clear the whole paste',()=>{
+  const a=app({now:'2026-10-03T12:00:00+09:00'});
+  a.parse('2026년 10월 2일\n22시 백라이트\n화13 PM\n이상입니다');
+  const existing=a.data('chemList[3]');
+  a.parse('화7 07:17 화학동 건욕 PM 진행중\n화13 액수위입니다');
+  assert.equal(a.run('chemList[0].status'),'시작');assert.equal(a.run('new Date(chemList[0].lastDone).getMinutes()'),17);
+  assert.deepEqual(a.data('chemList[3]'),existing);
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/반영 완료.*1건.*1건은 제외/);
+});
+
+test('transfer mode selection presents one task at a time without writing records',()=>{
+  const a=transferApp(),before=a.data('currentState()'),stored=Object.fromEntries(a.storage);
+  assert.equal(a.nodes.get('transferSavePanel').hidden,false);assert.equal(a.nodes.get('transferLoadPanel').hidden,true);
+  a.run("selectTransferMode('load')");
+  assert.equal(a.nodes.get('transferSavePanel').hidden,true);assert.equal(a.nodes.get('transferLoadPanel').hidden,false);
+  a.run("selectTransferMode('save')");
+  assert.equal(a.nodes.get('transferSavePanel').hidden,false);assert.equal(a.nodes.get('transferLoadPanel').hidden,true);
+  assert.deepEqual(a.data('currentState()'),before);assert.deepEqual(Object.fromEntries(a.storage),stored);
+});
+
+test('transfer preview replaces the chooser, preserves its draft across modes and resets on cancellation',async()=>{
+  const a=transferApp();await chooseArchive(a,await archiveText(a));
+  assert.equal(a.nodes.get('transferLoadPanel').hidden,false);assert.equal(a.nodes.get('transferFileChoice').hidden,true);
+  assert.equal(a.nodes.get('transferChemDetails').open,false);assert.equal(a.nodes.get('transferChemCount').textContent,'5/5');
+  assert.equal(a.nodes.get('transferNoteCount').textContent,'0');assert.equal(a.nodes.get('transferPulseCount').textContent,'4');
+  a.run("selectTransferMode('save');selectTransferMode('load')");
+  assert.equal(a.nodes.get('transferPreview').hidden,false);assert.equal(a.nodes.get('transferFileChoice').hidden,true);
+  a.run('cancelTransferPreview()');
+  assert.equal(a.nodes.get('transferPreview').hidden,true);assert.equal(a.nodes.get('transferFileChoice').hidden,false);
+});
+
+test('restore completion gives a review action while a later file attempt resets old success feedback',async()=>{
+  const a=transferApp();await chooseArchive(a,await archiveText(a));await a.run('applyTransferFile()');
+  assert.equal(a.nodes.get('transferDoneAction').hidden,false);assert.equal(a.nodes.get('transferFileChoice').hidden,true);
+  await chooseArchive(a,'not JSON');
+  assert.equal(a.nodes.get('transferDoneAction').hidden,true);assert.equal(a.nodes.get('transferFileChoice').hidden,false);
+  assert.equal(a.nodes.get('transferPreview').hidden,true);
+});
+
+test('opening data transfer brings the expanded task into view without touching saved data',()=>{
+  const a=app(),before=a.data('currentState()');let scroll;
+  a.nodes.get('transferTools').scrollIntoView=options=>{scroll=options;};
+  a.context.window.matchMedia=()=>({matches:true});a.run('openTransferTools()');
+  assert.equal(scroll.block,'start');assert.equal(scroll.behavior,'instant');
+  assert.deepEqual(a.data('currentState()'),before);
 });
