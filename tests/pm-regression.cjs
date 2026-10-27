@@ -939,15 +939,45 @@ test('PM home restores direct chemistry controls with timing details while speci
   assert.match(home,/12시간 액이송/);assert.match(home,/14시간 PM 목표/);assert.match(home,/직전 완료/);
 });
 
-test('chemical card progress follows 14-hour targets and the next PM without auto-completing records',()=>{
+test('compact chemistry shows the next actionable milestone at the 12 and 14 hour boundaries without auto-completing',()=>{
   const a=app({now:'2026-10-28T09:00:00+09:00'});
   const start={id:'화7',status:'시작',lastDone:'2026-10-28T02:00:00+09:00'};
-  a.context.progressLine=start;
-  assert.equal(a.run('chemCardProgress(progressLine).percent'),50);
-  a.setNow('2026-10-28T16:30:00+09:00');
-  assert.equal(a.run('chemCardProgress(progressLine).percent'),100);assert.equal(start.status,'시작');
-  a.context.progressLine={...start,status:'완료',lastDone:'2026-10-26T04:30:00+09:00'};
-  assert.equal(a.run('chemCardProgress(progressLine).percent'),83.33);
+  a.context.compactLine=start;
+  assert.equal(a.run('chemCompactInfo(compactLine).caption'),'액이송');
+  assert.equal(a.run('chemCompactTime(chemCompactInfo(compactLine).at)'),'오늘 14:00');
+  a.setNow('2026-10-28T14:00:00+09:00');
+  assert.equal(a.run('chemCompactInfo(compactLine).caption'),'PM 목표');
+  assert.equal(a.run('chemCompactTime(chemCompactInfo(compactLine).at)'),'오늘 16:00');
+  assert.equal(a.run('chemCompactInfo(compactLine).state'),'running');
+  a.setNow('2026-10-28T16:00:00+09:00');
+  assert.equal(a.run('chemCompactInfo(compactLine).state'),'late');assert.equal(start.status,'시작');
+  a.context.compactLine={...start,status:'완료',lastDone:'2026-10-26T04:30:00+09:00'};
+  assert.equal(a.run('chemCompactInfo(compactLine).caption'),'다음 PM');
+  assert.equal(a.run('chemCompactTime(chemCompactInfo(compactLine).at)'),'내일 04:30');
+  assert.equal(a.run("chemCompactTime(new Date('2027-01-01T05:30:00+09:00'),new Date('2026-12-31T23:59:00+09:00'))"),'내일 05:30');
+});
+
+test('compact chemistry keeps expanded details during refresh and exposes buildup warnings without opening',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'});
+  a.run("chemList[0]={id:'화7',status:'시작',lastDone:'2026-10-28T02:00:00+09:00',note:'전체건욕 · 기본PM'};chemList[1]={id:'화8',status:'완료',lastDone:'2026-10-26T08:30:00+09:00',note:'촉매 건욕'};renderTab1ChemStatus()");
+  const container=a.nodes.get('tab1ChemStatusContainer'),node=a.nodes.get('chemDetail-화7');
+  assert.doesNotMatch(container.innerHTML,/role="progressbar"/);
+  const summary=container.innerHTML.match(/<summary[^>]*aria-label="화7 상세정보"[^>]*>([\s\S]*?)<\/summary>/)[1];
+  assert.match(summary,/전체건욕/);assert.doesNotMatch(summary,/기본PM|경과 시간|PM 시작 시각/);
+  assert.match(container.innerHTML,/<summary[^>]*aria-label="화8 상세정보"[^>]*>[\s\S]*?빌드업 금지<\/p><\/summary>/);
+  a.run("rememberChemDetail('화7',true);renderTab1ChemStatus()");
+  assert.equal(a.nodes.get('chemDetail-화7'),node);
+  a.setNow('2026-10-28T09:01:00+09:00');a.run('renderTab1ChemStatus()');
+  assert.match(container.innerHTML,/id="chemDetail-화7" class="chem-compact-details" open/);
+  assert.match(container.innerHTML,/12시간 액이송/);assert.match(container.innerHTML,/14시간 PM 목표/);
+  a.run("rememberChemDetail('화7',false)");a.setNow('2026-10-28T09:02:00+09:00');a.run('renderTab1ChemStatus()');
+  assert.doesNotMatch(container.innerHTML,/id="chemDetail-화7" class="chem-compact-details" open/);
+  a.run("chemList[0].lastDone='2026-10-28T02:00:30+09:00'");
+  a.setNow('2026-10-28T14:00:29+09:00');a.run('renderTab1ChemStatus()');
+  const firstSummary=()=>container.innerHTML.match(/<summary[^>]*aria-label="화7 상세정보"[^>]*>([\s\S]*?)<\/summary>/)[1];
+  assert.match(firstSummary(),/<span>액이송<\/span>/);
+  a.setNow('2026-10-28T14:00:30+09:00');a.run('renderTab1ChemStatus()');
+  assert.match(firstSummary(),/<span>PM 목표<\/span>/);
 });
 
 test('pulse reminder starts one calendar month ahead including month-end clamping',()=>{
