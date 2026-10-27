@@ -1135,8 +1135,8 @@ test('custom construction notices do not become chemical PM and mixed notices ke
   assert.equal(a.run("manualNotes.some(n=>n.kind==='schedule'&&n.text==='인써트 교체')"),true);
 });
 
-test('personal app has no server SDK, login, connection tools, uploader or data-management menu',()=>{
-  assert.doesNotMatch(html,/firebase|connectPMServer|syncDataToFirebase|importKakaoEvents|serverLogin|connection-tools|연결 · 데이터 관리|자동 연동 관리|동기화 저장|exportPMBackup|buildPMBackup|\bfetch\s*\(|WebSocket|XMLHttpRequest/i);
+test('personal app keeps explicit file transfer local without server SDK, login, connection or upload',()=>{
+  assert.doesNotMatch(html,/firebase|connectPMServer|syncDataToFirebase|importKakaoEvents|serverLogin|connection-tools|연결 · 데이터 관리|자동 연동 관리|동기화 저장|\bfetch\s*\(|WebSocket|XMLHttpRequest/i);
   assert.match(html,/Content-Security-Policy" content="connect-src 'none'"/);
   const a=app();let calls=0;
   a.context.firebase={initializeApp:()=>{calls++;throw Error('unexpected connection');}};
@@ -1468,4 +1468,134 @@ test('successful paste releases the keyboard and reports once while incomplete i
   a.parse('화9 양산 진행하겠습니다');
   assert.equal(blurs,1);assert.equal(a.nodes.get('kakaoRawInput').value,'화9 양산 진행하겠습니다');
   assert.equal(a.nodes.get('kakaoTimeDetails').hidden,false);
+});
+
+function transferApp(options={}) {
+  const a=app(options);
+  Object.assign(a.context,{crypto:require('node:crypto').webcrypto,TextEncoder,File:require('node:buffer').File});
+  return a;
+}
+async function archiveText(a) {return JSON.stringify(await a.run('createTransferArchive()'));}
+async function chooseArchive(a,text) {await a.run('readTransferFile')( {size:Buffer.byteLength(text),text:async()=>text} );}
+
+test('file transfer preserves all PM records, typed schedules and timers across isolated installations and reload',async()=>{
+  const source=transferApp({now:'2026-10-28T09:00:00+09:00'});
+  source.run("manualNotes=[{date:'2026-10-30',line:'전기동 20',text:'액퍼내기 확정',kind:'pulse-plan'},{date:'2026-10-28',line:'전기동 12',text:'PM 목요일로 변경',kind:'pm-rule',weekday:4,intervalWeeks:2},{date:'2026-10-28',line:'디스미어 12',text:'옥사멧 점검',kind:'schedule'}];equipWorkFlags={'2026-10-28_디스미어 12':true};pulseProcessFlags={'2026-10-28_전기동 9라인':{isStarted:true,startedAt:'2026-10-28T06:00'}};elecCompletedFlags={'2026-10-27_전기동 11라인':{completedAt:'2026-10-27T19:30'}};inlineDesmearFlags={preserved:{version:2,lineId:'디13',completedAt:'2026-10-28T07:30'}};savePMData()");
+  const exported=await archiveText(source),expected=source.data('currentState()');
+  const dest=transferApp({stored:{},now:'2026-10-28T09:00:00+09:00'}),original=dest.data('currentState()');
+  const storedBefore=Object.fromEntries(dest.storage);
+  await chooseArchive(dest,exported);
+  assert.equal(dest.nodes.get('transferPreview').hidden,false);
+  assert.deepEqual(dest.data('currentState()'),original);assert.deepEqual(Object.fromEntries(dest.storage),storedBefore);
+  await dest.run('applyTransferFile()');
+  assert.deepEqual(dest.data('currentState()'),expected);
+  assert.deepEqual(JSON.parse(dest.storage.get('pm_before_transfer_master')).state,original);
+  assert.equal(dest.nodes.get('transferPreview').hidden,true);
+  const reload=transferApp({stored:Object.fromEntries(dest.storage),now:'2026-10-28T09:00:00+09:00'});
+  assert.deepEqual(reload.data('currentState()'),expected);
+  assert.equal(reload.nodes.get('transferUndoButton').hidden,false);
+  assert.equal(reload.run("formatDateOnly(getPulseSchedule(pulseList[1]).due)"),'2026-10-30');
+  assert.match(reload.nodes.get('shareTextOutput').value,/디12 기본PM \(옥사멧 점검\)/);
+});
+
+test('transfer keeps intentionally unknown chemistry and deleted note arrays instead of destination records',async()=>{
+  const source=transferApp({stored:{}}),dest=transferApp();
+  dest.run("manualNotes=[{date:'2026-10-01',line:'디스미어 12',text:'인써트 교체'}];savePMData()");
+  await chooseArchive(dest,await archiveText(source));await dest.run('applyTransferFile()');
+  assert.equal(dest.run('chemList.every(item=>item.needsReview)'),true);
+  assert.deepEqual(dest.data('manualNotes'),[]);
+  const reload=transferApp({stored:Object.fromEntries(dest.storage)});
+  assert.equal(reload.run('chemList.every(item=>item.needsReview)'),true);assert.deepEqual(reload.data('manualNotes'),[]);
+});
+
+test('transfer rejects malformed, incomplete, duplicate-line and checksum-damaged files without writes',async()=>{
+  const a=transferApp(),baseline=a.data('currentState()'),storedBefore=Object.fromEntries(a.storage);
+  const good=JSON.parse(await archiveText(a));
+  const bad=[];
+  bad.push('not JSON',JSON.stringify({format:'other'}));
+  for(const modify of [p=>{delete p.state.manualNotes;},p=>{p.state.chemList[1].id='화7';},p=>{p.state.pulseList[0].lastDate='2026-02-30';},p=>{p.state.manualNotes=[{date:'2026-10-01',line:'디12'}];},p=>{p.state.elecDummyFlags=[];},p=>{p.state.chemList[0].lastDone='wrong';},p=>{p.state.chemList[0].note='changed after backup';}]) {
+    const changed=structuredClone(good);modify(changed);bad.push(JSON.stringify(changed));
+  }
+  for(const text of bad) {
+    await chooseArchive(a,text);assert.equal(a.nodes.get('transferPreview').hidden,true);
+    await a.run('applyTransferFile()');assert.deepEqual(a.data('currentState()'),baseline);assert.deepEqual(Object.fromEntries(a.storage),storedBefore);
+  }
+});
+
+test('oversized transfer files are refused before reading and cancelled async previews cannot reappear',async()=>{
+  const a=transferApp();let reads=0;
+  await a.run('readTransferFile')({size:6*1024*1024,text:async()=>{reads++;return '';}});assert.equal(reads,0);
+  const text=await archiveText(a);let finish;
+  const pending=a.run('readTransferFile')({size:text.length,text:()=>new Promise(resolve=>{finish=resolve;})});
+  a.run('cancelTransferPreview()');finish(text);await pending;
+  assert.equal(a.nodes.get('transferPreview').hidden,true);assert.equal(a.run('pendingTransfer'),null);
+});
+
+test('previous installation records can be previewed after reload and restored only with explicit apply',async()=>{
+  const source=transferApp({stored:{}}),dest=transferApp(),previous=dest.data('currentState()');
+  await chooseArchive(dest,await archiveText(source));await dest.run('applyTransferFile()');
+  const reload=transferApp({stored:Object.fromEntries(dest.storage)}),current=reload.data('currentState()');
+  await reload.run('previewPreviousTransfer()');assert.deepEqual(reload.data('currentState()'),current);
+  assert.match(reload.nodes.get('transferApplyButton').textContent,/되돌리기/);
+  await reload.run('applyTransferFile()');assert.deepEqual(reload.data('currentState()'),previous);
+});
+
+test('transfer aborts safely when previous-snapshot or primary storage writes fail',async()=>{
+  const source=transferApp({stored:{}}),text=await archiveText(source);
+  for(const key of ['pm_before_transfer_master','pm_local_state_master']) {
+    const dest=transferApp(),baseline=dest.data('currentState()'),saved=dest.storage.get('pm_local_state_master');
+    await chooseArchive(dest,text);const original=dest.context.localStorage.setItem;
+    dest.context.localStorage.setItem=(name,value)=>{if(name===key)throw Error('quota');original(name,value);};
+    await dest.run('applyTransferFile()');assert.deepEqual(dest.data('currentState()'),baseline);
+    assert.equal(dest.storage.get('pm_local_state_master'),saved);
+    assert.equal(dest.nodes.get('transferPreview').hidden,false);assert.match(dest.nodes.get('transferResult').textContent,/저장 공간/);
+  }
+});
+
+test('unrelated pasted conversations and browser credentials are absent from transfer files',async()=>{
+  const a=transferApp();a.nodes.get('kakaoRawInput').value='private raw conversation';
+  a.storage.set('unrelated_credentials','private auth secret');
+  const text=await archiveText(a);assert.doesNotMatch(text,/private raw conversation|private auth secret|unrelated_credentials|apiKey/);
+  assert.deepEqual(Object.keys(JSON.parse(text).state),a.data('STATE_FIELDS'));
+});
+
+test('record changes during async apply abort replacement and overlapping apply requests run once',async()=>{
+  const source=transferApp({stored:{}}),dest=transferApp(),text=await archiveText(source);
+  await chooseArchive(dest,text);
+  const actual=dest.context.crypto;let resume,requests=0;
+  dest.context.crypto={subtle:{digest:(...args)=>{requests++;return new Promise(resolve=>{resume=()=>actual.subtle.digest(...args).then(resolve);});}}};
+  const first=dest.run('applyTransferFile()');await dest.run('applyTransferFile()');assert.equal(requests,1);
+  dest.run("chemList[0].note='newer local note'");resume();
+  // The second digest builds the safety copy; complete it too.
+  await new Promise(resolve=>setImmediate(resolve));
+  while(requests===1) await new Promise(resolve=>setImmediate(resolve));
+  resume();await first;
+  assert.equal(dest.run('chemList[0].note'),'newer local note');assert.match(dest.nodes.get('transferResult').textContent,/기록이 바뀌/);
+  assert.equal(dest.storage.has('pm_before_transfer_master'),false);
+});
+
+test('file save uses native sharing with cancellation, then falls back to a local download if unavailable',async()=>{
+  const a=transferApp(),baseline=a.data('currentState()');let shares=0,downloads=0,downloadFile;
+  a.context.navigator.canShare=()=>true;
+  a.context.navigator.share=async({files})=>{shares++;assert.equal(files.length,1);assert.equal(JSON.parse(await files[0].text()).format,'pm-local-transfer');};
+  await a.run('saveTransferFile()');assert.equal(shares,1);assert.deepEqual(a.data('currentState()'),baseline);
+  a.context.navigator.share=async()=>{const error=Error('cancel');error.name='AbortError';throw error;};
+  await a.run('saveTransferFile()');assert.match(a.nodes.get('transferResult').textContent,/취소/);
+  a.context.URL={createObjectURL:file=>{downloadFile=file;return 'blob:local-transfer';},revokeObjectURL:()=>{}};
+  a.context.document.createElement=()=>({click(){downloads++;},remove(){}});
+  a.context.navigator.share=async()=>{const error=Error('blocked');error.name='NotAllowedError';throw error;};
+  await a.run('saveTransferFile()');assert.equal(downloads,1);
+  assert.match(downloadFile.name,/^PM-backup-.*\.json$/);assert.equal(JSON.parse(await downloadFile.text()).sha256.length,64);
+  assert.match(a.nodes.get('transferResult').textContent,/다운로드를 요청/);assert.deepEqual(a.data('currentState()'),baseline);
+});
+
+test('a system share sheet that never resolves cannot leave transfer controls locked',async()=>{
+  const a=transferApp();let shareOpened;
+  const opened=new Promise(resolve=>{shareOpened=resolve;});
+  a.context.navigator.canShare=()=>true;
+  a.context.navigator.share=()=>{shareOpened();return new Promise(()=>{});};
+  a.run('saveTransferFile()');await opened;
+  assert.equal(a.run('transferBusy'),false);
+  assert.equal(a.nodes.get('transferSaveButton').disabled,false);
+  assert.equal(a.nodes.get('transferLoadButton').disabled,false);
 });
