@@ -80,24 +80,7 @@
     flex-wrap: wrap;
   }
   .header-top h1 { font-size: 19px; font-weight: 800; color: var(--accent); }
-  .header-top-buttons { display: flex; gap: 6px; }
 
-  .header-bottom-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f8fafc;
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 8px 12px;
-  }
-  .local-save-badge {
-    font-size: 12px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
   /* PM 관리 · 특이사항 */
   .main-nav {
     display: flex;
@@ -172,7 +155,7 @@
   @media (max-width: 767px) {
     input, select, textarea { font-size: 16px !important; }
   }
-  
+
   .btn {
     background: var(--accent);
     color: #fff;
@@ -358,11 +341,9 @@
 
   /* 근무 중 한눈에 확인하고 한 손으로 조작하는 화면 */
   :root { --accent:#0369a1; --bg-base:#eef3f8; }
-  .container { max-width:1120px; gap:16px; }
+  .container { max-width:820px; gap:12px; }
   header { border:0; padding:18px 20px; box-shadow:none; }
   .header-top h1 { color:var(--text-primary); font-size:22px; letter-spacing:-.6px; }
-  .header-top-buttons .btn { background:#edf4fa; color:var(--accent); }
-  .header-bottom-bar { border:0; padding:8px 0 0; background:transparent; }
   .main-nav { position:sticky; top:0; z-index:30; border:0; padding:6px; background:#fff; border-radius:14px; box-shadow:0 3px 12px #0f172a08; }
   .nav-btn,.nav-btn.active { border:0; margin:0; border-radius:9px; background:transparent; min-height:46px; }
   .nav-btn.active { background:var(--accent-light); }
@@ -392,8 +373,6 @@
   .chem-overview-head strong { font-size:18px; }
   .chem-work { color:var(--text-secondary); font-size:12px; margin-bottom:8px; overflow-wrap:anywhere; }
   .chem-time { font-weight:800; font-size:16px; margin:4px 0 10px; }
-  .chem-actions { display:flex; gap:6px; }
-  .chem-actions .btn { flex:1; padding:6px 8px; }
   .report-area { min-height:240px; height:auto; margin:0; padding:8px 0; border:0; border-radius:0; background:#fff; font-family:inherit; font-size:16px; overflow:hidden; resize:none; }
   .note-chip { font-size:13px; padding:8px 10px; border-radius:9px; }
   .note-chip button { min-width:32px; min-height:32px; }
@@ -416,9 +395,6 @@
     body { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
     header { padding:16px; }
     .header-top h1 { font-size:20px; }
-    .header-top-buttons { width:100%; }
-    .header-top-buttons .btn { flex:1; }
-    .local-save-badge { font-size:11.5px; }
     .main-nav { position:fixed; top:auto; bottom:0; left:0; right:0; border-radius:16px 16px 0 0; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); border-top:1px solid var(--border-light); box-shadow:0 -4px 20px #0f172a08; }
     .nav-btn { font-size:11px; padding:5px 2px; }
     .nav-icon { display:block; font-size:20px; margin:0 0 2px; }
@@ -426,7 +402,6 @@
     .card { padding:16px; }
     #tab1ChemStatusContainer { grid-template-columns:1fr !important; }
     .chem-overview { position:relative; }
-    .chem-actions { max-width:260px; }
     .modal-overlay { align-items:flex-end; padding:0; }
     .modal-content { border-radius:18px 18px 0 0; max-height:90dvh; padding-bottom:env(safe-area-inset-bottom); }
     .time-editor { max-width:none; max-height:calc(100dvh - env(safe-area-inset-top) - 12px); }
@@ -464,25 +439,12 @@
 <body>
 
 <div class="container">
-  <div id="remindBanner" class="remind-banner">
-    <div id="remindBannerText">🔔 <strong>[액퍼내기 4주 전 알림]</strong> 건욕 일정이 도래했습니다.</div>
-    <button class="remind-close-btn" onclick="dismissRemindBanner()">✕</button>
-  </div>
-
   <header>
     <div class="header-top">
       <h1>동도금 PM</h1>
-      <div class="header-top-buttons">
-        <button class="btn btn-sub btn-sm" onclick="openModal('matrixModal')">🗓️ 주간 매트릭스</button>
-        <button class="btn btn-sub btn-sm" onclick="openModal('pulseModal')">💧 액퍼내기</button>
-      </div>
-    </div>
-    <div class="header-bottom-bar">
-      <div id="localSaveStatus" class="local-save-badge">
-        💾 개인용 · 자동 저장
-      </div>
     </div>
   </header>
+  <p id="localSaveStatus" class="helper" role="alert" hidden></p>
 
   <div class="main-nav">
     <button class="nav-btn active" id="tabBtn1" onclick="switchTab('tab1')">
@@ -496,7 +458,7 @@
   <!-- [탭 1] 오늘 PM 브리핑 & 공유 -->
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
-      
+
       <details id="kakaoPanel" class="parser-box">
         <summary>카톡 공지 붙여넣기</summary>
         <div class="parser-content">
@@ -525,11 +487,9 @@
             <span>화학동</span>
           </div>
           <div id="tab1ChemStatusContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;"></div>
-          <details id="inlinePMEntry" ontoggle="if(this.open) openInlinePMForm()"><summary>디스미어 13·14 PM 기록</summary><p class="helper">건욕·기본 PM의 실제 작업일을 등록합니다. 별도 공사·점검 일정은 특이사항에 기록하세요.</p><div class="settings-inline"><label for="inlinePMDate">작업일</label><input type="date" id="inlinePMDate" aria-label="디스미어 PM 작업일"><select id="inlinePMLine" aria-label="디스미어 PM 라인"><option value="디스미어 13">디스미어 13</option><option value="디스미어 14">디스미어 14</option></select><input id="inlinePMWork" aria-label="디스미어 PM 작업 내용" value="기본PM" placeholder="기본PM 또는 스웰러·망간 건욕"><button class="btn btn-sub btn-sm" onclick="addInlinePMRecord()">PM 기록 저장</button></div><p id="inlinePMResult" class="helper" role="status"></p><div id="inlinePMHistory"></div></details>
-          <div id="inlineDesmearSection" hidden><div style="font-weight:700;color:var(--purple);margin-top:12px;margin-bottom:6px;">디스미어 13 · 14 PM · 화학동 2회마다 1회</div>
-          <div id="inlineDesmearStatusContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;"></div></div>
         </div>
       </div>
+      <details class="schedule-tools"><summary>일정표 보기</summary><div class="settings-inline"><button class="btn btn-sub btn-sm" onclick="openModal('matrixModal')">주간 매트릭스</button><button class="btn btn-sub btn-sm" onclick="openModal('pulseModal')">액퍼내기</button></div><div id="remindBanner" class="remind-banner"><div id="remindBannerText"></div><button class="remind-close-btn" onclick="dismissRemindBanner()" aria-label="액퍼내기 알림 닫기">✕</button></div></details>
     </div>
   </div>
 
@@ -540,22 +500,22 @@
         <span>✏️ 날짜별 특이사항 기억하기</span>
         <span class="badge badge-yellow">해당 날짜 공지에 자동 포함</span>
       </div>
-      
-      <p class="helper">유산동 필터 교체·옥사멧 점검·인써트 교체 등 별도 공사·점검·일정만 기록합니다. 약품 건욕과 기본 PM은 PM 관리에서 처리합니다.</p>
-      <textarea id="scheduleRawInput" rows="3" oninput="updateScheduleInput()" aria-label="기억할 일정 문장" placeholder="디스미어12&#10;옥사멧점검 이번주 수요일에 진행예정 이오니 준비 바랍니다."></textarea>
+
+      <p class="helper">공사·점검·교체, 액퍼내기 확정일, 전기동 PM 요일 변경을 기억합니다. 디13·14 PM은 첫 화면에서 카톡 공지를 붙여넣어 갱신하세요.</p>
+      <textarea id="scheduleRawInput" rows="3" oninput="updateScheduleInput()" aria-label="기억할 일정 문장" placeholder="전20 10월 30일 액퍼내기 확정&#10;또는 전12 PM 목요일로 변경&#10;한 번에 한 일정씩 입력하세요."></textarea>
       <div class="settings-inline"><div id="scheduleParseActions" hidden><button class="btn btn-sub btn-sm" onclick="parseScheduleInput()">문장에서 일정 가져오기</button></div><button class="btn btn-sub btn-sm" onclick="openManualNoteEditor()">날짜·라인 직접 입력</button></div>
       <p id="scheduleParseResult" class="helper" role="status" aria-live="polite"></p>
       <div id="manualNoteEditor" hidden>
       <div class="manual-fields">
         <div><label for="manualDateInput">날짜</label><input type="date" id="manualDateInput" aria-label="특이사항 날짜" onchange="updateManualLineOptions()"></div>
-        
+
         <div>
           <label for="manualLineSelect">라인</label><select id="manualLineSelect" aria-label="특이사항 라인" onchange="onManualLineChange(this.value)" style="width:160px; font-weight:700;"></select>
           <input type="text" id="manualCustomLineInput" placeholder="라인명 직접입력" style="display:none; width:120px; margin-left:4px;">
         </div>
 
         <div style="flex:1; min-width:160px;">
-          <label for="manualContentInput">공유할 내용</label><input type="text" id="manualContentInput" aria-label="특이사항 내용" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="예: 유산동 필터 교체, 옥사멧 점검, 인써트 교체" style="width:100%;">
+          <label for="manualContentInput">내용</label><input type="text" id="manualContentInput" aria-label="특이사항 내용" oninput="updateManualTagsVisibility()" onkeydown="if(event.key==='Enter') addManualNote()" placeholder="옥사멧 점검 / 액퍼내기 확정 / PM 목요일로 변경" style="width:100%;">
         </div>
         <div>
           <button class="btn" id="manualSaveButton" onclick="addManualNote()">저장</button><button class="btn btn-sub btn-sm" id="manualCancelEditButton" style="display:none" onclick="cancelManualEdit()">수정 취소</button>
@@ -567,6 +527,7 @@
 
       <p id="manualSaveResult" class="helper" role="status" aria-live="polite"></p>
       <div id="manualNoteList" class="saved-notes" hidden></div>
+      <details class="schedule-tools"><summary>적용 중 일정 · 기록 정정</summary><p id="scheduleSettingsSummary" class="helper"></p><p class="helper">화학동도 카톡 공지로 갱신합니다. 직접 정정해야 할 때만 아래에서 선택하세요.</p><div class="settings-inline"><select id="manualChemLine" aria-label="정정할 화학동"><option value="화7">화7</option><option value="화8">화8</option><option value="화9">화9</option><option value="화13">화13</option><option value="화14">화14</option></select><button class="btn btn-sub btn-sm" onclick="manualChemAction('시작')">PM 시작</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('완료')">PM 완료</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('time')">시간정정</button></div></details>
     </div>
   </div>
 
@@ -630,7 +591,7 @@
                 <td>-</td>
               </tr>
               <tr style="background:#faf5ff;">
-                <td><strong>인라인 디스미어</strong><br><span style="font-size:10px;">수동 등록</span></td>
+                <td><strong>인라인 디스미어</strong><br><span style="font-size:10px;">카톡 공지 기준</span></td>
                 <td id="inline_cell_1">-</td>
                 <td id="inline_cell_2">-</td>
                 <td id="inline_cell_3">-</td>
@@ -661,30 +622,13 @@
               </tr>
               <tr>
                 <td style="background:#fafafa;"><strong>전기동</strong></td>
-                <td>
-                  <div>전기동 9 <span id="custom_전9"></span></div>
-                  <div>전기동 16 <span id="custom_전16"></span></div>
-                </td>
-                <td>
-                  <div>전기동 18 <span id="custom_전18"></span></div>
-                  <div>전기동 22 <span id="custom_전22"></span></div>
-                </td>
-                <td>
-                  <div>전기동 15 <span id="custom_전15"></span></div>
-                  <div>전기동 20 <span id="custom_전20"></span></div>
-                </td>
-                <td>
-                  <div>전기동 11 <span id="custom_전11"></span></div>
-                  <div>전기동 14 <span id="custom_전14"></span></div>
-                  <div>전기동 17 <span id="custom_전17"></span></div>
-                </td>
-                <td>
-                  <div>전기동 12 <span id="tag_w_elec12" class="badge"></span> <span id="custom_전12"></span></div>
-                  <div>전기동 13 <span id="custom_전13"></span></div>
-                  <div>전기동 21 <span id="custom_전21"></span></div>
-                </td>
-                <td>-</td>
-                <td>-</td>
+                <td id="electro_cell_1">-</td>
+                <td id="electro_cell_2">-</td>
+                <td id="electro_cell_3">-</td>
+                <td id="electro_cell_4">-</td>
+                <td id="electro_cell_5">-</td>
+                <td id="electro_cell_6">-</td>
+                <td id="electro_cell_7">-</td>
               </tr>
             </tbody>
           </table>
@@ -703,7 +647,7 @@
       <div class="modal-body">
         <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 12px; color: var(--text-secondary);">4주(28일) 전 진입 시 리마인드 알림이 자동 점등됩니다.</span>
-          <span class="helper">변경 시 자동 저장</span>
+          <span class="helper">변경은 특이사항에 입력</span>
         </div>
         <div class="table-responsive">
           <table>
@@ -711,9 +655,9 @@
               <tr>
                 <th>라인명</th>
                 <th>최근 작업일</th>
-                <th>1차 (+120일)</th>
-                <th>2차 (+240일)</th>
-                <th>3차 (+360일)</th>
+                <th>차기 예정 / 확정</th>
+                <th>이후 +120일</th>
+                <th>이후 +240일</th>
                 <th>상태 (D-Day)</th>
               </tr>
             </thead>
@@ -990,11 +934,13 @@ function persistLocalState() {
   } catch(error) {
     console.error('기기 저장 실패:',error);
     document.getElementById('localSaveStatus').textContent='⚠️ 이 브라우저에 저장하지 못했습니다 (저장 공간 확인)';
+    document.getElementById('localSaveStatus').hidden=false;
     return false;
   }
   // Keep legacy recovery keys compatible; the snapshot remains authoritative if a mirror fails.
   try {STATE_FIELDS.forEach((field,index)=>localStorage.setItem(MASTER_KEYS[index],JSON.stringify(state[field])));} catch(error) {console.warn('이전 형식 사본 저장 실패:',error);}
-  document.getElementById('localSaveStatus').textContent='💾 개인용 · 자동 저장';
+  document.getElementById('localSaveStatus').textContent='';
+  document.getElementById('localSaveStatus').hidden=true;
   return true;
 }
 function initializeLocalData() {
@@ -1156,7 +1102,7 @@ function renderTab1ChemStatus() {
   chemList = ensureChemIntegrity(chemList);
   const now=new Date();
   const html=chemList.map(line=>{
-    if(line.needsReview) return `<article class="chem-overview"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-sub">기록 확인 필요</span></div><p class="helper">실제 PM 시각을 입력해주세요.</p><div class="chem-actions"><button class="btn" onclick="setChemStepStatusById('${line.id}','시작')">PM 시작</button><button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></article>`;
+    if(line.needsReview) return `<article class="chem-overview"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-sub">기록 확인 필요</span></div></article>`;
 
     const running=line.status==='시작', state=chemAttention(line,now);
     const date=running?new Date(line.lastDone):getChemDue(line);
@@ -1167,11 +1113,14 @@ function renderTab1ChemStatus() {
     const buildup=line.id==='화8'&&!running&&(now-new Date(line.lastDone))/3600000>48?'<div class="helper" style="color:var(--danger);margin-bottom:8px">⛔ 빌드업 금지</div>':'';
     return `<article class="chem-overview ${state}"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-${badge}">${label}</span></div>
       <div class="chem-work">${escapeHtml(line.note||'기본PM')}</div><div class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</div>
-      <div class="chem-time">${formatDateTimeKr(date)}</div>${runningDetail}${buildup}<div class="chem-actions">
-      <button class="btn ${running?'btn-sub':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')" aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'PM 완료':'PM 시작'}</button>
-      <button class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></article>`;
+      <div class="chem-time">${formatDateTimeKr(date)}</div>${runningDetail}${buildup}</article>`;
   }).join('');
   if(container.innerHTML!==html) container.innerHTML=html;
+}
+function manualChemAction(action) {
+  const id=document.getElementById('manualChemLine').value;
+  if(!REQUIRED_CHEM_IDS.includes(id)) return;
+  if(action==='time') openChemTimeEditor(id);else setChemStepStatusById(id,action);
 }
 
 // [스마트 파서 고도화: 화학동 건욕 명칭 정확 추출 & 디스미어/전기동 수동 특이사항 자동 등록]
@@ -1245,7 +1194,7 @@ function parseAndApplyKakaoMsg() {
     if (formatDateOnly(headerDate) === formatDateOnly(now)) selectQuickDay('today');
     else if (formatDateOnly(headerDate) === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
   }
-  let updatedChemCount = 0; let updatedNoteCount = 0; let updatedPMNoteCount = 0; let skippedInlineCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0; let staleCount = 0;
+  let updatedChemCount = 0; let updatedNoteCount = 0; let updatedPMNoteCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0; let staleCount = 0;
   const manualTime = document.getElementById('kakaoMessageTime').value;
   const featureRules = [
     ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
@@ -1268,7 +1217,6 @@ function parseAndApplyKakaoMsg() {
         /^에/.test(token) ? token.replace(/[·,]/g,'.') : /^고압/.test(token) ? '고압수세 1' : '데버링 '+number;
       if (/^디화/.test(token)) key = /디스미어|스웰러|망간/.test(segment.slice(match[0].length)) ? '디스미어 '+number : '화'+number;
       if (['화13','화14'].includes(key) && /스웰러|망간|디스미어/.test(segment.slice(match[0].length))) key = '디스미어 '+number;
-      // Inline desmear schedules are entered only through the manual form.
       let date = new Date(row.date);
       const explicit = noticeDate(segment,now);
       const dayOnly = segment.match(/(?:^|[^\d])(\d{1,2})일/);
@@ -1287,9 +1235,25 @@ function parseAndApplyKakaoMsg() {
       }
       if(!/취소|철회|작업\s*없/.test(segment)) for(const tag of specialWorks) {
         const dateStr=formatDateOnly(date);
-        if(!manualNotes.some(note=>note.date===dateStr&&note.line===key&&normalizeSpecialWorkText(note.text)===tag)) {manualNotes.push({date:dateStr,line:key,text:tag,kind:'schedule'});updatedNoteCount++;}
+        const note=/액\s*퍼내기/.test(tag)?buildRememberedNote(dateStr,key,tag):{date:dateStr,line:key,text:tag,kind:'schedule'};
+        if(note.error) continue;
+        if(!manualNotes.some(n=>n.date===note.date&&n.line===note.line&&n.text===note.text)) {
+          if(note.kind==='pulse-plan') manualNotes=manualNotes.filter(n=>!(n.kind==='pulse-plan'&&n.line===key));
+          manualNotes.push(note);updatedNoteCount++;
+        }
       }
-      if(['디스미어 13','디스미어 14'].includes(key)) {if(isRoutinePMText(segment)) skippedInlineCount++;continue;}
+      if(['디스미어 13','디스미어 14'].includes(key)) {
+        if(isRoutinePMText(segment)&&!onlySpecial) {
+          if(/취소|철회|미완료|미실시|하지\s*않/.test(segment)) continue;
+          const manualDate=validDateTime(manualTime)?new Date(manualTime):null;
+          if(!row.dated&&!headerDate&&!explicit&&!dayOnly&&!/내일|익일/.test(segment)&&!manualDate) {missingTimeCount++;continue;}
+          if(manualDate&&!row.dated&&!headerDate&&!explicit&&!dayOnly) date=manualDate;
+          const work=featureRules.filter(([,pattern])=>pattern.test(segment)).map(([tag])=>tag).join(' · ')||'기본PM';
+          const time=kakaoClock(segment);
+          recordInlineNotice(key,formatDateOnly(date),(time?formatTimeKr(time.hour,time.minute)+' ':'')+work,now);updatedPMNoteCount++;
+        }
+        continue;
+      }
       if(onlySpecial) continue;
       const item = chemList.find(chem => chem.id === key);
       if (item) {
@@ -1366,9 +1330,9 @@ function parseAndApplyKakaoMsg() {
   savePMData(); safeRenderAll();
   if(missingTimeCount) document.getElementById('kakaoTimeDetails').open=true;
   if (!updatedChemCount && !updatedNoteCount && !updatedPMNoteCount && !ignoredPassCount) {
-    showToast(missingTimeCount ? '메시지 날짜·시각을 확인해주세요.' : staleCount ? '오래된 공지는 현재 기록에 반영하지 않았습니다.' : skippedInlineCount ? '디화13·14 디스미어 PM은 첫 화면의 PM 기록에서 등록해주세요.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
+    showToast(missingTimeCount ? '메시지 날짜·시각을 확인해주세요.' : staleCount ? '오래된 공지는 현재 기록에 반영하지 않았습니다.' : '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'); return;
   }
-  showToast(`공지 반영 완료 · PM 일정 ${updatedChemCount}건 · PM 작업 ${updatedPMNoteCount}건 · 특이사항 ${updatedNoteCount}건${ignoredPassCount?' · 전기동 7시패스 고정':''}${skippedInlineCount ? ' · 디화 디스미어는 수동 등록' : ''}`);
+  showToast(`공지 반영 완료 · PM 일정 ${updatedChemCount}건 · PM 작업 ${updatedPMNoteCount}건 · 특이사항 ${updatedNoteCount}건${ignoredPassCount?' · 전기동 7시패스 고정':''}`);
   savePassPreference();
   if (missingTimeCount) {showToast(`일정 ${updatedChemCount}건 반영 · ${missingTimeCount}건은 날짜·시각 확인 필요`);return;}
   input.value = '';
@@ -1378,10 +1342,10 @@ function parseAndApplyKakaoMsg() {
 
 function safeRenderAll() {
   try { generateShareText(); } catch(e){ console.error(e); }
-  try { renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e){ console.error(e); }
+  try { renderTab1ChemStatus(); } catch(e){ console.error(e); }
   try { renderWeeklyMatrix(); } catch(e){ console.error(e); }
-  try { updateManualLineOptions(); } catch(e){ console.error(e); }
-  try { renderInlinePMHistory(); renderManualNotesList(); } catch(e){ console.error(e); }
+  try { updateManualLineOptions(); renderScheduleSettings(); } catch(e){ console.error(e); }
+  try { renderManualNotesList(); } catch(e){ console.error(e); }
   try { renderChemList(); } catch(e){ console.error(e); }
   try { renderPulseTable(); } catch(e){ console.error(e); }
   try { renderActiveChemGauges(new Date()); } catch(e){ console.error(e); }
@@ -1394,7 +1358,7 @@ window.onload = function() {
   lastCheckedDate = selectedDateStr;
   currentDateChoice = 'today';
   savePassPreference();
-  
+
   const mD = document.getElementById('manualDateInput');
   if (mD) mD.value = selectedDateStr;
 
@@ -1413,7 +1377,7 @@ function tick() {
   const now = new Date();
 
   try { updateLiveTimesOnly(now); } catch(e) { console.error(e); }
-  try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); renderInlineDesmearStatus(); } catch(e) { console.error(e); }
+  try { updateChemRealtimeStatuses(); renderTab1ChemStatus(); } catch(e) { console.error(e); }
   if (now.getSeconds() === 0) {
     renderPulseTable();
     generateShareText();
@@ -1491,6 +1455,12 @@ function renderWeeklyMatrix() {
 
   for (let i = 0; i < 7; i++) {
     const d = weekDates[i].date;
+    const electrical=document.getElementById(`electro_cell_${i+1}`);
+    if(electrical) {
+      const lines=getElectroLines(weekDates[i].dateStr);
+      const extras=scheduledNotesForDate(weekDates[i].dateStr).filter(n=>/^pulse-/.test(n.kind||'')&&!lines.some(l=>n.line===`전기동 ${l.number}`));
+      electrical.innerHTML=lines.map(line=>`<div>전기동 ${line.number} <span id="custom_전${line.number}"></span></div>`).join('')+extras.map(n=>`<div>${escapeHtml(n.line+' '+n.text)}</div>`).join('')||'-';
+    }
     const etchLine = getEtchingLine(d);
     const cell = document.getElementById(`etch_cell_${i+1}`);
     if (cell) {
@@ -1548,7 +1518,7 @@ function selectDayFromMatrix(dateStr) {
 function renderManualNotesInMatrix(weekDates) {
   document.querySelectorAll('[id^="custom_"]').forEach(el => el.innerHTML = '');
 
-  manualNotes.forEach(item => {
+  [...manualNotes.filter(n=>n.kind!=='pm-rule'),...pulseList.map(p=>getPulseSchedule(p).planned).filter(n=>n?.preset)].forEach(item => {
     if(!displayManualText(item)) return;
     const isInWeek = weekDates.some(w => w.dateStr === item.date);
     if (!isInWeek) return;
@@ -1633,6 +1603,7 @@ function updateManualLineOptions() {
   tomorrowLines.forEach(l => ruleLinesSet.add(l));
 
   const chemLines = ['화7', '화8', '화9', '화13', '화14'];
+  const settingLines=['전기동 12','전기동 9','전기동 20','전기동 21','MSF 전기동'];
 
   let html = '<optgroup label="선택 날짜/다음날 규칙 PM">';
   ruleLinesSet.forEach(l => {
@@ -1640,6 +1611,9 @@ function updateManualLineOptions() {
   });
   html += '</optgroup>';
 
+  html+='<optgroup label="PM 규칙·액퍼내기">';
+  settingLines.filter(l=>!ruleLinesSet.has(l)).forEach(l=>{html+=`<option value="${l}">${l}</option>`;});
+  html+='</optgroup>';
   html += '<optgroup label="일반 화학동">';
   chemLines.forEach(l => {
     html += `<option value="${l}">${l}</option>`;
@@ -1650,7 +1624,7 @@ function updateManualLineOptions() {
   INLINE_CHEM_IDS.forEach(id => { html += `<option value="${inlineDesmearName(id)}">${inlineDisplayName(id)}</option>`; });
   html += '</optgroup>';
 
-  const keepSelected=curVal && curVal!=='CUSTOM' && !ruleLinesSet.has(curVal) && !chemLines.includes(curVal) && !INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===curVal);
+  const keepSelected=curVal && curVal!=='CUSTOM' && !ruleLinesSet.has(curVal) && !settingLines.includes(curVal) && !chemLines.includes(curVal) && !INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===curVal);
   if(keepSelected) html+=`<optgroup label="현재 선택 라인"><option value="${escapeHtml(curVal)}">${escapeHtml(curVal)}</option></optgroup>`;
   html += '<optgroup label="기타">';
   html += `<option value="CUSTOM">[직접 입력]</option>`;
@@ -1658,7 +1632,7 @@ function updateManualLineOptions() {
 
   select.innerHTML = html;
 
-  if (keepSelected || ruleLinesSet.has(curVal) || chemLines.includes(curVal) || INLINE_CHEM_IDS.some(id => inlineDesmearName(id) === curVal) || curVal === 'CUSTOM') {
+  if (keepSelected || ruleLinesSet.has(curVal) || settingLines.includes(curVal) || chemLines.includes(curVal) || INLINE_CHEM_IDS.some(id => inlineDesmearName(id) === curVal) || curVal === 'CUSTOM') {
     select.value = curVal;
   } else {
     select.selectedIndex = 0;
@@ -1684,6 +1658,11 @@ function onManualLineChange(val) {
     const btn=document.createElement('button');btn.type='button';btn.className='btn btn-sub btn-sm';btn.innerText=tag;
     btn.onclick=()=>setQuickTag(tag);container.appendChild(btn);
   }
+  updateManualTagsVisibility();
+}
+function updateManualTagsVisibility() {
+  const text=document.getElementById('manualContentInput').value;
+  document.getElementById('dynamicTagsContainer').hidden=/액\s*퍼내기|(?:PM|피\s*엠).*요일/i.test(text);
 }
 
 function setQuickTag(tag) {
@@ -1718,16 +1697,74 @@ function isRoutinePMText(text) {
   return /건\s*욕|약품\s*(?:교체|교환|투입|보충)|(?:기본|정기)\s*(?:PM|피\s*엠)|\bPM\b|피\s*엠|산탈지|산세|박리|프리딥|촉매\s*(?:cs|c\/s)/i.test(work);
 }
 function specialWorkError(text) {
-  if(isRoutinePMText(text)) return '특이사항에는 별도 공사·점검·교체 일정만 저장합니다. 약품 건욕·기본 PM 내용을 빼고 입력해주세요. PM 기록은 첫 화면에서 관리합니다.';
+  if(/액\s*퍼내기/.test(text) && !isRoutinePMText(text)) return '';
+  if(isRoutinePMText(text)) return '약품 건욕·기본 PM 기록은 카톡 공지를 붙여넣어 갱신해주세요. 특이사항에서는 공사·점검·교체, 액퍼내기 확정일과 PM 요일 변경을 기록합니다.';
   if(!/교체|점검|공사|보수|수리|설치|철거|증설|이설|개조|용접|누수|정전|단수|정비|검사|검수|작업|일정|교육|회의|방문|안전|테스트|확인/.test(text)) return '공사·점검·교체 등 실제 작업이나 일정 내용을 입력해주세요.';
   return '';
 }
 function isSpecialNote(note) {
+  if(['pm-rule','pulse-plan','pulse-complete'].includes(note.kind)) return true;
   const text=displayManualText(note);
   return Boolean(text) && !specialWorkError(text);
 }
-function isPMRecord(note) {return note.kind!=='schedule' && !isSpecialNote(note);}
+function isPMRecord(note) {return !['schedule','pm-rule','pulse-plan','pulse-complete'].includes(note.kind) && !isSpecialNote(note);}
 function extractSpecialWorks(text) {return SPECIAL_WORK_RULES.filter(([,pattern])=>pattern.test(text)).map(([tag])=>tag);}
+
+const ELECTRO_NUMBERS=[9,11,12,13,14,15,16,17,18,20,21,22];
+function getPMRule(number,dateStr) {
+  const defaults={9:1,16:1,18:2,22:2,15:3,20:3,11:4,14:4,17:4,12:dateStr>='2026-10-28'?4:5,13:5,21:5};
+  const base={weekday:defaults[number],intervalWeeks:number===12?2:1,anchorDate:'2026-09-18'};
+  const rules=manualNotes.filter(n=>n.kind==='pm-rule'&&n.line===`전기동 ${number}`&&n.date<=dateStr&&Number.isInteger(n.weekday)&&n.weekday>=0&&n.weekday<=6&&[1,2].includes(n.intervalWeeks));
+  rules.sort((a,b)=>a.date.localeCompare(b.date));
+  return rules.length?{...base,...rules[rules.length-1]}:base;
+}
+function pmRuleInput(text,line,date) {
+  if(!/(?:PM|피\s*엠)/i.test(text)||!/[월화수목금토일]요일/.test(text)||!/변경|매주|격주/.test(text)) return null;
+  const number=Number(line.match(/^전기동 (\d+)$/)?.[1]);
+  if(!ELECTRO_NUMBERS.includes(number)) return {error:'PM 요일 변경은 전기동 라인을 선택해주세요.'};
+  const days=[...text.matchAll(/([월화수목금토일])요일/g)];
+  const weekday='일월화수목금토'.indexOf(days[days.length-1][1]);
+  if(/매주/.test(text)&&/격주/.test(text)) return {error:'매주 또는 격주 중 하나만 입력해주세요.'};
+  const intervalWeeks=/격주/.test(text)?2:/매주/.test(text)?1:getPMRule(number,date).intervalWeeks;
+  const previous=getPMRule(number,date);
+  return {date,line,kind:'pm-rule',weekday,intervalWeeks,anchorDate:intervalWeeks===previous.intervalWeeks?previous.anchorDate:date,text:`PM ${intervalWeeks===2?'격주':'매주'} ${'일월화수목금토'[weekday]}요일로 변경`};
+}
+function buildRememberedNote(date,line,text,now=new Date()) {
+  const rule=pmRuleInput(text,line,date);if(rule) return rule;
+  if(/액\s*퍼내기/.test(text)) {
+    const pulse=pulseList.find(p=>pulseNoteLine(p)===line);
+    if(!pulse) return {error:'액퍼내기는 전9·전20·전21 또는 MSF 전기동을 선택해주세요.'};
+    if(/취소|철회|미완료|미확정|아직/.test(text)) return {error:'기존 기록의 수정·삭제로 날짜를 정정해주세요. 완료와 미완료를 함께 저장하지 않습니다.'};
+    const complete=/완료|실시\s*함/.test(text);
+    if(complete&&date>formatDateOnly(now)) return {error:'미래 날짜의 작업은 완료로 저장할 수 없습니다. “액퍼내기 확정”으로 입력해주세요.'};
+    if(isRoutinePMText(text)) return {error:'액퍼내기와 일반 약품 PM은 나누어 입력해주세요.'};
+    return {date,line,text:complete?'액퍼내기 완료':'액퍼내기 확정',kind:complete?'pulse-complete':'pulse-plan'};
+  }
+  const error=specialWorkError(text);return error?{error}:{date,line,text,kind:'schedule'};
+}
+function pulseNoteLine(pulse) {return /^MSF/.test(pulse.line)?'MSF 전기동':`전기동 ${pulse.line.match(/\d+/)[0]}`;}
+function getPulseSchedule(pulse) {
+  const line=pulseNoteLine(pulse),today=formatDateOnly(new Date());
+  const completions=manualNotes.filter(n=>n.line===line&&n.kind==='pulse-complete'&&n.date<=today);
+  const lastDate=[pulse.lastDate,...completions.map(n=>n.date)].sort().pop();
+  const plans=manualNotes.filter(n=>n.line===line&&n.kind==='pulse-plan'&&n.date>lastDate);
+  let planned=plans[plans.length-1];
+  if(!planned&&!manualNotes.some(n=>n.line===line&&/^pulse-/.test(n.kind||''))&&line==='전기동 20'&&today>='2026-10-28'&&lastDate<'2026-10-30') planned={date:'2026-10-30',line,text:'액퍼내기 확정',kind:'pulse-plan',preset:true};
+  return {lastDate,due:new Date(planned?planned.date+'T00:00:00':new Date(lastDate+'T00:00:00').getTime()+120*86400000),planned};
+}
+function scheduledNotesForDate(date) {
+  const notes=manualNotes.filter(n=>isSpecialNote(n)&&n.kind!=='pm-rule'&&n.date===date);
+  for(const pulse of pulseList) {
+    const planned=getPulseSchedule(pulse).planned;
+    if(planned?.preset&&planned.date===date) notes.push(planned);
+  }
+  return notes;
+}
+function renderScheduleSettings() {
+  const summary=document.getElementById('scheduleSettingsSummary');if(!summary) return;
+  const rule=getPMRule(12,formatDateOnly(new Date())),pulse=getPulseSchedule(pulseList.find(p=>pulseNoteLine(p)==='전기동 20'));
+  summary.textContent=`전12 · ${rule.intervalWeeks===2?'격주':'매주'} ${'일월화수목금토'[rule.weekday]}요일 / 전20 액퍼내기 · ${formatDateOnly(pulse.due)} ${pulse.planned?'확정':'예정'}`;
+}
 
 // Scheduled annotations share the durable notes store but never count as completed PM.
 let editingManualNote = null;
@@ -1755,11 +1792,23 @@ function selectBriefingDate(date) {
   selectedDateStr=date;currentDateChoice='custom';updateDateToggleUI();safeRenderAll();
 }
 function parseScheduleSentence(raw, now=new Date()) {
+  if(/MSF/i.test(raw) && !normalizeScheduleLine(raw)) raw=raw.replace(/MSF(?:\s*전기동)?/i,'MSF 전기동');
   const lineMatches=[...String(raw).matchAll(/(?<![가-힣A-Za-z0-9])(?:디스미어|디|전기동|전|화학동|화|데버링|데|고압수세|에칭|에)\s*\d+(?:[.]\d+)?(?:\s*라인)?/g)];
   const lines=[...new Set(lineMatches.map(m=>normalizeScheduleLine(m[0])))];
+  if(/MSF/i.test(raw)) lines.push('MSF 전기동');
   if(lines.length!==1) return {error:'한 번에 한 라인의 일정을 입력해주세요. 라인과 날짜는 아래에서 직접 선택할 수도 있습니다.'};
+  if(/(?:PM|피\s*엠)/i.test(raw)&&/[월화수목금토일]요일/.test(raw)&&/변경|매주|격주/.test(raw)) {
+    const explicit=[...raw.matchAll(/(?:(\d{4})\s*(?:년\s*|[-./]))?(\d{1,2})\s*(?:월\s*|[-./])(\d{1,2})(?:\s*일)?/g)];
+    if(explicit.length>1) return {error:'적용 시작일은 하나만 입력해주세요.'};
+    let date=formatDateOnly(now);
+    if(explicit.length) {
+      const parsed=parseScheduleSentence(`${lines[0]} ${explicit[0][0]} 일정 변경`,now);if(parsed.error) return parsed;date=parsed.date;
+    } else if(/내일|모레|다음\s*주/.test(raw)) return {error:'요일 변경의 적용 시작일은 “11월 1일”처럼 날짜로 입력해주세요.'};
+    return pmRuleInput(raw,lines[0],date);
+  }
   let rest=raw;
   for(const m of lineMatches) rest=rest.replace(m[0],' ');
+  rest=rest.replace(/MSF\s*전기동/gi,' ');
   const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   let date, dateToken;
   const explicit=[...rest.matchAll(/(?:(\d{4})\s*(?:년\s*|[-./]))?(\d{1,2})\s*(?:월\s*|[-./])(\d{1,2})(?:\s*일)?/g)];
@@ -1770,7 +1819,9 @@ function parseScheduleSentence(raw, now=new Date()) {
     const m=explicit[0], month=Number(m[2]),day=Number(m[3]);let year=Number(m[1])||today.getFullYear();
     date=new Date(year,month-1,day);
     if(date.getMonth()!==month-1||date.getDate()!==day) return {error:'존재하지 않는 날짜입니다. 날짜를 직접 선택해주세요.'};
-    if(!m[1] && date<today) date=new Date(year+1,month-1,day);
+    const pulseCompletion=/액\s*퍼내기/.test(rest)&&/완료/.test(rest);
+    if(!m[1] && pulseCompletion && date-today>180*86400000) date=new Date(year-1,month-1,day);
+    else if(!m[1] && !pulseCompletion && date<today) date=new Date(year+1,month-1,day);
     if(date.getMonth()!==month-1||date.getDate()!==day) return {error:'연도를 포함해 유효한 날짜를 입력해주세요.'};
     dateToken=m[0];
   } else if(weekday.length) {
@@ -1793,15 +1844,14 @@ function parseScheduleSentence(raw, now=new Date()) {
     .replace(/옥사멧\s*점검/g,'옥사멧 점검').replace(/\s+/g,' ').replace(/^[\s:,.\-]+|[\s:,.\-]+$/g,'').trim();
   if(!rest) return {error:'공유할 특이사항 내용을 입력해주세요.'};
   rest=normalizeSpecialWorkText(rest);
-  const error=specialWorkError(rest);if(error) return {error};
-  return {date:formatDateOnly(date),line:lines[0],text:rest};
+  return buildRememberedNote(formatDateOnly(date),lines[0],rest,now);
 }
 function selectManualLine(line) {
   updateManualLineOptions();
   const normalized=normalizeScheduleLine(line)||line;
   const known=new Set([...getDayLines(new Date(document.getElementById('manualDateInput').value+'T00:00:00')),
     ...getDayLines(new Date(new Date(document.getElementById('manualDateInput').value+'T00:00:00').getTime()+86400000)),
-    ...REQUIRED_CHEM_IDS,...INLINE_CHEM_IDS.map(inlineDesmearName)]);
+    ...REQUIRED_CHEM_IDS,...INLINE_CHEM_IDS.map(inlineDesmearName),'전기동 12','전기동 9','전기동 20','전기동 21','MSF 전기동']);
   document.getElementById('manualLineSelect').value=known.has(normalized)?normalized:'CUSTOM';
   if(!known.has(normalized)) document.getElementById('manualCustomLineInput').value=normalized;
   onManualLineChange(document.getElementById('manualLineSelect').value);
@@ -1816,6 +1866,7 @@ function parseScheduleInput() {
   document.getElementById('manualDateInput').value=result.date;
   selectManualLine(result.line);
   document.getElementById('manualContentInput').value=result.text;
+  updateManualTagsVisibility();
   const past=result.date<formatDateOnly(new Date());
   status.textContent=`${result.date} · ${result.line} · ${result.text}${past?' · 지난 날짜입니다. 날짜를 확인하세요.':''} 아래 내용을 확인하고 저장해주세요.`;
 }
@@ -1827,21 +1878,22 @@ function addManualNote() {
   if(line==='CUSTOM') line=document.getElementById('manualCustomLineInput').value.trim();
   line=normalizeScheduleLine(line)||line;
   const text=normalizeSpecialWorkText(document.getElementById('manualContentInput').value);
-  const kind='schedule';
   if(!validDateTime(date+'T00:00') || !line || !text) {status.textContent='날짜·라인·내용을 모두 입력해주세요.';return;}
   if(/^(?:전기동\s*|전\d|MSF)/.test(line) && !stripElectroPass(text)) {status.textContent='전기동 패스는 7시로 고정되어 있습니다.';return;}
-  const workError=specialWorkError(text);if(workError) {status.textContent=workError;return;}
+  const note=buildRememberedNote(date,line,text);if(note.error) {status.textContent=note.error;return;}
   if(editingManualNote && !manualNotes.some(n=>manualNoteKey(n)===editingManualNote)) {status.textContent='원래 기록이 변경되었습니다. 목록에서 다시 선택해주세요.';return;}
-  const note={date,line,text,...(kind?{kind}:{})};
   const key=manualNoteKey(note);
   if(manualNotes.some(n=>manualNoteKey(n)===key && manualNoteKey(n)!==editingManualNote)) {status.textContent='같은 일정이 이미 저장되어 있습니다.';return;}
   if(editingManualNote) manualNotes=manualNotes.filter(n=>manualNoteKey(n)!==editingManualNote);
+  if(note.kind==='pulse-plan') manualNotes=manualNotes.filter(n=>!(n.kind==='pulse-plan'&&n.line===line));
+  if(note.kind==='pm-rule') manualNotes=manualNotes.filter(n=>!(n.kind==='pm-rule'&&n.line===line&&n.date===date));
+  if(note.kind==='pulse-complete') manualNotes=manualNotes.filter(n=>!(n.kind==='pulse-plan'&&n.line===line&&n.date>=date));
   manualNotes.push(note);savePMData();
   cancelManualEdit();document.getElementById('manualContentInput').value='';document.getElementById('scheduleRawInput').value='';
   document.getElementById('scheduleParseResult').textContent='';
-  status.textContent=`${date} · ${line} 저장 완료. 해당 날짜의 공지 복사에 포함됩니다.`;
+  status.textContent=`${date} · ${line} 저장 완료. ${note.kind==='pm-rule'?'PM 일정과 주간 매트릭스에 적용했습니다.':/^pulse-/.test(note.kind)?'액퍼내기 일정과 해당 날짜 공지에 반영했습니다.':'해당 날짜의 공지 복사에 포함됩니다.'}`;
   manualEditorRequested=false;document.getElementById('manualNoteEditor').hidden=true;updateScheduleInput();
-  safeRenderAll();showToast('특이사항을 기억했습니다. 해당 날짜 공지에 포함됩니다.');
+  safeRenderAll();showToast(note.kind==='pm-rule'?'PM 요일 변경을 적용했습니다.':/^pulse-/.test(note.kind)?'액퍼내기 일정에 반영했습니다.':'특이사항을 기억했습니다. 해당 날짜 공지에 포함됩니다.');
 }
 function editManualNote(index) {
   const note=manualNotes[index];if(!note || !isSpecialNote(note)) return;
@@ -1849,6 +1901,7 @@ function editManualNote(index) {
   document.getElementById('manualNoteEditor').hidden=false;
   document.getElementById('manualDateInput').value=note.date;selectManualLine(note.line);
   document.getElementById('manualContentInput').value=note.text;
+  updateManualTagsVisibility();
   document.getElementById('manualSaveButton').textContent='수정 저장';document.getElementById('manualCancelEditButton').style.display='inline-block';document.getElementById('manualCancelEditButton').textContent='수정 취소';
   document.getElementById('manualSaveResult').textContent='날짜·라인·내용을 수정한 뒤 저장해주세요.';
   document.getElementById('manualContentInput').focus();
@@ -1880,7 +1933,11 @@ function renderManualNotesList() {
   const today=formatDateOnly(new Date());
   const current=notes.filter(({note})=>note.date>=today || note.date===selectedDateStr);
   const past=notes.filter(({note})=>note.date<today && note.date!==selectedDateStr);
-  const cardHtml=({note:n,index})=>`<strong>${escapeHtml(n.date)} · ${escapeHtml(n.line)}</strong><span class="helper"> 별도 작업·일정</span><p>${escapeHtml(displayManualText(n))}</p><div class="settings-inline"><button class="btn btn-sub btn-sm" onclick="viewManualNoteDate(${index})">공지 보기</button><button class="btn btn-sm" onclick="copyManualNoteDate(${index})">이 날짜 공지 복사</button><button class="btn btn-sub btn-sm" onclick="editManualNote(${index})">수정</button><button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})" aria-label="${escapeHtml(n.date+' '+n.line)} 특이사항 삭제">삭제</button></div>`;
+  const cardHtml=({note:n,index})=>{
+    const rule=n.kind==='pm-rule';
+    const action=rule?`<button class="btn btn-sub btn-sm" onclick="viewManualNoteDate(${index});openModal('matrixModal')">주간 일정 확인</button>`:`<button class="btn btn-sm" onclick="copyManualNoteDate(${index})">이 날짜 공지 복사</button>`;
+    return `<strong>${escapeHtml(n.date)} · ${escapeHtml(n.line)}</strong><span class="helper"> ${rule?'이 날짜부터 PM 규칙 적용':/^pulse-/.test(n.kind||'')?'액퍼내기':'별도 작업·일정'}</span><p>${escapeHtml(displayManualText(n))}</p><div class="settings-inline">${action}<button class="btn btn-sub btn-sm" onclick="editManualNote(${index})">수정</button><button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})" aria-label="${escapeHtml(n.date+' '+n.line)} 특이사항 삭제">삭제</button></div>`;
+  };
   current.forEach(item=>{
     const card=document.createElement('div');card.className='saved-note';card.innerHTML=cardHtml(item);container.appendChild(card);
   });
@@ -1895,12 +1952,21 @@ function inlineDesmearName(id) { return '디스미어 ' + id.slice(1); }
 function inlineDisplayName(id) { return inlineDesmearName(id); }
 
 function getInlineCycle(id) {
-  const anchors = manualNotes.filter(note=>isPMRecord(note) && isRoutinePMText(note.text) && note.line===inlineDesmearName(id)).sort((a,b)=>b.date.localeCompare(a.date));
+  const anchors = inlinePMNotes(id).filter(note=>isRoutinePMText(note.text)).sort((a,b)=>b.date.localeCompare(a.date));
   if (!anchors.length) return null;
   const date = anchors[0].date;
   const events = Object.values(inlineDesmearFlags).filter(event=>event && event.version===2 && event.lineId===id &&
     validDateTime(event.completedAt) && formatDateOnly(new Date(event.completedAt))>date);
   return {date,count:events.length};
+}
+function inlinePMNotes(id) {
+  const notes=manualNotes.filter(n=>n.line===inlineDesmearName(id)&&isPMRecord(n));
+  const imported=notes.filter(n=>n.source==='kakao');
+  return imported.length?imported:notes;
+}
+function recordInlineNotice(line,date,text,now=new Date()) {
+  manualNotes=manualNotes.filter(n=>!(n.line===line&&((n.source==='kakao'&&n.kind==='inline-notice')||(n.date===date&&isPMRecord(n)))));
+  manualNotes.push({line,date,text,kind:'inline-notice',source:'kakao',importedAt:now.toISOString()});
 }
 
 function recordInlineChemCompletion(line, completedAt) {
@@ -1924,67 +1990,13 @@ function inlineScheduledText(id, due) {
   return `${inlineDisplayName(id)} ${due.getDate()}일 기본PM`;
 }
 function inlineNoteText(text) { return text.replace(/망간\s*건욕/g,'망간건욕'); }
-function openInlinePMForm() {
-  const date=document.getElementById('inlinePMDate');if(!date.value) date.value=selectedDateStr;
-}
-function openInlineManualEntry(id) {
-  if(!INLINE_CHEM_IDS.includes(id)) return;
-  switchTab('tab1');document.getElementById('inlinePMEntry').open=true;
-  document.getElementById('inlinePMDate').value=selectedDateStr;
-  document.getElementById('inlinePMLine').value=inlineDesmearName(id);
-  document.getElementById('inlinePMWork').value='기본PM';
-  document.getElementById('inlinePMEntry').scrollIntoView?.({behavior:'smooth',block:'center'});
-}
-function addInlinePMRecord() {
-  const date=document.getElementById('inlinePMDate').value,line=document.getElementById('inlinePMLine').value;
-  const text=document.getElementById('inlinePMWork').value.trim(),result=document.getElementById('inlinePMResult');
-  if(!validDateTime(date+'T00:00') || !INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===line) || !isRoutinePMText(text)) {result.textContent='날짜·디스미어 라인·PM 작업 내용을 확인해주세요. 별도 공사·점검은 특이사항에서 기록하세요.';return;}
-  if(!manualNotes.some(n=>n.date===date&&n.line===line&&n.text===text)) manualNotes.push({date,line,text});
-  savePMData();safeRenderAll();result.textContent=`${date} · ${line} PM 기록 저장 완료`;
-}
-function renderInlinePMHistory() {
-  const el=document.getElementById('inlinePMHistory');if(!el) return;
-  el.innerHTML=manualNotes.map((note,index)=>({note,index})).filter(({note})=>INLINE_CHEM_IDS.some(id=>inlineDesmearName(id)===note.line)&&isPMRecord(note))
-    .sort((a,b)=>b.note.date.localeCompare(a.note.date)).map(({note,index})=>`<div class="helper">${escapeHtml(note.date+' · '+note.line+' · '+note.text)} <button class="btn btn-sub btn-sm" onclick="removeManualNote(${index})">PM 기록 삭제</button></div>`).join('');
-}
-
-function inlineControlsHtml(id) {
-  return `<div style="border-top:1px solid var(--border-light);padding-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <strong>${inlineDisplayName(id)} PM</strong><span class="badge badge-purple">화학동 2회마다 1회</span>
-    <button class="btn btn-sub btn-sm" onclick="openInlineManualEntry('${id}')">디스미어 PM 입력</button>
-  </div>`;
-}
-
-function renderInlineDesmearStatus() {
-  const container = document.getElementById('inlineDesmearStatusContainer');
-  if (!container) return;
-  const briefing=inlineBriefingLines(selectedDateStr);
-  const html=INLINE_CHEM_IDS.map(id => {
-    const notes=manualNotes.filter(note=>note.date===selectedDateStr && note.line===inlineDesmearName(id));
-    const work=briefing.filter(text=>text.startsWith(inlineDisplayName(id)+' '));
-    if(!notes.length && !work.length) return '';
-    const cycle=getInlineCycle(id), due=getInlineDue(id);
-    const cycleText=cycle ? `기준 ${escapeHtml(cycle.date)} · 화학동 ${cycle.count%2}/2회${due ? `<br>${escapeHtml(formatDateTimeKr(due))}` : ''}` : '디스미어 PM 기준일 미등록';
-    return `<div style="background:#faf5ff;border:1px solid #ddd6fe;padding:12px;border-radius:10px;">
-      <strong>${inlineDisplayName(id)}</strong> <span class="badge badge-purple">${cycle ? '2회 주기' : '수동 등록'}</span>
-      <div style="margin:8px 0">${notes.length ? notes.map(note=>escapeHtml(note.text)).join(' · ') : work.map(escapeHtml).join(' · ')}</div>
-      <div class="helper">${cycleText}</div>
-      <button class="btn btn-sub btn-sm" onclick="openInlineManualEntry('${id}')">PM 입력</button>
-    </div>`;
-  }).join('');
-  if(container.innerHTML!==html) container.innerHTML=html;
-  document.getElementById('inlineDesmearSection').hidden=!html;
-}
-
 function inlineBriefingLines(dateStr) {
   const targetDate=new Date(dateStr+'T00:00:00');
   const windowStart=new Date(targetDate.getTime()+8.5*3600000), windowEnd=new Date(targetDate.getTime()+32.5*3600000);
   return INLINE_CHEM_IDS.flatMap(id=>{
     const line=chemList.find(item=>item.id===id);
     const chemDue=line.status==='시작' ? new Date(line.lastDone) : getChemDue(line);
-    const notes=manualNotes.filter(note=>{
-      if(!isPMRecord(note)) return false;
-      if(note.line!==inlineDesmearName(id)) return false;
+    const notes=inlinePMNotes(id).filter(note=>{
       if(note.date===dateStr) return true;
       const time=extractNoticeTime(note.text);
       const due=time ? new Date(note.date+'T00:00:00') : chemDue;
@@ -2004,7 +2016,7 @@ function renderInlineDesmearMatrix(weekDates) {
   weekDates.forEach((day,index)=>{
     const cell=document.getElementById(`inline_cell_${index+1}`); if(!cell) return;
     cell.innerHTML=INLINE_CHEM_IDS.flatMap(id=>{
-      const notes=manualNotes.filter(note=>note.date===day.dateStr && note.line===inlineDesmearName(id));
+      const notes=inlinePMNotes(id).filter(note=>note.date===day.dateStr);
       if(notes.length) return [`<strong>${inlineDisplayName(id)}</strong><br>${notes.map(note=>escapeHtml(inlineNoteText(note.text))).join(' · ')}`];
       const due=getInlineDue(id);
       return due && formatDateOnly(due)===day.dateStr ? [`<strong>${inlineDisplayName(id)}</strong><br>${escapeHtml(formatTimeKr(due.getHours(),due.getMinutes()))} 기본PM`] : [];
@@ -2030,8 +2042,10 @@ function resolveDayInput(day, base, hour = 0, minute = 0) {
 
 function getElectroLines(dateStr = selectedDateStr) {
   const date = new Date(dateStr + 'T00:00:00');
-  const numbers = {1:[9,16],2:[18,22],3:[15,20],4:[11,14,17],5:[13,21]}[date.getDay()] || [];
-  if (date.getDay() === 5 && checkBiWeek(ANCHOR_BIWEEK.elec12,date)) numbers.unshift(12);
+  const numbers=ELECTRO_NUMBERS.filter(number=>{
+    const rule=getPMRule(number,dateStr);
+    return date.getDay()===rule.weekday && (rule.intervalWeeks===1||checkBiWeek(new Date(rule.anchorDate+'T00:00:00'),date));
+  });
   return numbers.map(number => ({name:`전기동 ${number}라인`,number,dateStr,isPulse:[9,20,21].includes(number)}));
 }
 
@@ -2341,7 +2355,7 @@ function updateLiveTimesOnly(now) {
         const dStart = timerStart(dummyFlag);
 
         const targetProd = new Date(dStart.getTime() + 90 * 60000);
-        
+
         let dummyStatusText = '';
         if (now < dStart) {
           dummyStatusText = `더미 투입 대기 중 (${formatDateTimeKr(dStart)} 시작 예정)`;
@@ -2492,7 +2506,7 @@ function completeChemPM(lineId) {
 
   recordInlineChemCompletion(line,new Date());
   line.needsReview=false;
-  
+
   delete line.plannedDue;
   line.status = '완료'; line.backlightPmAt = null;
   line.lastDone = new Date().toISOString();
@@ -2502,7 +2516,7 @@ function completeChemPM(lineId) {
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());
   renderTab1ChemStatus();
-  renderInlineDesmearStatus();
+
   generateShareText();
 }
 
@@ -2610,7 +2624,6 @@ function renderChemList() {
         <span class="helper">${c.status==='시작'?'시작':'직전 완료'} ${formatDateTimeKr(t)}</span>
         <button class="btn btn-sub btn-sm" onclick="openChemTimeEditor('${c.id}')">시간정정</button>
       </div>
-      ${INLINE_CHEM_IDS.includes(c.id) ? inlineControlsHtml(c.id) : ''}
       <div id="chem_box_${idx}" style="font-size:13px; padding:10px 14px; background:#ffffff; border-radius:6px; border-left:5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,0.03);"></div>
     `;
     container.appendChild(card);
@@ -2711,10 +2724,9 @@ function renderPulseTable() {
   activePulseReminds = [];
 
   pulseList.forEach((p, idx) => {
-    const base = new Date(p.lastDate + 'T00:00:00');
-    const d1 = new Date(base.getTime() + 120 * 86400000);
-    const d2 = new Date(base.getTime() + 240 * 86400000);
-    const d3 = new Date(base.getTime() + 360 * 86400000);
+    const schedule=getPulseSchedule(p),d1=schedule.due;
+    const d2 = new Date(d1.getTime() + 120 * 86400000);
+    const d3 = new Date(d1.getTime() + 240 * 86400000);
     const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
     const diff = Math.round((d1 - today) / 86400000);
 
@@ -2732,8 +2744,8 @@ function renderPulseTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${escapeHtml(p.line)}</strong></td>
-      <td><input type="date" value="${escapeHtml(p.lastDate)}" onchange="updatePulseDate(${idx}, this.value)" style="width:130px;"></td>
-      <td><strong>${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]}</strong></td>
+      <td>${escapeHtml(schedule.lastDate)}</td>
+      <td><strong>${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]}</strong>${schedule.planned?' <span class="badge badge-blue">확정</span>':''}</td>
       <td>${formatDateTimeKr(d2).split(' ')[0]} ${formatDateTimeKr(d2).split(' ')[1]}</td>
       <td>${formatDateTimeKr(d3).split(' ')[0]} ${formatDateTimeKr(d3).split(' ')[1]}</td>
       <td>${badge}</td>
@@ -2760,13 +2772,6 @@ function checkPulseBannerTrigger() {
 function dismissRemindBanner() {
   document.getElementById('remindBanner').style.display = 'none';
   sessionStorage.setItem('pulse_banner_dismissed_' + selectedDateStr, 'true');
-}
-
-function updatePulseDate(idx, val) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(val) || !validDateTime(val + 'T00:00')) { alert('유효한 작업일을 입력해주세요.'); renderPulseTable(); return; }
-  pulseList[idx].lastDate = val;
-  savePMData();
-  renderPulseTable();
 }
 
 function generateShareText() {
@@ -2861,7 +2866,7 @@ function generateShareText() {
     !regularLines.has(note.line) && !REQUIRED_CHEM_IDS.includes(note.line));
 
   const scheduled = new Map();
-  manualNotes.filter(note=>isSpecialNote(note) && note.date===selectedDateStr).forEach(note=>{
+  scheduledNotesForDate(selectedDateStr).forEach(note=>{
     const text=displayManualText(note);if(!text) return;
     const key=normalizeScheduleLine(note.line)||note.line;
     if(!scheduled.has(key)) scheduled.set(key,[]);

@@ -53,7 +53,9 @@ function reduceEvents(state,messages,now=new Date(),hashes=null) {
         item.kakaoTimeBasis='최초 PM 관측 시각';
       } else {
         // The same completion identity is used by manual controls and the notice parser.
-        const anchors=Object.values(next.manualNotes||{}).filter(n=>n.line==='디스미어 '+item.id.slice(1)&&isInlinePMAnchor(n)).sort((a,b)=>b.date.localeCompare(a.date));
+        const allAnchors=Object.values(next.manualNotes||{}).filter(n=>n.line==='디스미어 '+item.id.slice(1)&&isInlinePMAnchor(n));
+        const imported=allAnchors.filter(n=>n.source==='kakao');
+        const anchors=(imported.length?imported:allAnchors).sort((a,b)=>b.date.localeCompare(a.date));
         const done=new Date(msg.postedAt);
         const localDay=`${done.getFullYear()}-${String(done.getMonth()+1).padStart(2,'0')}-${String(done.getDate()).padStart(2,'0')}`;
         if(['화13','화14'].includes(item.id)&&anchors.length&&localDay>anchors[0].date) {
