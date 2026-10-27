@@ -344,8 +344,8 @@
   .container { max-width:820px; gap:12px; }
   header { background:transparent;border:0;padding:4px 0;box-shadow:none; }
   .header-top h1 { color:var(--text-primary); font-size:22px; letter-spacing:-.6px; }
-  .home-schedule-tools { display:flex;gap:6px; }
-  .home-schedule-tools .btn { background:#edf4fa;color:var(--accent);padding:7px 10px; }
+  .home-schedule-tools { display:flex;gap:8px;width:100%; }
+  .home-schedule-tools .btn { flex:1;background:#fff;color:var(--accent);padding:7px 10px;border:1px solid #dfe7f0; }
   .main-nav { position:sticky; top:0; z-index:30; border:0; padding:6px; background:#fff; border-radius:14px; box-shadow:0 3px 12px #0f172a08; }
   .nav-btn,.nav-btn.active { border:0; margin:0; border-radius:9px; background:transparent; min-height:46px; }
   .nav-btn.active { background:var(--accent-light); }
@@ -374,16 +374,37 @@
   .notice-line { padding:2px 0;overflow-wrap:anywhere; }
   .notice-line strong { font-weight:750; }
   .notice-ending { font-size:12px;color:var(--text-secondary);margin-top:8px; }
-  .chem-panel { scroll-margin-top:80px;gap:4px; }
+  .chem-panel { scroll-margin-top:80px;gap:8px;background:transparent;border:0;padding:0; }
   .chem-panel h2 { display:flex;align-items:center;justify-content:space-between;font-size:15px; }
   .chem-panel h2 .helper { font-weight:400; }
-  .chem-overview { padding:10px 0;border:0;border-bottom:1px solid var(--border-light);background:transparent;min-width:0; }
-  .chem-overview:last-child { border-bottom:0;padding-bottom:0; }
+  #tab1ChemStatusContainer { display:grid;gap:8px; }
+  .chem-overview { padding:10px 12px;border:1px solid #dfe7f0;border-left:5px solid var(--accent);border-radius:12px;background:#fff;min-width:0;box-shadow:0 2px 6px #0f172a0c; }
+  .chem-overview.running { border-left-color:var(--success); }
+  .chem-overview.warn { border-left-color:var(--warning);background:#fff7e6; }
+  .chem-overview.late { border-left-color:var(--danger);background:#fff0f0; }
   .chem-overview-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
   .chem-overview-head strong { font-size:16px; }
   .chem-row-main { display:flex;gap:6px 12px;flex-wrap:wrap;align-items:baseline; }
   .chem-work { color:var(--text-secondary);font-size:12px;overflow-wrap:anywhere; }
   .chem-time { font-weight:700;font-size:14px; }
+  .chem-card-footer { display:flex;gap:10px;align-items:center;margin-top:6px; }
+  .chem-card-actions { display:flex;gap:6px; }
+  .chem-overview-head > .badge { margin-left:auto; }
+  .chem-card-actions .btn { min-height:36px;padding:5px 9px;font-size:12px; }
+  .chem-card-actions .btn-sub { background:#edf2f7;color:var(--text-secondary); }
+  .chem-cycle-track { position:relative;flex:1;height:6px;border-radius:8px;background:#d8dfe7;overflow:hidden; }
+  .chem-cycle-fill { height:100%;border-radius:8px;background:var(--accent); }
+  .running .chem-cycle-fill { background:var(--success); }
+  .warn .chem-cycle-fill { background:var(--warning); }
+  .late .chem-cycle-fill { background:var(--danger); }
+  .chem-transfer-mark { position:absolute;left:85.714%;top:0;bottom:0;width:2px;background:#64748b80; }
+  .note-entry-actions { display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
+  .note-entry-actions .btn { padding:7px 8px;font-size:12px; }
+  .note-entry-actions .btn-sub { background:#e9eef5;color:var(--text-primary); }
+  .remind-banner { background:#fff8e7;border-color:#f4d692;border-left-color:var(--warning);color:#854d0e;align-items:flex-start; }
+  .remind-banner .remind-close-btn { color:#854d0e; }
+  .notice-details { padding:4px 14px; }
+  .notice-details[open] { padding-bottom:14px; }
   .report-area { min-height:240px; height:auto; margin:0; padding:8px 0; border:0; border-radius:0; background:#fff; font-family:inherit; font-size:16px; overflow:hidden; resize:none; }
   .note-chip { font-size:13px; padding:8px 10px; border-radius:9px; }
   .note-chip button { min-width:32px; min-height:32px; }
@@ -413,6 +434,9 @@
     .nav-icon { display:block; font-size:20px; margin:0 0 2px; }
     .nav-btn .nav-full { display:none; }
     .card { padding:16px; }
+    .chem-panel { padding:0; }
+    .notice-details { padding:4px 14px; }
+    .notice-details[open] { padding-bottom:14px; }
     .modal-overlay { align-items:flex-end; padding:0; }
     .modal-content { border-radius:18px 18px 0 0; max-height:90dvh; padding-bottom:env(safe-area-inset-bottom); }
     .time-editor { max-width:none; max-height:calc(100dvh - env(safe-area-inset-top) - 12px); }
@@ -432,13 +456,16 @@
   .day-switch { flex-wrap:wrap; align-items:center; }
   #briefingDateInput { width:140px; min-width:0; }
   @media(max-width:600px) {
-    .brief-toolbar { flex-direction:column; align-items:stretch; }
-    .day-switch { justify-content:space-between; }
-    #copyBriefingButton { width:100%; }
+    .brief-toolbar { gap:8px; }
+    .day-switch { flex-wrap:nowrap;gap:2px;padding:3px; }
+    .day-switch .btn { min-width:40px;padding:5px 7px; }
+    #briefingDateInput { width:128px;padding:6px; }
+    #copyBriefingButton { padding:7px 9px;font-size:12px; }
   }
-  @media(max-width:360px) {
-    .day-switch .btn { min-width:46px;padding:5px 8px; }
-    #briefingDateInput { width:128px; }
+  @media(max-width:340px) {
+    .brief-toolbar { flex-wrap:wrap; }
+    .day-switch { flex:1;justify-content:space-between; }
+    #copyBriefingButton { width:100%; }
   }
   #scheduleRawInput { width:100%; margin-top:10px; }
   .manual-fields { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin:12px 0; }
@@ -455,10 +482,9 @@
 <body>
 
 <div class="container">
-  <header>
+  <header id="pmHeader">
     <div class="header-top">
-      <h1>동도금 PM</h1>
-      <div id="homeScheduleTools" class="home-schedule-tools"><button class="btn btn-sub btn-sm" onclick="openModal('matrixModal')">주간 매트릭스</button><button class="btn btn-sub btn-sm" onclick="openModal('pulseModal')">액퍼내기</button></div>
+      <div id="homeScheduleTools" class="home-schedule-tools"><button class="btn btn-sub btn-sm" onclick="openModal('matrixModal')">🗓️ 주간 매트릭스</button><button class="btn btn-sub btn-sm" onclick="openModal('pulseModal')">🧪 액퍼내기</button></div>
     </div>
   </header>
   <p id="localSaveStatus" class="helper" role="alert" hidden></p>
@@ -475,6 +501,27 @@
   <!-- [탭 1] 오늘 PM 브리핑 & 공유 -->
   <div id="tab1" class="tab-pane active">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
+      <div id="remindBanner" class="remind-banner" role="status" aria-live="polite"><div id="remindBannerText"></div><button class="remind-close-btn" onclick="dismissRemindBanner()" aria-label="오늘 액퍼내기 알림 숨기기">✕</button></div>
+
+
+      <div class="brief-toolbar">
+          <div class="day-switch" aria-label="브리핑 날짜">
+            <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
+            <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
+            <input type="date" id="briefingDateInput" aria-label="브리핑 날짜 선택" onchange="selectBriefingDate(this.value)">
+          </div>
+          <button class="btn" id="copyBriefingButton" onclick="copyShareText()">카톡 공지 복사</button>
+      </div>
+
+        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
+      <div id="chemManagement" class="card chem-panel">
+        <h2>화학동 <span class="helper">카톡 공지 기준</span></h2>
+        <div id="tab1ChemStatusContainer"></div>
+      </div>
+      <details id="noticeDetails" class="card notice-details"><summary>카톡 공지 미리보기</summary>
+        <div id="noticePreview" class="notice-preview" aria-label="공유할 PM 일정"></div>
+        <div id="copySource" hidden><textarea id="shareTextOutput" class="report-area" aria-label="공유할 카톡 공지" readonly></textarea><button class="btn btn-sub btn-sm" onclick="showCopySource(false)">일정으로 돌아가기</button></div>
+      </details>
 
       <details id="kakaoPanel" class="parser-box">
         <summary>카톡 공지 붙여넣기</summary>
@@ -487,24 +534,6 @@
         </div>
       </details>
 
-      <div class="card">
-        <div class="brief-toolbar">
-          <div class="day-switch" aria-label="브리핑 날짜">
-            <button type="button" class="btn btn-sm" id="btnDateToday" onclick="selectQuickDay('today')">오늘</button>
-            <button type="button" class="btn btn-sub btn-sm" id="btnDateTomorrow" onclick="selectQuickDay('tomorrow')">내일</button>
-            <input type="date" id="briefingDateInput" aria-label="브리핑 날짜 선택" onchange="selectBriefingDate(this.value)">
-          </div>
-          <button class="btn" id="copyBriefingButton" onclick="copyShareText()">카톡 공지 복사</button>
-        </div>
-        <div id="noticePreview" class="notice-preview" aria-label="공유할 PM 일정"></div>
-        <div id="copySource" hidden><textarea id="shareTextOutput" class="report-area" aria-label="공유할 카톡 공지" readonly></textarea><button class="btn btn-sub btn-sm" onclick="showCopySource(false)">일정으로 돌아가기</button></div>
-      </div>
-
-        <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
-      <div id="chemManagement" class="card chem-panel">
-        <h2>화학동 <span class="helper">카톡 공지 기준</span></h2>
-        <div id="tab1ChemStatusContainer"></div>
-      </div>
     </div>
   </div>
 
@@ -518,7 +547,7 @@
 
       <p class="helper">공사·점검·교체, 액퍼내기 확정일, 전기동 PM 요일 변경을 기억합니다. 디13·14 PM은 첫 화면에서 카톡 공지를 붙여넣어 갱신하세요.</p>
       <textarea id="scheduleRawInput" rows="3" oninput="updateScheduleInput()" aria-label="기억할 일정 문장" placeholder="전20 10월 30일 액퍼내기 확정&#10;또는 전12 PM 목요일로 변경&#10;한 번에 한 일정씩 입력하세요."></textarea>
-      <div class="settings-inline"><div id="scheduleParseActions" hidden><button class="btn btn-sub btn-sm" onclick="parseScheduleInput()">문장에서 일정 가져오기</button></div><button class="btn btn-sub btn-sm" onclick="openManualNoteEditor()">날짜·라인 직접 입력</button></div>
+      <div class="note-entry-actions"><div id="scheduleParseActions" hidden><button class="btn" onclick="parseScheduleInput()">문장에서 일정 가져오기</button></div><button class="btn" onclick="openManualNoteEditor()" aria-label="날짜·라인 직접 입력">날짜·라인 입력</button><button class="btn btn-sub" onclick="startNoteTemplate('inspection')">＋ 🔧 공사·점검</button><button class="btn btn-sub" onclick="startNoteTemplate('pulse')">＋ 🧪 액퍼내기</button><button class="btn btn-sub" onclick="startNoteTemplate('weekday')">＋ ⚡ 요일 변경</button><button class="btn btn-sub" onclick="startNoteTemplate('replacement')">＋ 🛠️ 기타 교체</button></div>
       <p id="scheduleParseResult" class="helper" role="status" aria-live="polite"></p>
       <div id="manualNoteEditor" hidden>
       <div class="manual-fields">
@@ -660,9 +689,8 @@
         <button class="btn btn-sub btn-sm" onclick="closeModal('pulseModal')">✕ 닫기</button>
       </div>
       <div class="modal-body">
-        <div id="remindBanner" class="remind-banner"><div id="remindBannerText"></div><button class="remind-close-btn" onclick="dismissRemindBanner()" aria-label="액퍼내기 알림 닫기">✕</button></div>
         <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 12px; color: var(--text-secondary);">4주(28일) 전 진입 시 리마인드 알림이 자동 점등됩니다.</span>
+          <span style="font-size: 12px; color: var(--text-secondary);">예정일 한 달 전부터 PM 관리 상단에 알림을 표시합니다.</span>
           <span class="helper">변경은 특이사항에 입력</span>
         </div>
         <div class="table-responsive">
@@ -1118,19 +1146,27 @@ function renderTab1ChemStatus() {
   chemList = ensureChemIntegrity(chemList);
   const now=new Date();
   const html=chemList.map(line=>{
-    if(line.needsReview) return `<article class="chem-overview"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-sub">기록 확인 필요</span></div></article>`;
+    const running=!line.needsReview&&line.status==='시작';
+    const actions=`<div class="chem-card-actions"><button class="btn btn-sm" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')" aria-label="${line.id} PM ${running?'완료':'시작'}">PM ${running?'완료':'시작'}</button><button class="btn btn-sub btn-sm" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div>`;
+    if(line.needsReview) return `<article class="chem-overview"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-sub">기록 확인 필요</span>${actions}</div></article>`;
 
-    const running=line.status==='시작', state=chemAttention(line,now);
+    const state=chemAttention(line,now),progress=chemCardProgress(line,now);
     const date=running?new Date(line.lastDone):getChemDue(line);
     const remaining=(date-now)/3600000;
     const label=state==='late'?(running?'미완료 지연':'주기 초과'):running?'PM 진행 중':state==='warn'?'7시간 이내 임박':`${remaining.toFixed(1)}H 남음`;
     const badge=state==='late'?'red':state==='warn'?'yellow':running?'green':'blue';
     const runningDetail=running?`<div class="helper">${((now-date)/3600000).toFixed(1)}시간 경과 · 12시간 액이송 ${formatDayTimeKr(new Date(date.getTime()+12*3600000))}<br>14시간 PM 목표 ${formatDayTimeKr(new Date(date.getTime()+14*3600000))}</div>`:`<div class="helper">직전 완료 ${formatDateTimeKr(new Date(line.lastDone))}</div>`;
     const buildup=line.id==='화8'&&!running&&(now-new Date(line.lastDone))/3600000>48?'<div class="helper" style="color:var(--danger);margin-bottom:8px">⛔ 빌드업 금지</div>':'';
-    return `<article class="chem-overview ${state}"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-${badge}">${label}</span></div>
-      <div class="chem-row-main"><span><span class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</span> <span class="chem-time">${formatDateTimeKr(date)}</span></span><span class="chem-work">${escapeHtml(line.note||'기본PM')}</span></div>${runningDetail}${buildup}</article>`;
+    return `<article class="chem-overview ${state}"><div class="chem-overview-head"><strong>${line.id}</strong><span class="badge badge-${badge}">${label}</span>${actions}</div>
+      <div class="chem-row-main"><span><span class="helper">${running?'PM 시작 시각':'차기 PM 예정'}</span> <span class="chem-time">${formatDateTimeKr(date)}</span></span><span class="chem-work">${escapeHtml(line.note||'기본PM')}</span></div>${runningDetail}${buildup}<div class="chem-card-footer"><div class="chem-cycle-track" role="progressbar" aria-label="${line.id} ${progress.label}" aria-valuemin="0" aria-valuemax="${progress.max}" aria-valuenow="${Math.min(progress.max,Number(progress.value.toFixed(1)))}"><div class="chem-cycle-fill" style="width:${Math.round(progress.percent)}%"></div>${running?'<span class="chem-transfer-mark" aria-hidden="true"></span>':''}</div></div></article>`;
   }).join('');
   if(container.innerHTML!==html) container.innerHTML=html;
+}
+function chemCardProgress(line,now=new Date()) {
+  const running=line.status==='시작',start=new Date(line.lastDone);
+  const max=running?14:Math.max(1,(getChemDue(line)-start)/3600000);
+  const elapsed=(now-start)/3600000,value=Math.max(0,Math.min(max,elapsed));
+  return {max:Number(max.toFixed(2)),value:Number(value.toFixed(2)),percent:Number((value/max*100).toFixed(2)),label:running?'14시간 PM 목표 경과':'차기 PM 주기 경과'};
 }
 function manualChemAction(action) {
   const id=document.getElementById('manualChemLine').value;
@@ -1418,6 +1454,7 @@ function tick() {
 function switchTab(t) {
   if (t === 'tab2' || t === 'tab3') {openChemManagement();return;}
   document.getElementById('homeScheduleTools').hidden=t!=='tab1';
+  document.getElementById('pmHeader').hidden=t!=='tab1';
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
@@ -1795,6 +1832,24 @@ function openManualNoteEditor() {
   manualEditorRequested=true;document.getElementById('manualNoteEditor').hidden=false;
   document.getElementById('manualCancelEditButton').style.display='inline-block';document.getElementById('manualCancelEditButton').textContent='입력 닫기';
   document.getElementById('manualContentInput').focus();
+}
+function startNoteTemplate(type) {
+  const templates={inspection:{text:'설비 점검'},replacement:{text:'인써트 교체'},pulse:{line:'전기동 20',text:'액퍼내기 확정'},weekday:{line:'전기동 12',text:'PM 목요일로 변경'}};
+  const template=templates[type];if(!template) return;
+  cancelManualEdit();
+  document.getElementById('scheduleRawInput').value='';updateScheduleInput();
+  const date=document.getElementById('manualDateInput');
+  const today=formatDateOnly(new Date());
+  date.value=validDateTime(selectedDateStr+'T00:00')&&selectedDateStr>=today?selectedDateStr:today;
+  if(type==='pulse') {
+    const planned=getPulseSchedule(pulseList.find(p=>pulseNoteLine(p)===template.line)).planned;
+    if(planned?.date>=today) date.value=planned.date;
+  }
+  updateManualLineOptions();
+  if(template.line) selectManualLine(template.line);
+  document.getElementById('manualContentInput').value=template.text;
+  openManualNoteEditor();updateManualTagsVisibility();
+  document.getElementById('manualSaveResult').textContent='날짜·라인·내용을 확인한 뒤 저장하세요. 아직 기록하지 않았습니다.';
 }
 function normalizeScheduleLine(text) {
   const match=String(text).match(/(?<![가-힣A-Za-z0-9])(?:디스미어|디|전기동|전|화학동|화|데버링|데|고압수세|에칭|에)\s*(\d+(?:[.]\d+)?)/);
@@ -2534,6 +2589,7 @@ function completeChemPM(lineId) {
   renderTab1ChemStatus();
 
   generateShareText();
+  showToast(`${lineId} PM 완료 · 차기 PM ${formatDateTimeKr(getChemDue(line))}`);
 }
 
 function togglePulseProcess(lineName,isChecked,dateStr = selectedDateStr) {
@@ -2732,6 +2788,13 @@ function setChemNow(idx) {
 
 let activePulseReminds = [];
 
+function pulseReminderStart(due) {
+  const first=new Date(due.getFullYear(),due.getMonth()-1,1);
+  const last=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
+  return new Date(first.getFullYear(),first.getMonth(),Math.min(due.getDate(),last));
+}
+function pulseBannerKey() {return 'pulse_banner_dismissed_'+formatDateOnly(new Date())+'_'+activePulseReminds.join('|');}
+
 function renderPulseTable() {
   const tbody = document.getElementById('pulseTableBody');
   if (!tbody) return;
@@ -2745,14 +2808,15 @@ function renderPulseTable() {
     const d3 = new Date(d1.getTime() + 240 * 86400000);
     const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
     const diff = Math.round((d1 - today) / 86400000);
+    const alertName=pulseNoteLine(p).replace(/^전기동\s*/,'전'),alertDate=`${d1.getMonth()+1}/${d1.getDate()}`;
 
     let badge = '';
-    if (diff <= 28 && diff >= 0) {
-      badge = `<span class="badge badge-purple">🔔 ${diff === 0 ? 'D-Day' : 'D-' + diff} (4주 전 리마인드)</span>`;
-      activePulseReminds.push(`${p.line} ${diff === 0 ? 'D-Day' : 'D-' + diff} (${formatDateTimeKr(d1).split(' ')[0]} ${formatDateTimeKr(d1).split(' ')[1]} 예정)`);
+    if (today>=pulseReminderStart(d1) && diff >= 0) {
+      badge = `<span class="badge badge-purple">🔔 ${diff === 0 ? 'D-Day' : 'D-' + diff} (한 달 전 알림)</span>`;
+      activePulseReminds.push(`${alertName} · ${alertDate} ${schedule.planned?'확정':'예정'} · ${diff===0?'D-Day':'D-'+diff}`);
     } else if (diff < 0) {
       badge = `<span class="badge badge-red">D+${Math.abs(diff)} 초과</span>`;
-      activePulseReminds.push(`${p.line} D+${Math.abs(diff)} 초과 (${formatDateOnly(d1)} 예정)`);
+      activePulseReminds.push(`${alertName} · ${alertDate} · D+${Math.abs(diff)} 초과`);
     } else {
       badge = `<span class="badge badge-green">D-${diff}</span>`;
     }
@@ -2775,10 +2839,10 @@ function renderPulseTable() {
 function checkPulseBannerTrigger() {
   const banner = document.getElementById('remindBanner');
   const bannerText = document.getElementById('remindBannerText');
-  const dismissedKey = 'pulse_banner_dismissed_' + selectedDateStr;
+  const dismissedKey = pulseBannerKey();
 
   if (activePulseReminds.length > 0 && !sessionStorage.getItem(dismissedKey)) {
-    bannerText.innerHTML = `🔔 <strong>[액퍼내기 4주 전 알림]</strong> ${activePulseReminds.map(escapeHtml).join(' / ')}`;
+    bannerText.innerHTML = `🔔 <strong>액퍼내기 예정 알림</strong><br>${activePulseReminds.map(escapeHtml).join('<br>')}`;
     banner.style.display = 'flex';
   } else {
     banner.style.display = 'none';
@@ -2787,7 +2851,7 @@ function checkPulseBannerTrigger() {
 
 function dismissRemindBanner() {
   document.getElementById('remindBanner').style.display = 'none';
-  sessionStorage.setItem('pulse_banner_dismissed_' + selectedDateStr, 'true');
+  sessionStorage.setItem(pulseBannerKey(), 'true');
 }
 
 function generateShareText() {
@@ -2953,6 +3017,7 @@ function showCopySource(show) {
   document.getElementById('copySource').hidden=!show;
   document.getElementById('noticePreview').hidden=show;
   if(show) {
+    document.getElementById('noticeDetails').open=true;
     const el=document.getElementById('shareTextOutput');
     el.style.height='auto';if(el.scrollHeight) el.style.height=el.scrollHeight+'px';
   }
