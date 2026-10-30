@@ -604,11 +604,12 @@ test('legacy inline metadata stays stored while local PM registrations are saved
 test('manual PM minute controls allow only 00/30 and do not round stored precision on opening',()=>{
   const a=app();a.run("chemList[0].lastDone='2026-10-01T07:17:00+09:00';openChemTimeEditor('화7')");
   const previous=a.run('chemList[0].lastDone');
-  assert.equal(a.nodes.get('chemEditMinute').value,'');
+  assert.equal(a.nodes.get('chemEditMinute').value,'0');
   assert.match(a.nodes.get('chemEditMinute').innerHTML,/value="0"/);
   assert.match(a.nodes.get('chemEditMinute').innerHTML,/value="30"/);
   assert.doesNotMatch(a.nodes.get('chemEditMinute').innerHTML,/value="17"/);
-  a.run('saveChemTimeEditor()');assert.equal(a.run('chemList[0].lastDone'),previous);
+  assert.doesNotMatch(a.nodes.get('chemEditMinute').innerHTML,/분 선택/);
+  assert.equal(a.run('chemList[0].lastDone'),previous);
   a.nodes.get('chemEditMinute').value='17';a.run('saveChemTimeEditor()');assert.equal(a.run('chemList[0].lastDone'),previous);
   a.nodes.get('chemEditMinute').value='0';a.run('saveChemTimeEditor()');
   assert.equal(a.run('new Date(chemList[0].lastDone).getMinutes()'),0);
