@@ -3677,9 +3677,10 @@ function openChemTimeEditor(id) {
   document.getElementById('chemEditDay').value=t.getDate();
   document.getElementById('chemEditHour').innerHTML=Array.from({length:24},(_,hour)=>`<option value="${hour}" ${hour===t.getHours()?'selected':''}>${hour}시</option>`).join('');
   document.getElementById('chemEditHour').value=String(t.getHours());
-  document.getElementById('chemEditMinute').innerHTML=halfHourMinuteOptions(t.getMinutes());
-  document.getElementById('chemEditMinute').value=[0,30].includes(t.getMinutes())?String(t.getMinutes()):'';
-  if(![0,30].includes(t.getMinutes())) document.getElementById('chemTimeHint').textContent+=` 현재 저장 시각은 ${formatTimeKr(t.getHours(),t.getMinutes())}입니다. 정정하려면 00분 또는 30분을 선택해주세요.`;
+  const minute=t.getMinutes()===30?30:0;
+  document.getElementById('chemEditMinute').innerHTML=halfHourMinuteOptions(minute);
+  document.getElementById('chemEditMinute').value=String(minute);
+  if(![0,30].includes(t.getMinutes())) document.getElementById('chemTimeHint').textContent+=` 현재 저장 시각은 ${formatTimeKr(t.getHours(),t.getMinutes())}입니다. 저장할 시각을 확인해주세요.`;
   document.getElementById('chemTimeError').textContent='';updateChemTimePreview();
   openModal('chemTimeModal');
   document.getElementById('chemTimeTitle').focus({preventScroll:true});
