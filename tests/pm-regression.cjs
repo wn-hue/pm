@@ -155,18 +155,18 @@ test('master values beat v45 and v18; missing lines and empty notes recover inde
     chem_data_v45:JSON.stringify([{id:'화7',lastDone:'2026-09-29T10:00',note:'old'},{id:'화8',lastDone:'2026-09-29T09:00',status:'완료',note:'최신'}]),
     chem_data_v18:JSON.stringify([{id:'화8',lastDone:'2026-09-20T09:00',note:'older'}])}});
   const lines=a.data('chemList');
-  assert.equal(lines.length,5);assert.equal(lines[0].lastDone,'2026-09-30T11:20');assert.equal(lines[0].note,'');
+  assert.equal(lines.length,6);assert.equal(lines[0].lastDone,'2026-09-30T11:20');assert.equal(lines[0].note,'');
   assert.equal(lines[1].note,'최신');
-  assert.equal(JSON.parse(a.storage.get('chem_data_master')).length,5);
+  assert.equal(JSON.parse(a.storage.get('chem_data_master')).length,6);
 });
 
 test('corrupt JSON and empty arrays do not abort startup or remove fixed lines',()=>{
   const a=app({stored:{chem_data_master:'broken',chem_data_v45:JSON.stringify([{id:'화9',lastDone:'2026-09-30T09:00',status:'완료',note:'촉매 건욕'}]),
     pulse_data_master:'{',manual_notes_master:'{',elec_dummy_flags_master:'{',pulse_process_flags_master:'{'}});
-  assert.equal(a.logs.length,0);assert.equal(a.data('chemList').length,5);assert.equal(a.data('pulseList').length,4);
+  assert.equal(a.logs.length,0);assert.equal(a.data('chemList').length,6);assert.equal(a.data('pulseList').length,4);
   assert.equal(a.data('chemList.find(line=>line.id==="화9").note'),'촉매 건욕');
   a.run('chemList=ensureChemIntegrity([],chemList)');assert.equal(a.data('chemList[2].note'),'촉매 건욕');
-  const blocked=app({storageError:true});assert.equal(blocked.data('chemList').length,5);
+  const blocked=app({storageError:true});assert.equal(blocked.data('chemList').length,6);
 });
 
 test('invalid dates recover and legacy running states remain running',()=>{
@@ -666,9 +666,9 @@ test('unfinished or canceled messages cannot become planned PM and completion us
   assert.equal(a.run('selectedDateStr'),'2026-10-28');
 });
 
-test('a new browser shows five unverified lines without invented running PM or overdue counts',()=>{
+test('a new browser keeps legacy lines unverified and P1B planned without invented running PM',()=>{
   const a=app({stored:{},now:'2026-10-27T08:00:00+09:00'});
-  assert.equal(a.data('chemList').length,5);
+  assert.equal(a.data('chemList').length,6);
   assert.equal(a.run('chemList.every(line=>line.needsReview)'),true);
   assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/PM 진행중/);
   assert.match(a.nodes.get('tab1ChemStatusContainer').innerHTML,/기록 확인 필요/);
@@ -801,7 +801,7 @@ test('minimal screen keeps paste and copy while duplicate views and progress con
   for(const id of ['elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec','chemListContainer']) a.nodes.delete(id);
   a.run("safeRenderAll();tick();switchTab('tab2')");
   assert.equal(a.logs.length,0);
-  assert.equal((a.nodes.get('tab1ChemStatusContainer').innerHTML.match(/<article class="chem-overview/g)||[]).length,5);
+  assert.equal((a.nodes.get('tab1ChemStatusContainer').innerHTML.match(/<article class="chem-overview/g)||[]).length,6);
 });
 
 test('top schedule buttons belong only to PM management and return when switching back',()=>{
@@ -1201,7 +1201,7 @@ test('single snapshot survives a legacy mirror failure and storage errors remain
 test('saved local state contains PM data only, without pasted raw conversations or authentication data',()=>{
   const a=app();a.nodes.get('kakaoRawInput').value='private conversation';a.run('savePMData()');
   const saved=a.storage.get('pm_local_state_master');
-  assert.equal(JSON.parse(saved).chemList.length,5);
+  assert.equal(JSON.parse(saved).chemList.length,6);
   assert.doesNotMatch(saved,/private conversation|apiKey|authToken|pendingChanges/);
 });
 
@@ -1214,7 +1214,7 @@ test('partially damaged local snapshots preserve valid fields and recover broken
   const b=app({stored,now:'2026-10-27T08:00:00+09:00'});
   assert.equal(b.run('chemList[0].note'),'가장 최근 기록');assert.equal(b.run('manualNotes[0].text'),'옥사멧 점검');
   assert.equal(b.run("pulseProcessFlags['2026-10-26_전기동 9라인'].startedAt"),'2026-10-26T22:17:00+09:00');
-  assert.equal(b.run('chemList.length'),5);assert.equal(b.logs.length,0);assert.deepEqual(b.data('elecCompletedFlags'),a.data('elecCompletedFlags'));
+  assert.equal(b.run('chemList.length'),6);assert.equal(b.logs.length,0);assert.deepEqual(b.data('elecCompletedFlags'),a.data('elecCompletedFlags'));
 });
 
 test('broken nonempty note and flag masters fall back through all version keys while empty data stays empty',()=>{
@@ -1226,12 +1226,12 @@ test('broken nonempty note and flag masters fall back through all version keys w
   const b=app({stored});assert.deepEqual(b.data('manualNotes'),[]);assert.deepEqual(b.data('pulseProcessFlags'),{});
 });
 
-test('unverified snapshot rows cannot shadow verified cached chemistry while keeping all five cards',()=>{
+test('unverified snapshot rows cannot shadow verified cached chemistry while keeping all six cards',()=>{
   const a=app({now:'2026-10-27T08:00:00+09:00'}),stored=Object.fromEntries(a.storage);
-  const snapshot=JSON.parse(stored.pm_local_state_master);snapshot.chemList=snapshot.chemList.map(line=>({...line,needsReview:true,lastDone:'2026-09-01T00:00',status:'시작',note:''}));
+  const snapshot=JSON.parse(stored.pm_local_state_master);snapshot.chemList=snapshot.chemList.filter(line=>line.id!=='P1B화1').map(line=>({...line,needsReview:true,lastDone:'2026-09-01T00:00',status:'시작',note:''}));
   stored.pm_local_state_master=JSON.stringify(snapshot);const b=app({stored,now:'2026-10-27T08:00:00+09:00'});
   assert.deepEqual(b.data('chemList').map(n=>[n.id,n.lastDone,n.status,n.note,n.needsReview]),a.data('chemList').map(n=>[n.id,n.lastDone,n.status,n.note,n.needsReview]));
-  assert.equal(b.run('chemList.length'),5);
+  assert.equal(b.run('chemList.length'),6);
 });
 
 test('day-only chemistry corrections preview the full year and month and refuse future actual timestamps',()=>{
@@ -1637,7 +1637,7 @@ test('mixed notices apply valid rows, skip missing dates and clear the whole pas
 test('transfer preview replaces action rows, keeps its draft when folded and resets on cancellation',async()=>{
   const a=transferApp();await chooseArchive(a,await archiveText(a));
   assert.equal(a.nodes.get('transferActions').hidden,true);
-  assert.equal(a.nodes.get('transferChemDetails').open,false);assert.match(a.nodes.get('transferPreviewCounts').innerHTML,/화학동 5\/5.*일정 0건.*액퍼내기 4개/);
+  assert.equal(a.nodes.get('transferChemDetails').open,false);assert.match(a.nodes.get('transferPreviewCounts').innerHTML,/화학동 5\/6.*일정 0건.*액퍼내기 4개/);
   a.nodes.get('transferTools').open=false;a.nodes.get('transferTools').open=true;a.run('openTransferTools()');
   assert.equal(a.nodes.get('transferPreview').hidden,false);assert.equal(a.nodes.get('transferActions').hidden,true);
   a.run('cancelTransferPreview()');
@@ -1658,4 +1658,90 @@ test('opening data transfer brings the expanded task into view without touching 
   a.context.window.matchMedia=()=>({matches:true});a.run('openTransferTools()');
   assert.equal(scroll.block,'start');assert.equal(scroll.behavior,'instant');
   assert.deepEqual(a.data('currentState()'),before);
+});
+
+test('P1B chemistry adds the November 2 18:00 plan while preserving legacy records',()=>{
+  const a=app({now:'2026-11-02T09:00:00+09:00'});
+  const p=a.data("chemList.find(n=>n.id==='P1B화1')");
+  assert.equal(p.needsReview,true);assert.equal(p.plannedDue,'2026-11-02T18:00:00+09:00');
+  assert.equal(a.run("chemList[0].lastDone"),'2026-09-25T00:00');
+  assert.match(a.nodes.get('shareTextOutput').value,/P1B화1 18시 기본/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/-P1B화1.*진행중/);
+  assert.match(a.nodes.get('tab1ChemStatusContainer').innerHTML,/P1B화1[\s\S]*오늘 18:00/);
+  assert.match(a.nodes.get('chem_cell_1').innerHTML,/P1B화1[\s\S]*18시/);
+  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="P1B화1"/);
+  const b=app({stored:Object.fromEntries(a.storage),now:'2026-11-02T09:00:00+09:00'});
+  assert.deepEqual(b.data('chemList'),a.data('chemList'));assert.equal(b.logs.length,0);
+});
+
+test('P1B electric 1 repeats on Tuesdays and keeps MSF pulse identity',()=>{
+  const a=app({now:'2026-11-03T09:00:00+09:00'});
+  for(const [date,expected] of [['2026-10-27',false],['2026-11-02',false],['2026-11-03',true],['2026-11-10',true],['2026-11-11',false]]) {
+    a.run(`selectBriefingDate('${date}')`);
+    assert.equal(a.run(`getDayLines(new Date('${date}T00:00')).includes('MSF 전기동')`),expected,date);
+    assert.equal(/P1B전1 기본PM \(7시패스\)/.test(a.nodes.get('shareTextOutput').value),expected,date);
+  }
+  a.run("selectBriefingDate('2026-11-03')");
+  assert.match(a.nodes.get('electro_cell_2').innerHTML,/P1B 전기동 1/);
+  assert.equal(a.run("pulseList.filter(n=>n.line==='MSF 전기동').length"),1);
+  assert.equal(a.run('pulseList.length'),4);
+});
+
+test('P1B and MSF notice aliases update only P1B chemistry, then actual completion starts 72 hours',()=>{
+  for(const alias of ['P1B화1','P1B 화학동 1라인','P1B(MSF) 화학동 1라인','MSF 화1','MSF 화학동 1라인']) {
+    const a=app({now:'2026-11-02T20:00:00+09:00'}),before=a.data('chemList.slice(0,5)');
+    a.parse(`동도금 11월 2일 PM일정\n${alias} 18시 기본`);
+    assert.equal(a.run("chemList.find(n=>n.id==='P1B화1').plannedDue"),'2026-11-02T09:00:00.000Z',alias);
+    a.parse(`동도금 11월 2일 PM일정\n${alias} 18시 PM 진행중`);
+    assert.equal(a.run("chemList.find(n=>n.id==='P1B화1').status"),'시작',alias);
+    assert.match(a.nodes.get('shareTextOutput').value,/-P1B화1 18시 PM 진행중/);
+    a.parse(`동도금 11월 2일 PM일정\n${alias} 19시 PM 완료`);
+    assert.equal(a.run("getChemDue(chemList.find(n=>n.id==='P1B화1')).toISOString()"),'2026-11-05T10:00:00.000Z');
+    assert.deepEqual(a.data('chemList.slice(0,5)'),before);
+    a.run("selectBriefingDate('2026-11-05')");assert.match(a.nodes.get('shareTextOutput').value,/P1B화1 19시 기본/);
+    assert.equal(a.logs.length,0);
+  }
+});
+
+test('P1B schedule notes distinguish chemical and electric 1 and retain MSF pulse plans',()=>{
+  const a=app({now:'2026-11-02T09:00:00+09:00'});
+  for(const alias of ['P1B화1','P1B 화학동 1라인','MSF 화학동 1라인','P1B(MSF) 화학동 1라인']) {
+    const note=a.data(`parseScheduleSentence(${JSON.stringify(alias+' 11월 2일 인써트 교체')})`);
+    assert.equal(note.line,'P1B화1',alias);assert.equal(note.text,'인써트 교체');assert.equal(note.kind,'schedule');
+  }
+  for(const alias of ['P1B전1','P1B 전기동 1라인','MSF 전기동','MSF 전기동 1라인','P1B(MSF) 전기동 1라인']) {
+    const note=a.data(`parseScheduleSentence(${JSON.stringify(alias+' 11월 3일 액퍼내기 확정')})`);
+    assert.equal(note.line,'MSF 전기동',alias);assert.equal(note.kind,'pulse-plan');
+  }
+  const rule=a.data("parseScheduleSentence('P1B전1 PM 수요일로 변경')");
+  assert.equal(rule.line,'MSF 전기동');assert.equal(rule.weekday,3);
+  a.context.newP1BRule=rule;a.run("manualNotes.push(newP1BRule);selectBriefingDate('2026-11-04')");
+  assert.match(a.nodes.get('shareTextOutput').value,/P1B전1 기본PM/);
+  assert.equal(a.run("getElectroLines('2026-11-03').some(n=>n.number===1)"),false);
+});
+
+test('P1B work from Kakao annotates its schedule once and never another line',()=>{
+  const a=app({now:'2026-11-03T09:00:00+09:00'});
+  a.parse('동도금 11월 3일 PM일정\nP1B전1 인써트 교체\nP1B화1 18시 기본\nP1B화1 옥사멧 점검');
+  const share=a.nodes.get('shareTextOutput').value;
+  assert.match(share,/P1B전1 기본PM \(7시패스\) \(인써트 교체\)/);
+  assert.match(share,/P1B화1 18시 기본 \(옥사멧 점검\)/);
+  assert.equal((share.match(/옥사멧 점검/g)||[]).length,1);
+  a.nodes.get('custom_P1B전1').closest=()=>({cellIndex:2});
+  a.run("renderManualNotesInMatrix(Array.from({length:7},(_,i)=>({dateStr:formatDateOnly(new Date(2026,10,2+i))})))");
+  assert.match(a.nodes.get('custom_P1B전1').innerHTML,/인써트 교체/);
+});
+
+test('legacy five-line backup restores with only the new P1B plan added and a valid six-line export',async()=>{
+  const source=transferApp({now:'2026-11-02T09:00:00+09:00'});
+  const legacy=await source.run('createTransferArchive({...currentState(),chemList:chemList.filter(n=>n.id!=="P1B화1")})');
+  const dest=transferApp({stored:{},now:'2026-11-02T09:00:00+09:00'});
+  await chooseArchive(dest,JSON.stringify(legacy));assert.equal(dest.nodes.get('transferPreview').hidden,false);
+  await dest.run('applyTransferFile()');
+  assert.deepEqual(dest.data('chemList.slice(0,5)'),source.data('chemList.slice(0,5)'));
+  assert.equal(dest.run("chemList.find(n=>n.id==='P1B화1').needsReview"),true);
+  assert.equal(JSON.parse(dest.storage.get('pm_local_state_master')).chemList.length,6);
+  const next=JSON.parse(await archiveText(dest));assert.equal(next.state.chemList.length,6);
+  const reload=transferApp({stored:Object.fromEntries(dest.storage),now:'2026-11-02T09:00:00+09:00'});
+  assert.deepEqual(reload.data('chemList'),dest.data('chemList'));
 });
