@@ -1119,8 +1119,8 @@ function validDateTime(value) {
 function cleanChemNote(note) {
   let text = typeof note === 'string' ? note.trim() : '';
   // Legacy versions saved "13시 촉매건욕" in note as well as lastDone.
-  text = text.replace(/^(?:(?:\(?\d{1,2}(?::\d{2}|시(?:\s*\d{1,2}분)?)\)?)[\s,·/.-]*)+/,'').trim();
-  text = text.replace(/(?:PM\s*(?:진행\s*중|중)|진행\s*중)\s*$/i,'').trim();
+  text = text.replace(/^(?:(?:\(?\d{1,2}(?::\d{2}|시(?!간)(?:\s*\d{1,2}분)?)\)?)[\s,·/.-]*)+/,'').trim();
+  text = text.replace(/PM\s*(?:진행\s*중|중)\s*$/i,'').trim();
   text = text.replace(/촉매\s*건욕/g,'촉매 건욕').replace(/화학동\s*건욕/g,'화학동 건욕');
   return /^(?:기본\s*)?PM$/i.test(text) ? '' : text;
 }
@@ -1736,8 +1736,9 @@ function noticeDate(raw, now) {
   return dates[0] || null;
 }
 
+const NOTICE_CLOCK_SOURCE=String.raw`\d{1,2}(?::\d{2}(?!\d)|시(?!간)(?:\s*\d{1,2}분)?)`;
 function extractNoticeTime(text) {
-  const match = text.match(/(?:^|[^\d])(\d{1,2})(?::(\d{2})|시(?:\s*(\d{1,2})분)?)/);
+  const match = text.match(/(?:^|[^\d])(\d{1,2})(?::(\d{2})(?!\d)|시(?!간)(?:\s*(\d{1,2})분)?)/);
   if (!match) return null;
   const hour = Number(match[1]); const minute = Number(match[2] || match[3] || 0);
   return hour < 24 && minute < 60 ? {hour,minute} : null;
@@ -1753,17 +1754,58 @@ function extractChemWork(text) {
 }
 
 function kakaoClock(text) {
-  const match = text.match(/(오전|오후)\s*(\d{1,2})(?::(\d{2})|시(?:\s*(\d{1,2})분)?)/);
+  const match = text.match(/(오전|오후)\s*(\d{1,2})(?::(\d{2})(?!\d)|시(?!간)(?:\s*(\d{1,2})분)?)/);
   if (!match) return extractNoticeTime(text);
   const hour = Number(match[2]), minute = Number(match[3] || match[4] || 0);
   if (hour < 1 || hour > 12 || minute > 59) return null;
   return {hour:hour % 12 + (match[1] === '오후' ? 12 : 0),minute};
 }
 
+const CHEM_WORK_ADDITION=/^\s*(?:\+\s*|추가\s*[:：]\s*)/;
+
+function kakaoDateHeading(text,now) {
+  return /^[^\d]*(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일/.test(text)&&!CHEM_WORK_ADDITION.test(text)?noticeDate(text,now):null;
+}
+
+function chemNoticeStatus(body) {
+  if(CHEM_WORK_ADDITION.test(body)) return {marker:null,main:'',ongoing:true,completed:false};
+  const explicit=body.match(/PM\s*(?:(?:진행\s*중|진행|시작|완료|종료)\s*)?(?:예정|대기)|PM\s*(?:진행\s*중|진행|중(?!단|지)|시작|완료|종료)(?!\s*후)/i);
+  const marker=explicit || body.match(/(?:진행\s*중|진행|시작|완료|종료)\s*(?:예정|대기)|(?:진행\s*중|진행|시작|완료|종료)(?=\s*(?:[.·,+;]|추가\s*[:：]|(?:입니다|합니다)[.!]?$|$))/);
+  const end=marker?marker.index+marker[0].length:body.length;
+  const trailingClock=marker?body.slice(end).match(new RegExp(String.raw`^\s+(?:오전\s*|오후\s*)?`+NOTICE_CLOCK_SOURCE)):null;
+  const clockEnd=end+(trailingClock?.[0].length||0);
+  const plannedAfterClock=trailingClock?body.slice(clockEnd).match(/^\s*(?:예정|대기)/):null;
+  const detailStart=clockEnd+(plannedAfterClock?.[0].length||0);
+  const main=body.slice(0,detailStart);
+  const statusText=marker?.[0]||main;
+  return {
+    marker,main,detailStart,
+    ongoing:!plannedAfterClock&&/진행|시작|PM\s*중/i.test(statusText)&&!/완료|종료|예정|대기/.test(statusText),
+    completed:!plannedAfterClock&&/완료|종료/.test(statusText)&&!/미완료|예정|대기|(?:완료|종료)\s*후/.test(statusText)
+  };
+}
+
+function extractRunningChemWork(body,{marker,detailStart}) {
+  let main=marker?body.slice(0,marker.index):body;
+  const detail=marker?body.slice(detailStart).replace(/^\s*(?:입니다|합니다)(?=\s|[.!]|$)/,''):'';
+  main=main.replace(/^\s*라인(?=\s|$)/,' ').replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|(?:^|\D)\d{1,2}일|오늘|어제|내일|익일/g,' ')
+    .replace(new RegExp(String.raw`(?<!\d)(?:오전\s*|오후\s*)?`+NOTICE_CLOCK_SOURCE),' ')
+    .replace(/(?:\bPM\b|피\s*엠)/gi,' ');
+  let text=(main+' '+detail).trim();
+  for(const [,pattern] of SPECIAL_WORK_RULES) text=text.replace(new RegExp(pattern.source,'g'),' ');
+  text=text.replace(/^[\s·,:;.-]+/,'').trim();
+  const append=CHEM_WORK_ADDITION.test(text);
+  const parts=text.replace(/추가\s*[:：]/g,'+').split(/\s*[·,+;]\s*|\s+\/\s+/)
+    .map(part=>part.replace(/^[\s:.-]+|[\s:.-]+$/g,'').replace(/\s+/g,' '))
+    .map(part=>/^(?:기본\s*(?:PM)?|PM)$/i.test(part)?'기본PM':cleanChemNote(part).replace(/촉매\s*(?:c\/s|cs)\b/gi,'촉매cs').replace(/전체\s*건욕/g,'전체건욕'))
+    .filter(Boolean);
+  return {parts,append};
+}
+
 function kakaoRows(raw, reference, now) {
   let date = new Date(reference), dated = false, messageTime = null, backlightTime = null;
   return raw.split(/\r?\n/).map(text => {
-    const rowDate = noticeDate(text,now);
+    const rowDate = kakaoDateHeading(text,now);
     const numericDate = text.match(/^(\d{4})[.\/-]\s*(\d{1,2})[.\/-]\s*(\d{1,2})(?:\D|$)/);
     if (rowDate || numericDate) {
       const candidate = rowDate || new Date(Number(numericDate[1]),Number(numericDate[2])-1,Number(numericDate[3]));
@@ -1777,7 +1819,7 @@ function kakaoRows(raw, reference, now) {
     if (/백\s*라이트|빽\s*라이트|back\s*li(?:gh|ng)t/i.test(content)) {
       backlightTime = kakaoClock(content) || messageTime;
     }
-    const row = {text:content,date:new Date(date),dated,messageTime,backlightTime};
+    const row = {text:content,date:new Date(date),dated,messageTime,backlightTime,workContinuation:!chatHeader&&CHEM_WORK_ADDITION.test(content)};
     if (/이상\s*입니다/.test(text)) { backlightTime = null; messageTime = null; }
     return row;
   });
@@ -1789,7 +1831,7 @@ function parseAndApplyKakaoMsg() {
   if (!raw) { showKakaoResult('카톡 공지를 붙여넣어 주세요.'); return; }
   updateKakaoDraftActions();
   const now = new Date();
-  const headerDate = noticeDate(raw,now);
+  const headerDate = raw.split(/\r?\n/).map(text=>kakaoDateHeading(text,now)).find(Boolean);
   const reference = headerDate || new Date(selectedDateStr + 'T00:00:00');
   // An announcement can carry a historical date without changing the today/tomorrow screen.
   if (headerDate) {
@@ -1804,7 +1846,8 @@ function parseAndApplyKakaoMsg() {
     ['전체건욕',/전체\s*건욕/]
   ];
   const linePattern = new RegExp(P1B_LINE_SOURCE+'|'+/(?:디화\s*)(?:14|13)(?!\d)|(?:화학동\s*|화\s*)(?:14|13|12|11|10|9|8|7)(?!\d)|(?:디스미어\s*|디\s*)(?:15|14|13|12|11|10|9|8|7|6)(?!\d)|(?:전기동\s*|전\s*)(?:22|21|20|18|17|16|15|14|13|12|11|9)(?!\d)|MSF(?:\s*전기동)?|에[13]\s*[.·,]\s*[24]|에6(?!\d)|고압수세\s*1(?!\d)|(?:데버링\s*|데)(?:2|3)(?!\d)/.source,'gi');
-  for (const row of kakaoRows(raw,reference,now)) {
+  const rows=kakaoRows(raw,reference,now);
+  for (const [rowIndex,row] of rows.entries()) {
     const text = row.text;
     const matches = [...text.matchAll(linePattern)].filter(match => match.index === 0 || !/[a-zA-Z0-9가-힣]/.test(text[match.index-1]));
     for (let index = 0; index < matches.length; index++) {
@@ -1819,13 +1862,25 @@ function parseAndApplyKakaoMsg() {
         /^에/.test(token) ? token.replace(/[·,]/g,'.') : /^고압/.test(token) ? '고압수세 1' : '데버링 '+number);
       if (/^디화/.test(token)) key = /디스미어|스웰러|망간/.test(segment.slice(match[0].length)) ? '디스미어 '+number : '화'+number;
       if (['화13','화14'].includes(key) && /스웰러|망간|디스미어/.test(segment.slice(match[0].length))) key = '디스미어 '+number;
+      const chemBody=segment.slice(match[0].length);
+      const chemStatus=REQUIRED_CHEM_IDS.includes(key)?chemNoticeStatus(chemBody):null;
+      let workBody=chemBody;
+      if(chemStatus?.ongoing&&matches.length===1) for(let next=rowIndex+1;rows[next]?.workContinuation;next++) {
+        if([...rows[next].text.matchAll(linePattern)].length) break;
+        workBody+=' · '+rows[next].text;
+      }
+      const dateText=chemStatus?.main??segment;
       let date = new Date(row.date);
-      const explicit = noticeDate(segment,now);
-      const dayOnly = segment.match(/(?:^|[^\d])(\d{1,2})일/);
+      const explicit = noticeDate(dateText,now);
+      const dayOnly = dateText.match(/(?:^|[^\d])(\d{1,2})일/);
+      const relativeDay=dateText.match(/익일|내일|어제|오늘/)?.[0];
       if (explicit) date = explicit;
       else if (dayOnly) date = resolveDayInput(Number(dayOnly[1]),date) || date;
-      else if (/익일|내일/.test(segment)) date.setDate(date.getDate()+1);
-      let specialWorks=extractSpecialWorks(segment);
+      else if (relativeDay==='익일'||relativeDay==='내일') date.setDate(date.getDate()+1);
+      else if (chemStatus&&(relativeDay==='어제'||relativeDay==='오늘')) {
+        date=new Date(now);if(relativeDay==='어제') date.setDate(date.getDate()-1);
+      }
+      let specialWorks=extractSpecialWorks(match[0]+workBody);
       const onlySpecial=!specialWorkError(segment) && !/양산|액\s*수위|백\s*라이트|빽\s*라이트/.test(segment);
       if(onlySpecial && !specialWorks.length) {
         const body=normalizeSpecialWorkText(segment.slice(match[0].length)
@@ -1857,9 +1912,12 @@ function parseAndApplyKakaoMsg() {
       if(onlySpecial) continue;
       const item = chemList.find(chem => chem.id === key);
       if (item) {
-        const backlightPm = row.backlightTime && /(?:^|[^a-z])PM(?:$|[^a-z])/i.test(segment) && !/PM\s*후|완료|종료|예정|취소|미실시|양산|액\s*수위/.test(segment);
-        const productionReport = /양산\s*(?:진행\s*)?(?:하겠습니다|시작|합니다)|액\s*수위\s*(?:입니다|확인|정상)/.test(segment) &&
-          !/아직|불가|미완료|예정|대기|취소|하지\s*않|진행\s*않|못|아닙|아니|않았/.test(segment);
+        const {ongoing,completed,main}=chemStatus;
+        const time=kakaoClock(main);
+        const isRunning=!item.needsReview&&item.status==='시작';
+        const backlightPm = row.backlightTime && !(time&&ongoing) && /(?:^|[^a-z])PM(?:$|[^a-z])/i.test(main) && !/PM\s*후|완료|종료|예정|취소|미실시|양산|액\s*수위/.test(main);
+        const productionReport = /양산\s*(?:진행\s*)?(?:하겠습니다|시작|합니다)|액\s*수위\s*(?:입니다|확인|정상)/.test(main) &&
+          !/아직|불가|미완료|예정|대기|취소|하지\s*않|진행\s*않|못|아닙|아니|않았/.test(main);
         if (backlightPm || productionReport) {
           if (productionReport && (item.status !== '시작' || !validDateTime(item.backlightPmAt))) continue;
           const clock = backlightPm ? row.backlightTime : row.messageTime || kakaoClock(segment);
@@ -1870,7 +1928,10 @@ function parseAndApplyKakaoMsg() {
           if (backlightPm) {
             // Repeated PM rows must not restart a running timer or replay a completed cycle.
             if (!item.needsReview && item.status === '완료' && eventDate <= new Date(item.lastDone)) continue;
-            if (item.status !== '시작') { item.status = '시작'; item.lastDone = eventDate.toISOString(); }
+            if (!isRunning) {
+              if(!item.needsReview&&item.status==='완료') item.previousCompletion=item.lastDone;
+              item.status = '시작'; item.lastDone = eventDate.toISOString();
+            }
             if (validDateTime(item.backlightPmAt)) continue;
             item.backlightPmAt = eventDate.toISOString();
           } else {
@@ -1882,25 +1943,28 @@ function parseAndApplyKakaoMsg() {
           updatedChemCount++; continue;
         }
         // Backlight measurements such as D10 are not a planned PM or completion.
-        if (row.backlightTime) continue;
-        if (/양산|액\s*수위/.test(segment)) continue;
-        const work = extractChemWork(segment);
-        const time = kakaoClock(segment);
-        const ongoing = /진행\s*중|PM\s*중|진행|시작/i.test(segment) && !/완료|종료|예정|대기/.test(segment);
-        const completed = /완료|종료/.test(segment) && !/미완료|예정|대기|(?:완료|종료)\s*후/.test(segment);
+        if (row.backlightTime && !(time&&ongoing)) continue;
+        if (/양산|액\s*수위/.test(main)) continue;
         let changed = false;
-        if (/미완료|미종료|취소|하지\s*않|아직|못\s*했/.test(segment)) continue;
+        if (/미완료|미종료|취소|하지\s*않|아직|못\s*했/.test(main)) continue;
+        const dated=row.dated||headerDate||explicit||dayOnly||relativeDay;
         if (time) {
-          if ((ongoing || completed) && !row.dated && !headerDate && !explicit && !dayOnly && !/익일|내일/.test(segment)) date = new Date(now);
+          if ((ongoing || completed) && !dated) date = new Date(now);
           date.setHours(time.hour,time.minute,0,0);
           if (ongoing || completed) {
-            if (!row.dated && !headerDate && !explicit && !dayOnly && !/익일|내일/.test(segment) && date > now) date.setDate(date.getDate()-1);
+            if (!dated && date > now) date.setDate(date.getDate()-1);
             if (date > now) { missingTimeCount++; continue; }
-            if (!item.needsReview && date < new Date(item.lastDone)) { staleCount++; continue; }
+            const previousStart=new Date(item.lastDone);
+            const sameCycle=ongoing&&isRunning&&formatDateOnly(date)===formatDateOnly(previousStart);
+            const afterCompletion=!validDateTime(item.previousCompletion)||date>new Date(item.previousCompletion);
+            if (!item.needsReview && date < previousStart && !(sameCycle&&afterCompletion)) { staleCount++; continue; }
             if (!item.needsReview && ongoing && item.status==='완료' && date.getTime()===new Date(item.lastDone).getTime()) { staleCount++; continue; }
             if (completed) recordInlineChemCompletion(item,date);
+            if (ongoing&&!item.needsReview&&item.status==='완료') item.previousCompletion=item.lastDone;
             item.status = ongoing ? '시작' : '완료';
-            item.needsReview=false; item.lastDone = date.toISOString(); item.backlightPmAt = null; delete item.plannedDue;
+            item.needsReview=false; item.lastDone = date.toISOString();
+            if(!sameCycle) item.backlightPmAt=null;
+            delete item.plannedDue;
           } else {
             // Planned PM is an announcement, not a fabricated completion 72 hours earlier.
             item.plannedDue = date.toISOString();
@@ -1908,8 +1972,19 @@ function parseAndApplyKakaoMsg() {
           }
           changed = true;
         }
-        if (work) { const note=work==='기본PM'?'':work; if(item.note!==note) {item.note=note;changed=true;} }
-        if(time && changed && (ongoing||completed)) item.needsReview=false;
+        if (ongoing&&(time||isRunning)) {
+          if(!time&&dated&&formatDateOnly(date)!==formatDateOnly(new Date(item.lastDone))) {staleCount++;continue;}
+          const {parts,append}=extractRunningChemWork(workBody,chemStatus);
+          if(parts.length) {
+            const old=append&&isRunning?item.note.split(/\s*·\s*/).filter(Boolean):[];
+            const note=[...new Set([...old,...parts])].join(' · ');
+            const value=note==='기본PM'?'':note;
+            if(item.note!==value) {item.note=value;changed=true;}
+          }
+        } else if(!isRunning||completed) {
+          const work=extractChemWork(segment);
+          if (work) { const note=work==='기본PM'?'':work; if(item.note!==note) {item.note=note;changed=true;} }
+        }
         if (changed) updatedChemCount++;
       } else {
         if (/^전기동 /.test(key) && /\d{1,2}(?:시|:)\s*.*?패스/.test(segment)) ignoredPassCount++;
@@ -3507,8 +3582,10 @@ function generateShareText() {
     const isRunning = (!c.needsReview && c.status === '시작');
 
     if (isRunning) {
-      const timeKr = `${t.getHours()}시`;
-      ongoing.push(`-${c.id} ${timeKr} PM 진행중`);
+      const timeKr = formatTimeKr(t.getHours(),t.getMinutes());
+      // Keep the actual start date when copying a notice for a different day.
+      const startDay=formatDateOnly(t)!==selectedDateStr?`${t.getMonth()+1}월 ${t.getDate()}일 `:'';
+      ongoing.push(`-${c.id} ${startDay}${timeKr} PM 진행중${c.note?' · '+c.note:''}`);
     } else {
       const nextDue = getChemDue(c);
       const manualChemNote = getNote(c.id);

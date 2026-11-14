@@ -236,7 +236,7 @@ test('parser preserves minute precision and work names, and reverses future ongo
   const lines=a.data('chemList');
   assert.equal(new Date(lines[0].lastDone).getDate(),30);assert.equal(new Date(lines[0].lastDone).getMinutes(),20);
   assert.equal(lines[0].note,'촉매 건욕');assert.equal(lines[1].note,'화학동 건욕');assert.equal(lines[2].note,'촉매cs');assert.equal(lines[3].note,'전체건욕');
-  assert.match(a.nodes.get('shareTextOutput').value,/-화7 13시 PM 진행중/);assert.equal(a.run('chemList[0].note'),'촉매 건욕');
+  assert.match(a.nodes.get('shareTextOutput').value,/-화7 9월 30일 13시 20분 PM 진행중 · 촉매 건욕/);assert.equal(a.run('chemList[0].note'),'촉매 건욕');
 });
 
 test('parser completed records differ from planned notices and schedules survive reload',()=>{
@@ -340,11 +340,11 @@ test('legacy chemistry note timestamp is removed while the corrected start time 
   const a=app({stored:{chem_data_master:JSON.stringify([{id:'화13',lastDone:'2026-09-30T10:00',status:'시작',note:'13시 촉매건욕'}])}});
   assert.equal(a.run("chemList.find(line=>line.id==='화13').note"),'촉매 건욕');
   const line=a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13'));
-  assert.equal(line,'-화13 10시 PM 진행중');
+  assert.equal(line,'-화13 9월 30일 10시 PM 진행중 · 촉매 건욕');
   assert.equal(JSON.parse(a.storage.get('chem_data_master'))[3].note,'촉매 건욕');
   a.parse('화13 11:20 진행중');
   const corrected=a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13'));
-  assert.equal(corrected,'-화13 11시 PM 진행중');
+  assert.equal(corrected,'-화13 9월 30일 11시 20분 PM 진행중 · 촉매 건욕');
   assert.equal(a.run("cleanChemNote('13:00 13시 촉매건욕 PM진행중')"),'촉매 건욕');
 });
 
@@ -353,10 +353,10 @@ test('restored dirty labels and time-only manual corrections cannot reintroduce 
   a.run("openChemTimeEditor('화13')");
   a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditHour').value='10';a.nodes.get('chemEditMinute').value='0';
   a.run('saveChemTimeEditor()');
-  assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 PM 진행중');
+  assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 9월 30일 10시 PM 진행중 · 촉매 건욕');
   assert.deepEqual(a.data('inlineDesmearFlags'),{});
   const b=app({stored:Object.fromEntries(a.storage)});
-  assert.equal(b.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 10시 PM 진행중');
+  assert.equal(b.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 9월 30일 10시 PM 진행중 · 촉매 건욕');
 });
 
 test('single-save time editor saves half-hour minutes, month rollover and start status without counting PM',()=>{
@@ -390,7 +390,7 @@ test('notice is rendered as plain text and retains pasted work and manual conten
   assert.equal(a.nodes.get('shareTextOutput').innerHTML,'');
   assert.match(a.nodes.get('noticePreview').innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(a.nodes.get('noticePreview').innerHTML,/<img/);
-  assert.match(a.nodes.get('shareTextOutput').value,/화13 13시 PM 진행중/);
+  assert.match(a.nodes.get('shareTextOutput').value,/화13 9월 30일 13시 PM 진행중 · 촉매 건욕/);
   assert.equal(a.nodes.get('kakaoPanel').open,true);
   assert.match(a.nodes.get('kakaoParseResult').textContent,/반영 완료/);
 });
@@ -416,6 +416,94 @@ test('paste parsing waits for native insertion and applies exactly the new notic
   assert.equal(a.nodes.get('kakaoPanel').open,true);
   assert.equal(a.nodes.get('noticeDetails').open,true);
   assert.equal(a.nodes.get('kakaoApplyButton').hidden,true);
+});
+
+test('a pasted PM correction updates the running start and briefing while earlier dates are ignored',()=>{
+  const now='2026-11-14T16:00:00+09:00';
+  const a=app({now});
+  a.parse('동도금 11월 14일 PM일정\n화13 12시 화학동 건욕 진행중');
+  const input=a.nodes.get('kakaoRawInput');
+  input.value='동도금 11월 14일 PM일정\n화13 11시 20분 촉매 건욕 PM 진행중';
+  a.run("handleKakaoInput({inputType:'insertFromPaste'})");a.timers.at(-1)();
+
+  assert.equal(input.value,'');
+  const corrected=a.data('chemList[3]');
+  assert.equal(corrected.lastDone,'2026-11-14T02:20:00.000Z');
+  assert.equal(corrected.status,'시작');
+  assert.equal(corrected.note,'촉매 건욕');
+  const output=a.nodes.get('shareTextOutput').value;
+  assert.match(output,/-화13 11시 20분 PM 진행중 · 촉매 건욕/);
+  assert.doesNotMatch(output,/-화13.*화학동 건욕/);
+  assert.match(a.nodes.get('tab1ChemStatusContainer').innerHTML,/11시 20분/);
+
+  for (const date of ['13일','15일']) {
+    a.parse(`동도금 11월 ${date} PM일정\n화13 10시 전체건욕 PM 진행중`);
+    assert.deepEqual(a.data('chemList[3]'),corrected);
+  }
+  const reloaded=app({stored:Object.fromEntries(a.storage),now});
+  assert.deepEqual(reloaded.data('chemList[3]'),corrected);
+  assert.match(reloaded.nodes.get('shareTextOutput').value,/-화13 11시 20분 PM 진행중 · 촉매 건욕/);
+});
+
+test('running PM keeps multiple work details and appends repeated additions only once',()=>{
+  const a=app({now:'2026-11-14T16:00:00+09:00'});
+  a.parse('화13 12시 촉매 건욕 · 화학동 건욕 PM 진행중');
+  a.parse('화13 12시 PM 진행중 · 추가: 세척수 순환');
+  a.parse('화13 12시 PM 진행중 + 세척수 순환');
+  a.parse('화13 11:45 PM 진행중');
+
+  const note='촉매 건욕 · 화학동 건욕 · 세척수 순환';
+  assert.equal(a.run('chemList[3].note'),note);
+  const runningLine=a.nodes.get('shareTextOutput').value.split('\n').find(line=>line.startsWith('-화13'));
+  assert.equal(runningLine,`-화13 11시 45분 PM 진행중 · ${note}`);
+  a.parse(runningLine);
+  assert.equal(a.run('chemList[3].note'),note);
+  assert.equal(a.run('chemList[3].lastDone'),'2026-11-14T02:45:00.000Z');
+});
+
+test('completed subtask details do not complete a PM marked ongoing',()=>{
+  const a=app({now:'2026-11-14T16:00:00+09:00'});
+  a.parse('화13 12시 PM 진행중 · 세척 완료');
+  assert.equal(a.run('chemList[3].status'),'시작');
+  assert.equal(a.run('chemList[3].note'),'세척 완료');
+  assert.match(a.nodes.get('shareTextOutput').value,/-화13 12시 PM 진행중 · 세척 완료/);
+});
+
+test('a corrected running PM can still complete from dated backlight production confirmation',()=>{
+  const a=app({now:'2026-11-14T16:00:00+09:00'});
+  a.parse('2026년 11월 14일\n12시 빽라이트 입니다\n화8 PM\n이상입니다');
+  const evidence=a.run('chemList[1].backlightPmAt');
+  a.parse('2026년 11월 14일\n12시 빽라이트 입니다\n화8 11:20 화학동 건욕 PM 진행중\n이상입니다');
+
+  assert.equal(a.run('chemList[1].lastDone'),'2026-11-14T02:20:00.000Z');
+  assert.equal(a.run('chemList[1].backlightPmAt'),evidence);
+  assert.equal(a.run('chemList[1].note'),'화학동 건욕');
+  a.parse('2026년 11월 14일\n[작업자] [오후 3:05] 화8 양산 시작합니다.');
+  assert.equal(a.run('chemList[1].status'),'완료');
+  assert.equal(a.run('chemList[1].lastDone'),'2026-11-14T06:05:00.000Z');
+  assert.equal(a.run('getChemDue(chemList[1]).toISOString()'),'2026-11-17T06:05:00.000Z');
+});
+
+test('marked continuation belongs to its chemical PM and durations do not reset start time',()=>{
+  const a=app({now:'2026-11-14T16:00:00+09:00'});
+  a.parse('화학동 13라인 11시 20분 촉매 건욕 PM 진행중\n추가: 12시간 순환\n+ 인써트 교체\n화8 10시 화학동 건욕 PM 진행중');
+  a.parse('화13 PM 진행중 · 추가: 12시간 순환');
+  a.parse('화13 18시 전체건욕 예정');
+  assert.equal(a.run('chemList[3].lastDone'),'2026-11-14T02:20:00.000Z');
+  assert.equal(a.run('chemList[3].note'),'촉매 건욕 · 12시간 순환');
+  assert.equal(a.run('chemList[1].note'),'화학동 건욕');
+  assert.match(a.nodes.get('shareTextOutput').value,/-화13 11시 20분 PM 진행중 · 촉매 건욕 · 12시간 순환 \(인써트 교체\)/);
+});
+
+test('copying a running PM in the next-day notice preserves its actual start date on repaste',()=>{
+  const a=app({now:'2026-11-14T16:00:00+09:00'});
+  a.parse('화13 12시 PM 진행중 · 촉매 건욕');
+  a.run("selectQuickDay('tomorrow')");
+  const share=a.nodes.get('shareTextOutput').value;
+  assert.match(share,/-화13 11월 14일 12시 PM 진행중 · 촉매 건욕/);
+  a.setNow('2026-11-15T16:00:00+09:00');
+  a.parse(share.replace('14일 12시','14일 11시 30분'));
+  assert.equal(a.run('chemList[3].lastDone'),'2026-11-14T02:30:00.000Z');
 });
 
 test('briefing month-day label preserves full dates through year rollover and date selection',()=>{
