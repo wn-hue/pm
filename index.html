@@ -589,6 +589,7 @@
   .chem-compact-warning { margin-top:4px;color:var(--danger);font-size:11px;font-weight:500; }
   .chem-quick-action { position:absolute;top:24px;right:14px;min-width:54px;min-height:44px;padding:8px 10px;border-radius:12px;background:#f4f4f7;color:var(--text-secondary);font-size:13px;font-weight:500; }
   .chem-quick-action:hover { background:#e9e9ef;color:var(--text-primary); }
+  .chem-quick-action:disabled { opacity:.6;cursor:default; }
   .chem-quick-action.chem-complete { background:var(--accent-light);color:var(--accent); }
   .chem-quick-action.chem-complete:hover { background:#dfedff;color:#0057ad; }
   .chem-expanded { padding:0 16px 14px;background:#fafafc; }
@@ -640,6 +641,22 @@
   .day-switch .btn { min-width:64px;min-height:44px;padding:6px 16px;border-radius:11px;font-size:14px; }
   .chem-jump { display:flex;gap:8px;align-items:center;padding:8px 4px 8px 12px;background:transparent;color:var(--accent);font-size:13px; }
   .chem-jump:hover { background:var(--accent-light); }
+  .chem-jump { flex-direction:column;align-items:flex-end;gap:2px;min-height:48px; }
+  #chemJumpStatus { color:var(--text-secondary);font-size:11px;font-weight:400; }
+  #chemJumpStatus.needs-attention { color:var(--danger); }
+  .chem-section-heading { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+  .chem-section-heading .btn { padding:8px 4px;background:transparent;color:var(--accent);font-size:13px; }
+  .chem-compact-details>summary,.notice-details { scroll-margin-top:16px; }
+  .chem-compact-work { font-size:12px; }
+  .pm-undo { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 16px;border-top:1px solid var(--border-light); }
+  .pm-undo span { min-width:0;color:var(--text-secondary);font-size:12px;line-height:1.5;overflow-wrap:anywhere; }
+  .pm-undo .btn { flex-shrink:0;padding:8px 0;background:transparent;color:var(--accent);font-size:13px; }
+  .pm-undo .btn:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
+  #kakaoFeedback { display:flex;align-items:center;gap:12px;padding:0 15px; }
+  #kakaoFeedback #kakaoParseResult { flex:1;min-width:0;margin:0; }
+  #kakaoFeedback #kakaoParseResult:not(:empty) { padding:4px 0 12px; }
+  #kakaoUndoBar { flex-shrink:0;margin-bottom:6px;padding:0;border:0; }
+  .notice-preview { overflow-wrap:anywhere; }
   .mobile-dock { position:fixed;z-index:1000;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:grid;gap:6px;width:calc(100% - 28px);max-width:456px;padding:8px;border:1px solid #ffffffc0;border-radius:25px;background:#fbfbfdeb;box-shadow:0 4px 28px #1c1c1e12;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px); }
   .mobile-dock .main-nav { position:static;inset:auto;align-self:auto;width:100%;max-width:none;transform:none;padding:0;gap:4px;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none; }
   .nav-btn,.nav-btn.active { min-height:44px;padding:8px;border-radius:17px;font-size:12px; }
@@ -780,14 +797,14 @@
             </div>
 
           </div>
-          <button class="btn chem-jump" onclick="openChemManagement()">화학동 <span aria-hidden="true">↓</span></button>
+          <button id="chemJumpButton" class="btn chem-jump" onclick="openChemManagement()"><span>화학동 보기</span><span id="chemJumpStatus"></span></button>
       </div>
 
       <details id="kakaoPanel" class="parser-box" open>
         <summary><span class="section-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4H6a2 2 0 0 0-2 2v14h16V6a2 2 0 0 0-2-2h-2M9 3h6v4H9zM12 11v6m-3-3 3 3 3-3"/></svg>카톡 공지 붙여넣기</span></summary>
         <div class="parser-content">
           <div class="paste-composer"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4H6a2 2 0 0 0-2 2v14h16V6a2 2 0 0 0-2-2h-2M9 3h6v4H9zM12 11v6m-3-3 3 3 3-3"/></svg><textarea id="kakaoRawInput" rows="1" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 붙여넣으세요" onpaste="queueKakaoPaste()" oninput="handleKakaoInput(event)"></textarea></div>
-          <p id="kakaoParseResult" class="helper" role="status" aria-live="polite"></p>
+          <div id="kakaoFeedback"><p id="kakaoParseResult" class="helper" role="status" aria-live="polite" tabindex="-1"></p><div id="kakaoUndoBar" class="pm-undo" hidden><button id="kakaoUndoButton" class="btn" onclick="undoRecentPMChange()" aria-label="방금 반영한 공지 되돌리기">되돌리기</button></div></div>
           <button id="kakaoApplyButton" class="btn" onclick="parseAndApplyKakaoMsg()" hidden>수정 내용 반영</button>
         </div>
       </details>
@@ -799,7 +816,7 @@
 
       <!-- 일반 화학동 7,8,9,13,14 PM 일정 현황판 -->
       <div id="chemManagement" class="card chem-panel">
-        <h2>화학동</h2>
+        <div class="chem-section-heading"><h2>화학동</h2><button class="btn" onclick="returnToNoticePreview()">공지 보기</button></div>
         <div id="tab1ChemStatusContainer"></div>
       </div>
 
@@ -1249,6 +1266,39 @@ function currentState() {
   return JSON.parse(JSON.stringify({chemList,pulseList,manualNotes,equipWorkFlags,elecDummyFlags,pulseProcessFlags,elecCompletedFlags,inlineDesmearFlags}));
 }
 let lastLocalState = currentState();
+// Only the last successful local action is reversible. A later edit retires it.
+let pendingPMUndo=null;
+function syncPMUndo() {
+  const bar=document.getElementById('kakaoUndoBar');
+  if(bar) bar.hidden=pendingPMUndo?.origin!=='kakao';
+}
+function rememberRecentPMChange(before,label,origin='kakao') {
+  const after=currentState();
+  if(JSON.stringify(before)===JSON.stringify(after)) return;
+  pendingPMUndo={before:JSON.parse(JSON.stringify(before)),after,label,origin};
+  syncPMUndo();
+}
+function restoreExactPMState(state) {
+  // Full snapshots must not inherit fields introduced by the action being undone.
+  chemList=DEFAULT_CHEM.map(item=>({...item}));pulseList=DEFAULT_PULSE.map(item=>({...item}));
+  restoreLocalState(JSON.parse(JSON.stringify(state)));
+}
+function undoRecentPMChange() {
+  const change=pendingPMUndo;if(!change) return;
+  let saved;
+  try {saved=localStorage.getItem(LOCAL_STATE_KEY);} catch(error) {showToast('저장 공간을 확인한 뒤 다시 시도해주세요.');return;}
+  if(JSON.stringify(currentState())!==JSON.stringify(change.after) || saved!==JSON.stringify(change.after)) {
+    pendingPMUndo=null;syncPMUndo();safeRenderAll();
+    showToast('기록이 변경되어 되돌리지 않았습니다. 최신 기록을 확인해주세요.');return;
+  }
+  if(!persistLocalState(change.before)) {showToast('되돌리지 못했습니다. 저장 공간을 확인해주세요.');return;}
+  restoreExactPMState(change.before);
+  pendingPMUndo=null;syncPMUndo();safeRenderAll();
+  const message=`${change.label} 전으로 되돌렸습니다.`;
+  if(change.origin==='kakao') {showKakaoResult(message);document.getElementById('kakaoParseResult')?.focus({preventScroll:true});}
+  else document.getElementById(`chemAction-${change.origin}`)?.focus({preventScroll:true});
+  showToast(message);
+}
 
 function stateEntries(field, value) {
   if (field === 'chemList') return Object.fromEntries(ensureArray(value, []).filter(item => item && REQUIRED_CHEM_IDS.includes(item.id)).map(item => [item.id,item]));
@@ -1292,6 +1342,7 @@ function persistLocalState(state=currentState()) {
     return false;
   }
   // Keep legacy recovery keys compatible; the snapshot remains authoritative if a mirror fails.
+  if(pendingPMUndo && JSON.stringify(state)!==JSON.stringify(pendingPMUndo.after)) {pendingPMUndo=null;syncPMUndo();}
   try {STATE_FIELDS.forEach((field,index)=>localStorage.setItem(MASTER_KEYS[index],JSON.stringify(state[field])));} catch(error) {console.warn('이전 형식 사본 저장 실패:',error);}
   document.getElementById('localSaveStatus').textContent='';
   document.getElementById('localSaveStatus').hidden=true;
@@ -1661,14 +1712,40 @@ function openNoticePanel() {
 }
 
 function openChemManagement() {
-  switchTab('tab1');
-  document.getElementById('chemManagement')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+  if(activePage!=='tab1') switchTab('tab1');
+  const id=chemHomeAttention().targetId;
+  const target=document.getElementById(id?`chemSummary-${id}`:'chemManagement');
+  const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  target?.scrollIntoView?.({behavior:reduceMotion?'instant':'smooth',block:'start'});
+  target?.focus?.({preventScroll:true});
+}
+function returnToNoticePreview() {
+  document.getElementById('noticeDetails').open=true;
+  const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById('noticeDetails').scrollIntoView?.({behavior:reduceMotion?'instant':'smooth',block:'start'});
+  document.querySelector('#noticeDetails>summary')?.focus({preventScroll:true});
+}
+function chemHomeAttention(now=new Date()) {
+  const states=chemList.map(line=>({id:line.id,state:chemAttention(line,now),running:!line.needsReview&&line.status==='시작',
+    buildup:line.id==='화8'&&!line.needsReview&&line.status!=='시작'&&(now-new Date(line.lastDone))/3600000>48}));
+  const attention=states.filter(item=>['late','warn'].includes(item.state)||item.buildup).length;
+  const running=states.filter(item=>item.running).length;
+  const target=states.find(item=>item.state==='late')||states.find(item=>item.state==='warn')||states.find(item=>item.buildup)||states.find(item=>item.running)||states.find(item=>item.state==='unknown');
+  return {attention,running,targetId:target?.id||null};
 }
 function openScheduleEntry() {
   if(!document.getElementById('manualContentInput').value.trim() && !document.getElementById('scheduleRawInput').value.trim() && !editingManualNote) document.getElementById('manualDateInput').value=selectedDateStr;
   openNoteComposer();document.getElementById('scheduleRawInput').focus();
 }
 const expandedChemIds=new Set();
+const chemQuickActionLocks=new Map();
+function handleChemQuickAction(id,status) {
+  if(!REQUIRED_CHEM_IDS.includes(id)||chemQuickActionLocks.has(id)) return;
+  // The replacement button must not turn a double tap into the opposite action.
+  chemQuickActionLocks.set(id,true);
+  setTimeout(()=>{chemQuickActionLocks.delete(id);renderTab1ChemStatus();},800);
+  setChemStepStatusById(id,status);
+}
 function rememberChemDetail(id,open) {
   if(!REQUIRED_CHEM_IDS.includes(id)) return;
   if(open) expandedChemIds.add(id);else expandedChemIds.delete(id);
@@ -1695,7 +1772,11 @@ function renderTab1ChemStatus() {
   if (!container) return;
   chemList = ensureChemIntegrity(chemList);
   const now=new Date();
-  const renderKey=JSON.stringify([chemList,Math.floor(now.getTime()/60000),chemList.map(line=>[
+  const overview=chemHomeAttention(now),jumpStatus=document.getElementById('chemJumpStatus');
+  jumpStatus.textContent=[overview.attention?`주의 ${overview.attention}`:'',overview.running?`진행 ${overview.running}`:''].filter(Boolean).join(' · ')||`${chemList.length}개 라인`;
+  jumpStatus.className=overview.attention?'needs-attention':'';
+  document.getElementById('chemJumpButton').setAttribute?.('aria-label',`화학동 보기, ${jumpStatus.textContent}${overview.targetId?', '+overview.targetId+'로 이동':''}`);
+  const renderKey=JSON.stringify([chemList,[...chemQuickActionLocks.keys()],pendingPMUndo?.origin,pendingPMUndo?.label,Math.floor(now.getTime()/60000),chemList.map(line=>[
     chemCompactInfo(line,now),line.id==='화8'&&!line.needsReview&&line.status!=='시작'&&(now-new Date(line.lastDone))/3600000>48
   ])]);
   if(container.chemRenderKey===renderKey) return;
@@ -1714,7 +1795,8 @@ function renderTab1ChemStatus() {
       else facts+=fact('직전 완료',formatDateTimeKr(date))+fact('차기 PM 예정',formatDateTimeKr(getChemDue(line)));
     }
     const detail=facts?`<dl class="chem-facts">${facts}</dl>`:'<p class="chem-detail-hint">카톡 공지를 붙여넣어 기록을 갱신해주세요.</p>';
-    return `<article class="chem-overview compact ${info.state==='unknown'?'chem-unknown':info.state}"><details id="chemDetail-${line.id}" class="chem-compact-details"${expandedChemIds.has(line.id)?' open':''} ontoggle="rememberChemDetail('${line.id}',this.open)"><summary id="chemSummary-${line.id}" aria-label="${line.id} 상세정보"><div class="chem-compact-head"><strong>${line.id}</strong><span class="chem-state">${info.label}</span></div>${time}${workLine}${buildup}</summary><div class="chem-expanded">${detail}<button id="chemEdit-${line.id}" class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></details><button id="chemAction-${line.id}" class="btn chem-quick-action${running?' chem-complete':''}" onclick="setChemStepStatusById('${line.id}','${running?'완료':'시작'}')" aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'완료':'시작'}</button></article>`;
+    const undo=pendingPMUndo?.origin===line.id?`<div class="pm-undo"><span>${escapeHtml(pendingPMUndo.label)}</span><button id="chemUndo-${line.id}" class="btn" onclick="undoRecentPMChange()" aria-label="${line.id} PM ${running?'시작':'완료'} 되돌리기">되돌리기</button></div>`:'';
+    return `<article class="chem-overview compact ${info.state==='unknown'?'chem-unknown':info.state}"><details id="chemDetail-${line.id}" class="chem-compact-details"${expandedChemIds.has(line.id)?' open':''} ontoggle="rememberChemDetail('${line.id}',this.open)"><summary id="chemSummary-${line.id}" aria-label="${line.id} 상세정보"><div class="chem-compact-head"><strong>${line.id}</strong><span class="chem-state">${info.label}</span></div>${time}${workLine}${buildup}</summary><div class="chem-expanded">${detail}<button id="chemEdit-${line.id}" class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></details><button id="chemAction-${line.id}" class="btn chem-quick-action${running?' chem-complete':''}" onclick="handleChemQuickAction('${line.id}','${running?'완료':'시작'}')"${chemQuickActionLocks.has(line.id)?' disabled':''} aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'완료':'시작'}</button>${undo}</article>`;
   }).join('');
   container.chemRenderKey=renderKey;container.innerHTML=html;
   if(focusedId) document.getElementById(focusedId)?.focus({preventScroll:true});
@@ -1829,6 +1911,7 @@ function parseAndApplyKakaoMsg() {
   const input = document.getElementById('kakaoRawInput');
   const raw = input.value.trim();
   if (!raw) { showKakaoResult('카톡 공지를 붙여넣어 주세요.'); return; }
+  const before=currentState();
   updateKakaoDraftActions();
   const now = new Date();
   const headerDate = raw.split(/\r?\n/).map(text=>kakaoDateHeading(text,now)).find(Boolean);
@@ -1997,8 +2080,12 @@ function parseAndApplyKakaoMsg() {
       }
     }
   }
-  savePMData(); safeRenderAll();
+  const saved=savePMData();
+  if(!saved) restoreExactPMState(before);
+  else rememberRecentPMChange(before,'카톡 공지 반영');
+  safeRenderAll();
   input.value='';input.blur();updateKakaoDraftActions();
+  if(!saved) {showKakaoResult('저장하지 못해 기존 기록을 유지했습니다. 저장 공간을 확인한 뒤 공지를 다시 붙여넣어 주세요.');return;}
   const changes=[updatedChemCount?`일정 ${updatedChemCount}건`:'',updatedPMNoteCount?`PM 작업 ${updatedPMNoteCount}건`:'',updatedNoteCount?`특이사항 ${updatedNoteCount}건`:'',ignoredPassCount?'전기동 7시패스 고정':''].filter(Boolean);
   const skipped=missingTimeCount?`날짜·시각 확인이 필요한 ${missingTimeCount}건은 제외했습니다.`:'';
   if(!changes.length) {
@@ -2006,8 +2093,20 @@ function parseAndApplyKakaoMsg() {
     return;
   }
   document.getElementById('noticeDetails').open=true;
-  showKakaoResult(`공지 반영 완료 · ${changes.join(' · ')}${skipped?' · '+skipped:''}`);
+  const names=changedPMLineNames(before,currentState());
+  const lines=names.slice(0,4).join(' · ')+(names.length>4?` 외 ${names.length-4}개 라인`:'');
+  showKakaoResult(`${lines?lines+' 반영':changes.join(' · ')}${skipped?' · '+skipped:''}`);
   savePassPreference();
+}
+
+function changedPMLineNames(before,after) {
+  const names=new Set();
+  for(const line of after.chemList) if(JSON.stringify(before.chemList.find(item=>item.id===line.id))!==JSON.stringify(line)) names.add(line.id);
+  for(const note of [...before.manualNotes,...after.manualNotes]) {
+    const signature=JSON.stringify(note);
+    if(!before.manualNotes.some(item=>JSON.stringify(item)===signature)||!after.manualNotes.some(item=>JSON.stringify(item)===signature)) names.add(note.line);
+  }
+  return [...names].map(line=>line==='MSF 전기동'?'P1B전1':line.replace(/^디스미어\s*/,'디').replace(/^전기동\s*/,'전'));
 }
 
 function safeRenderAll() {
@@ -3220,18 +3319,20 @@ function setChemStepStatusById(lineId,st) {
   if (!line) return;
   if (st === '완료') { completeChemPM(lineId); return; }
   if (st !== '시작' || (!line.needsReview && line.status === '시작')) return;
+  const before=currentState();
   delete line.plannedDue;
   if(!line.needsReview) line.previousCompletion = line.lastDone;
   line.needsReview=false; line.backlightPmAt = null;
   line.status = '시작'; line.lastDone = new Date().toISOString();
-  savePMData(); safeRenderAll();
-  showToast(`${lineId} PM 시작 시간 저장 완료`);
+  if(!savePMData()) {restoreExactPMState(before);safeRenderAll();showToast('시작을 저장하지 못했습니다. 저장 공간을 확인해주세요.');return;}
+  rememberRecentPMChange(before,`${lineId} PM 시작`,lineId);safeRenderAll();
+  showToast(`${lineId} PM 시작 · ${chemCompactTime(new Date())}`);
 }
 
 function completeChemPM(lineId) {
-  if (!confirm(`${lineId} PM을 완료 처리하시겠습니까?\n현재 시각 기준으로 차기 72시간 주기가 계산됩니다.`)) return;
   const line = chemList.find(c => c.id === lineId);
   if (!line || (!line.needsReview && line.status === '완료')) return;
+  const before=currentState();
 
   recordInlineChemCompletion(line,new Date());
   line.needsReview=false;
@@ -3240,7 +3341,8 @@ function completeChemPM(lineId) {
   line.status = '완료'; line.backlightPmAt = null;
   line.lastDone = new Date().toISOString();
 
-  savePMData();
+  if(!savePMData()) {restoreExactPMState(before);safeRenderAll();showToast('완료를 저장하지 못했습니다. 저장 공간을 확인해주세요.');return;}
+  rememberRecentPMChange(before,`${lineId} PM 완료`,lineId);
   renderChemList();
   renderWeeklyMatrix();
   renderActiveChemGauges(new Date());

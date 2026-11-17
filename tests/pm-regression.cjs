@@ -207,6 +207,123 @@ test('both chemical completion controls restart 72 hours at exact current time',
   a.run("completeChemPM('화7')");assert.equal(a.run('(getChemDue(chemList[0])-new Date())/3600000'),72);
 });
 
+test('a rapid second tap cannot turn a completed PM straight back into a start',()=>{
+  const a=app(),timer=a.timers.length;
+  a.run("handleChemQuickAction('화7','완료');handleChemQuickAction('화7','시작')");
+  assert.equal(a.run("chemList.find(line=>line.id==='화7').status"),'완료');
+  assert.match(a.nodes.get('tab1ChemStatusContainer').innerHTML,/id="chemAction-화7"[^>]* disabled/);
+  a.timers[timer]();
+  assert.equal(a.run("chemQuickActionLocks.has('화7')"),false);
+  a.run("handleChemQuickAction('화7','시작')");
+  assert.equal(a.run("chemList.find(line=>line.id==='화7').status"),'시작');
+});
+
+test('chemical start applies without a prompt and undo restores its exact saved schedule',()=>{
+  const a=app(),before=a.data('currentState()');let prompts=0;
+  a.context.confirm=()=>{prompts++;return false;};
+  a.run("setChemStepStatusById('화8','시작')");
+  assert.equal(a.run("chemList.find(line=>line.id==='화8').status"),'시작');
+  assert.ok(a.run('pendingPMUndo'));
+  a.run('undoRecentPMChange()');
+  assert.deepEqual(a.data('currentState()'),before);
+  assert.equal(a.run('pendingPMUndo'),null);
+  assert.equal(prompts,0);
+  const reloaded=app({stored:Object.fromEntries(a.storage)});
+  assert.deepEqual(reloaded.data('currentState()'),before);
+});
+
+test('completion undo restores the running clock and inline cycle before one real recompletion',()=>{
+  const a=app({now:'2026-10-02T12:00:00+09:00'});
+  a.parse('2026년 10월 1일 PM일정\n디13 기본PM');
+  a.run("setChemStepStatusById('화13','시작')");
+  const running=a.data('currentState()');let prompts=0;
+  a.context.confirm=()=>{prompts++;return false;};
+  a.setNow('2026-10-02T12:30:00+09:00');a.run("completeChemPM('화13')");
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+  assert.equal(a.run("chemList.find(line=>line.id==='화13').status"),'완료');
+  a.run('undoRecentPMChange()');
+  assert.deepEqual(a.data('currentState()'),running);
+  assert.equal(a.run("getInlineCycle('화13').count"),0);
+  a.setNow('2026-10-02T13:00:00+09:00');a.run("completeChemPM('화13');completeChemPM('화13')");
+  assert.equal(a.run("getInlineCycle('화13').count"),1);
+  assert.equal(a.run("(getChemDue(chemList.find(line=>line.id==='화13'))-new Date())/3600000"),72);
+  assert.equal(prompts,0);
+});
+
+test('only the latest action is undoable and later saved or unsaved changes are never overwritten',()=>{
+  const a=app();a.run("setChemStepStatusById('화8','시작')");
+  const afterFirst=a.data('currentState()');
+  a.run("setChemStepStatusById('화9','시작');undoRecentPMChange()");
+  assert.deepEqual(a.data('currentState()'),afterFirst);
+  a.run("setChemStepStatusById('화9','시작');manualNotes.push({date:'2026-10-01',line:'전기동 11',text:'인써트 교체',kind:'schedule'});savePMData()");
+  const afterNote=a.data('currentState()');
+  assert.equal(a.run('pendingPMUndo'),null);
+  a.run('undoRecentPMChange()');assert.deepEqual(a.data('currentState()'),afterNote);
+
+  const b=app();b.run("setChemStepStatusById('화8','시작');chemList[0].note='후속 시간 확인'");
+  const newer=b.data('currentState()');
+  b.run('undoRecentPMChange()');assert.deepEqual(b.data('currentState()'),newer);
+});
+
+test('failed chemical action or paste storage keeps the previous in-memory and saved state',()=>{
+  for(const action of ["setChemStepStatusById('화8','시작')","completeChemPM('화7')","parseAndApplyKakaoMsg()"]){
+    const a=app({now:'2026-10-02T12:00:00+09:00'}),before=a.data('currentState()');
+    const storedBefore=Object.fromEntries(a.storage);
+    a.context.localStorage.setItem=()=>{throw Error('quota');};
+    a.nodes.get('kakaoRawInput').value='동도금 10월 2일 PM일정\n화8 9시 촉매 건욕 PM 진행중';
+    a.nodes.get('uiToast').textContent='';
+    a.run(action);
+    assert.deepEqual(a.data('currentState()'),before,action);
+    assert.deepEqual(Object.fromEntries(a.storage),storedBefore,action);
+    assert.equal(a.run('pendingPMUndo'),null,action);
+    assert.equal(a.nodes.get('localSaveStatus').hidden,false,action);
+    assert.doesNotMatch(a.nodes.get('uiToast').textContent,/저장 완료|PM 완료 ·/,action);
+    if(action==='parseAndApplyKakaoMsg()') {
+      assert.equal(a.nodes.get('kakaoRawInput').value,'');
+      assert.doesNotMatch(a.nodes.get('kakaoParseResult').textContent,/반영 완료/);
+    }
+  }
+});
+
+test('paste identifies changed lines, preserves undo across a no-op, and restores all imported records',()=>{
+  const a=app({now:'2026-10-02T12:00:00+09:00'}),before=a.data('currentState()');
+  a.parse('동도금 10월 2일 PM일정\n화8 9시 촉매 건욕 PM 진행중\n화13 10시 화학동 건욕 PM 진행중\n전11 인써트 교체');
+  assert.equal(a.nodes.get('kakaoRawInput').value,'');
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/화8/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/화13/);
+  assert.equal(a.run("manualNotes.some(note=>note.text==='인써트 교체')"),true);
+  const pending=a.data('pendingPMUndo');
+  a.parse('아무 일정 없음');
+  assert.deepEqual(a.data('pendingPMUndo'),pending);
+  a.run('undoRecentPMChange()');assert.deepEqual(a.data('currentState()'),before);
+  const reloaded=app({stored:Object.fromEntries(a.storage),now:'2026-10-02T12:00:00+09:00'});
+  assert.deepEqual(reloaded.data('currentState()'),before);
+});
+
+test('failed undo retains the current records and can be retried after storage recovers',()=>{
+  const a=app(),before=a.data('currentState()');
+  a.run("setChemStepStatusById('화8','시작')");
+  const after=a.data('currentState()'),write=a.context.localStorage.setItem;
+  a.context.localStorage.setItem=()=>{throw Error('quota');};
+  a.run('undoRecentPMChange()');
+  assert.deepEqual(a.data('currentState()'),after);
+  assert.ok(a.run('pendingPMUndo'));
+  a.context.localStorage.setItem=write;a.run('undoRecentPMChange()');
+  assert.deepEqual(a.data('currentState()'),before);
+});
+
+test('undo refuses to overwrite a newer snapshot saved by another app window',()=>{
+  const a=app();a.run("setChemStepStatusById('화8','시작')");
+  const local=a.data('currentState()'),external=clone(local);
+  external.manualNotes.push({date:'2026-10-01',line:'전기동 11',text:'인써트 교체',kind:'schedule'});
+  a.storage.set('pm_local_state_master',JSON.stringify(external));
+  a.run('undoRecentPMChange()');
+  assert.equal(a.run('pendingPMUndo'),null);
+  assert.deepEqual(a.data('currentState()'),local);
+  assert.deepEqual(JSON.parse(a.storage.get('pm_local_state_master')),external);
+  assert.match(a.nodes.get('uiToast').textContent,/기록이 변경/);
+});
+
 test('chemical 12-hour transfer and 14-hour delay boundaries retain unfinished status',()=>{
   const a=app();a.run("chemList[0]={...chemList[0],status:'시작',lastDone:'2026-09-30T18:00:00+09:00'};safeRenderAll()");
   let box=a.nodes.get('chem_status_화7').innerHTML;assert.match(box,/PM 목표 시간 경과/);assert.doesNotMatch(box,/양산 가능/);
@@ -392,7 +509,7 @@ test('notice is rendered as plain text and retains pasted work and manual conten
   assert.doesNotMatch(a.nodes.get('noticePreview').innerHTML,/<img/);
   assert.match(a.nodes.get('shareTextOutput').value,/화13 9월 30일 13시 PM 진행중 · 촉매 건욕/);
   assert.equal(a.nodes.get('kakaoPanel').open,true);
-  assert.match(a.nodes.get('kakaoParseResult').textContent,/반영 완료/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/화13 반영/);
 });
 
 test('attention boundaries stay correct and saved custom passes migrate to fixed seven oclock',()=>{
@@ -1016,12 +1133,13 @@ test('PM home restores direct chemistry controls with timing details while speci
   assert.doesNotMatch(html,/id="(?:tab3|tabBtn3|chemListContainer)"/);
   const a=app({now:'2026-10-01T08:00:00+09:00'});
   for(const id of ['chemListContainer','elecGaugesContainer','activeChemGaugesContainer','elecTodayLinesBadge','btnRestoreElec']) a.nodes.delete(id);
-  let scrolled=false;a.nodes.get('chemManagement').scrollIntoView=()=>{scrolled=true;};
+  const target=a.nodes.get(`chemSummary-${a.run('chemHomeAttention().targetId')}`);
+  let scrolled=false,focused=false;target.scrollIntoView=()=>{scrolled=true;};target.focus=()=>{focused=true;};
   a.run("switchTab('tab3');safeRenderAll();tick()");
-  assert.equal(scrolled,true);assert.equal(a.logs.length,0);
+  assert.equal(scrolled,true);assert.equal(focused,true);assert.equal(a.logs.length,0);
   const home=a.nodes.get('tab1ChemStatusContainer').innerHTML;
   assert.match(home,/화7 PM 완료/);assert.match(home,/화8 PM 시작/);assert.match(home,/화7 시간정정/);
-  assert.match(home,/setChemStepStatusById\('화7','완료'\)/);assert.match(home,/openChemTimeEditor\('화8'\)/);
+  assert.match(home,/handleChemQuickAction\('화7','완료'\)/);assert.match(home,/openChemTimeEditor\('화8'\)/);
   a.nodes.get('manualChemLine').value='화8';a.run("manualChemAction('time')");
   assert.match(a.nodes.get('chemTimeTitle').textContent,/화8/);
   assert.match(home,/12시간 액이송/);assert.match(home,/14시간 PM 목표/);assert.match(home,/직전 완료/);
@@ -1043,6 +1161,30 @@ test('compact chemistry shows the next actionable milestone at the 12 and 14 hou
   assert.equal(a.run('chemCompactInfo(compactLine).caption'),'다음 PM');
   assert.equal(a.run('chemCompactTime(chemCompactInfo(compactLine).at)'),'내일 04:30');
   assert.equal(a.run("chemCompactTime(new Date('2027-01-01T05:30:00+09:00'),new Date('2026-12-31T23:59:00+09:00'))"),'내일 05:30');
+});
+
+test('chemistry shortcut prioritizes real attention at timing boundaries without reordering or hiding lines',()=>{
+  const a=app({now:'2026-10-28T10:00:00+09:00'});
+  a.run("chemList=chemList.map(line=>({...line,status:'완료',needsReview:false,lastDone:new Date().toISOString(),plannedDue:null}));chemList[0].status='시작';chemList[0].lastDone='2026-10-28T09:00:00+09:00';chemList[1].lastDone='2026-10-26T10:00:00+09:00';chemList[2].lastDone='2026-10-25T17:00:01+09:00';chemList[4].status='시작';chemList[4].lastDone='2026-10-27T20:00:01+09:00'");
+  const order=a.data('chemList.map(line=>line.id)');
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:0,running:2,targetId:'화7'});
+  a.setNow('2026-10-28T10:00:01+09:00');
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:3,running:2,targetId:'화14'});
+  a.run("chemList[4].status='완료';chemList[4].lastDone=new Date().toISOString()");
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:2,running:1,targetId:'화9'});
+  a.run('chemList[2].lastDone=new Date().toISOString()');
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:1,running:1,targetId:'화8'});
+  a.run("chemList[1].lastDone='2026-10-25T10:00:00+09:00'");
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:1,running:1,targetId:'화8'});
+  a.run('chemList[1].lastDone=new Date().toISOString()');
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:0,running:1,targetId:'화7'});
+  a.run("chemList[0].status='완료';chemList[0].lastDone=new Date().toISOString()");
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:0,running:0,targetId:null});
+  a.run("chemList[3].needsReview=true;renderTab1ChemStatus()");
+  assert.deepEqual(a.data('chemHomeAttention()'),{attention:0,running:0,targetId:'화13'});
+  assert.deepEqual(a.data('chemList.map(line=>line.id)'),order);
+  const displayed=[...a.nodes.get('tab1ChemStatusContainer').innerHTML.matchAll(/id="chemSummary-([^"]+)"/g)].map(match=>match[1]);
+  assert.deepEqual(displayed,order);assert.equal(displayed.length,6);
 });
 
 test('compact chemistry keeps expanded details during refresh and exposes buildup warnings without opening',()=>{
@@ -1550,7 +1692,7 @@ test('all consumed pastes release the keyboard and clear while reporting once',(
   a.nodes.get('kakaoRawInput').blur=()=>{blurs++;};
   a.parse('2026년 10월 28일\n1시 백라이트 입니다\n화9 PM\n이상입니다.');
   assert.equal(blurs,1);assert.equal(a.nodes.get('kakaoRawInput').value,'');
-  assert.match(a.nodes.get('kakaoParseResult').textContent,/공지 반영 완료/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/화9 반영/);
   assert.doesNotMatch(a.nodes.get('kakaoParseResult').textContent,/0건/);
   assert.notEqual(a.nodes.get('uiToast').style.display,'block');
   a.parse('화9 양산 진행하겠습니다');
@@ -1719,7 +1861,7 @@ test('mixed notices apply valid rows, skip missing dates and clear the whole pas
   assert.equal(a.run('chemList[0].status'),'시작');assert.equal(a.run('new Date(chemList[0].lastDone).getMinutes()'),17);
   assert.deepEqual(a.data('chemList[3]'),existing);
   assert.equal(a.nodes.get('kakaoRawInput').value,'');
-  assert.match(a.nodes.get('kakaoParseResult').textContent,/반영 완료.*1건.*1건은 제외/);
+  assert.match(a.nodes.get('kakaoParseResult').textContent,/화7 반영.*1건은 제외/);
 });
 
 test('transfer preview replaces action rows, keeps its draft when folded and resets on cancellation',async()=>{
