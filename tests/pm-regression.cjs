@@ -49,7 +49,7 @@ test('PM calendar, copied timestamps and midnight stay in Korea time across devi
   assert.deepEqual(expected.errors,[]);
 });
 
-function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'2026-09-25T00:00',status:'시작',note:'0시PM'},{id:'화8',lastDone:'2026-09-23T18:30',status:'완료',note:''},{id:'화9',lastDone:'2026-09-24T19:30',status:'완료',note:''},{id:'화13',lastDone:'2026-09-22T13:00',status:'완료',note:'촉매건욕'},{id:'화14',lastDone:'2026-09-24T15:00',status:'완료',note:''}])}, now = '2026-10-01T08:00:00+09:00', storageError = false, syncFetch} = {}) {
+function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'2026-09-25T00:00',status:'시작',note:'0시PM'},{id:'화8',lastDone:'2026-09-23T18:30',status:'완료',note:''},{id:'화9',lastDone:'2026-09-24T19:30',status:'완료',note:''},{id:'화13',lastDone:'2026-09-22T13:00',status:'완료',note:'촉매건욕'},{id:'화14',lastDone:'2026-09-24T15:00',status:'완료',note:''}])}, now = '2026-10-01T08:00:00+09:00', storageError = false, syncFetch, syncLocation, syncHistory} = {}) {
   let clock = new Date(now).getTime();
   const nodes = new Map(); const logs = []; const alerts = []; const timers = [];
   class Element {
@@ -79,7 +79,7 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
   const context = vm.createContext({Date:ClockDate, console:{error:(...args)=>logs.push(args),warn(){}},
     localStorage,sessionStorage,document:{body:new Element('body'),getElementById:id=>nodes.get(id)||null,createElement:()=>new Element(),
       querySelectorAll:()=>[],querySelector:()=>null,execCommand:()=>true},
-    window:{isSecureContext:true,fetch:syncFetch,scrollY:320,scrollTo(){}},navigator:{clipboard:{writeText:async()=>{}}},
+    window:{isSecureContext:true,fetch:syncFetch,location:syncLocation,history:syncHistory,scrollY:320,scrollTo(){}},URL,navigator:{clipboard:{writeText:async()=>{}}},
     alert:text=>alerts.push(text),confirm:()=>true,setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){},setInterval(){}});
   if(syncFetch) vm.runInContext(fs.readFileSync(path.join(__dirname,'../pm-sync.js'),'utf8'),context);
   vm.runInContext(code,context);
@@ -1433,13 +1433,21 @@ test('two connected installations use the same PM records through the real app s
       return response;
     };
   }
-  const first=app({syncFetch:deviceFetch()}), second=app({stored:{},syncFetch:deviceFetch()});
-  await first.ready;await second.ready;
-  await first.run(`pmSync.login(${JSON.stringify(accessCode)})`);
+  const firstLocation=new URL(origin+'/#connect='+accessCode);
+  const firstHistory={replaceState(_state,_title,path){assert.equal(path,'/');firstLocation.hash='';}};
+  const first=app({syncFetch:deviceFetch(),syncLocation:firstLocation,syncHistory:firstHistory});
+  await first.ready;
+  assert.equal(firstLocation.hash,'','the private token is removed from the browser URL');
   assert.equal(first.run('pmSync.getStatus().phase'),'uninitialized');assert.equal(writes,0);
   await first.run('seedDeviceSync()');
   assert.equal(writes,1);
-  await second.run(`pmSync.login(${JSON.stringify(accessCode)})`);
+  await first.run('prepareDevicePairLink()');
+  const pairingLink=first.nodes.get('pmSyncPairLink').value;
+  assert.match(pairingLink,/^https:\/\/pm-fixture\.example\/#connect=p\./);
+  const second=app({stored:{},syncFetch:deviceFetch(),syncLocation:new URL(origin)});
+  await second.ready;
+  second.context.testPairingFile={size:pairingLink.length,text:async()=>pairingLink+'\n'};
+  await second.run('signInWithDeviceFile(testPairingFile)');
   assert.equal(second.run('pmSync.getStatus().phase'),'ready');
   assert.equal(writes,1,'a newly connected device must only read shared records');
   assert.deepEqual(second.data('currentState()'),first.data('currentState()'));
@@ -1450,6 +1458,19 @@ test('two connected installations use the same PM records through the real app s
   assert.equal(first.run("chemList.find(line=>line.id==='화7').status"),'완료');
   assert.deepEqual(first.data('currentState()'),second.data('currentState()'));
   assert.equal(writes,2);
+});
+
+test('connection files are limited to one token or a link on the PM origin',()=>{
+  const {readPMConnectionToken,takePMConnectionToken}=require('../pm-sync.js');
+  const origin='https://pm-fixture.example',token='FixtureConnectionCode123456789';
+  assert.equal(readPMConnectionToken(token+'\n',origin),token);
+  assert.equal(readPMConnectionToken(origin+'/#connect='+token+'\n',origin),token);
+  assert.equal(readPMConnectionToken('https://elsewhere.example/#connect='+token,origin),'');
+  assert.equal(readPMConnectionToken(origin+'/#connect='+token+'&connect='+token,origin),'');
+  const location=new URL(origin+'/?preview=1#connect=invalid token');
+  let replaced=null;
+  assert.equal(takePMConnectionToken(location,{replaceState:(_state,_title,path)=>{replaced=path;}}),'');
+  assert.equal(replaced,'/?preview=1');
 });
 
 test('local PM controls and backup work without the optional same-origin sync module',()=>{

@@ -730,8 +730,6 @@
   #transferResult:empty { display:none; }
   .sync-content { display:grid;gap:12px;padding:4px 0 12px; }
   .sync-content p { margin:0; }
-  .sync-content form { display:grid;gap:8px; }
-  .sync-content label { color:var(--text-secondary);font-size:13px; }
   .sync-content input { width:100%;min-width:0;min-height:46px;padding:10px 12px;background:var(--bg-card);font-size:16px; }
   .sync-content .btn { width:100%; }
   .sync-attention { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 12px;background:var(--warning-light);border-radius:12px;color:var(--warning);font-size:13px; }
@@ -845,11 +843,13 @@
       <details id="pmSyncTools" class="transfer-tools" hidden><summary>기기 연결</summary>
         <div class="sync-content">
           <p id="pmSyncStatus" class="helper" role="status" aria-live="polite"></p>
-          <form id="pmSyncLoginForm" onsubmit="signInDeviceSync(event)" hidden>
-            <label for="pmSyncCode">개인 연결 코드</label>
-            <input type="password" id="pmSyncCode" name="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" maxlength="128" required>
-            <button type="submit" class="btn">이 기기 연결</button>
-          </form>
+          <button type="button" id="pmSyncFileButton" class="btn btn-sub" onclick="document.getElementById('pmSyncFile').click()" hidden>연결 파일 열기</button>
+          <input type="file" id="pmSyncFile" accept=".txt,text/plain" aria-label="개인 연결 파일 선택" onchange="signInWithDeviceFile(this.files[0]);this.value=''" hidden>
+          <button type="button" id="pmSyncCreateLink" class="btn btn-sub" onclick="prepareDevicePairLink()" hidden>다른 기기 연결</button>
+          <div id="pmSyncPairPanel" class="sync-content" hidden>
+            <input type="url" id="pmSyncPairLink" aria-label="10분 동안 사용할 수 있는 기기 연결 링크" readonly>
+            <button type="button" class="btn" onclick="copyDevicePairLink()">링크 복사</button>
+          </div>
           <div id="pmSyncSeedPanel" class="sync-content" hidden>
             <p class="helper">가장 최신 기록이 있는 기기에서 한 번만 올려주세요.</p>
             <button type="button" class="btn" onclick="seedDeviceSync()">이 기기 기록으로 시작</button>
@@ -1076,6 +1076,7 @@
 
 <script src="/pm-sync.js"></script>
 <script>
+let initialDeviceConnection=typeof takePMConnectionToken==='function'?takePMConnectionToken(window.location,window.history):null;
 // PM calendars and wall-clock input always use Korean time on every device.
 // Keep the browser clock as the source of instants, including injected test clocks.
 const PM_TIME_OFFSET = 9 * 60 * 60 * 1000;
@@ -1591,7 +1592,7 @@ function openDeviceSync() {
   switchTab('tab4',{top:true});
   details.open=true;
   details.scrollIntoView?.({block:'start'});
-  details.querySelector('summary')?.focus({preventScroll:true});
+  details.querySelector?.('summary')?.focus({preventScroll:true});
 }
 
 function renderDeviceSync(status) {
@@ -1599,7 +1600,9 @@ function renderDeviceSync(status) {
   const details=document.getElementById('pmSyncTools');
   details.hidden=phase==='disabled'&&!pending&&!connected;
   const couldSignIn=['signed-out','login-error'].includes(phase)||(!connected&&!linked&&['offline','error'].includes(phase));
-  document.getElementById('pmSyncLoginForm').hidden=!couldSignIn;
+  document.getElementById('pmSyncFileButton').hidden=!couldSignIn;
+  document.getElementById('pmSyncCreateLink').hidden=!connected;
+  if(!connected) clearDevicePairLink();
   document.getElementById('pmSyncSeedPanel').hidden=phase!=='uninitialized';
   const retry=document.getElementById('pmSyncRetry');
   retry.hidden=!linked||!['ready','offline','error','uninitialized'].includes(phase);
@@ -1608,8 +1611,8 @@ function renderDeviceSync(status) {
   document.getElementById('pmSyncPreviousBackup').hidden=!readStored(PRE_SYNC_KEY);
   document.getElementById('pmSyncLogout').hidden=!connected&&!linked&&error!=='logout-pending';
   const messages={
-    'signed-out':error==='logout-pending'?'이 기기의 동기화를 중지했습니다. 인터넷 연결 후 해제를 다시 눌러주세요.':pending?'기기에 저장한 변경이 있습니다. 다시 연결하면 동기화를 이어갑니다.':'개인 연결 코드를 입력하세요.',
-    'login-error':error==='unauthorized'?'연결 코드를 다시 확인해주세요.':'연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    'signed-out':error==='logout-pending'?'이 기기의 동기화를 중지했습니다. 인터넷 연결 후 해제를 다시 눌러주세요.':pending?'기기에 저장한 변경이 있습니다. 다시 연결하면 동기화를 이어갑니다.':'개인 연결 링크를 열거나 연결 파일을 선택하세요.',
+    'login-error':error==='unauthorized'?'연결 링크가 만료되었거나 올바르지 않습니다. 새 링크를 열어주세요.':'연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
     'loading':'PM 기록을 확인하는 중입니다.',
     'uninitialized':'동기화할 기록이 아직 없습니다.',
     'ready':'이 기기는 최신 기록을 사용 중입니다.',
@@ -1647,22 +1650,85 @@ function initializeDeviceSync() {
     onState:applyDeviceSyncState,onStatus:renderDeviceSync,getLocalState:currentState
   });
   pmSync.startPolling();
-  return pmSync.initialize();
+  window.addEventListener?.('hashchange',()=>{
+    const token=takePMConnectionToken(window.location,window.history);
+    if(token!==null) void connectDevice(token);
+  });
+  const token=initialDeviceConnection;
+  initialDeviceConnection=null;
+  const startup=pmSync.initialize(token);
+  return token===null?startup:startup.then(status=>{
+    if(token) showDeviceConnectionResult(status);
+    else showDeviceLinkError('연결 링크가 올바르지 않습니다. 저장해 둔 링크를 다시 열어주세요.');
+    return status;
+  });
 }
 
-async function signInDeviceSync(event) {
-  event.preventDefault();
-  const input=document.getElementById('pmSyncCode');
-  const code=input.value.trim();
-  input.value='';
-  if(!code) return;
-  input.blur();
-  await pmSync?.login(code);
+function showDeviceLinkError(message) {
+  openDeviceSync();
+  document.getElementById('pmSyncStatus').textContent=message;
+}
+function showDeviceConnectionResult(status) {
+  if(status?.phase==='ready') showToast('기기를 연결했습니다.');
+  else openDeviceSync();
+}
+async function connectDevice(token) {
+  if(!token) {showDeviceLinkError('연결 링크가 올바르지 않습니다.');return;}
+  const status=await pmSync?.login(token);
+  showDeviceConnectionResult(status);
+  return status;
+}
+async function signInWithDeviceFile(file) {
+  if(!file) return;
+  let token='';
+  try {
+    if(file.size<=2048) token=readPMConnectionToken(await file.text(),window.location.origin);
+  } catch { /* The user can choose a readable connection file. */ }
+  if(!token) {showDeviceLinkError('연결 파일을 읽지 못했습니다. 개인 연결 파일을 선택해주세요.');return;}
+  return connectDevice(token);
+}
+
+let devicePairExpiry=0,devicePairTimer=null;
+function clearDevicePairLink() {
+  clearTimeout(devicePairTimer);
+  devicePairExpiry=0;
+  document.getElementById('pmSyncPairPanel').hidden=true;
+  document.getElementById('pmSyncPairLink').value='';
+}
+async function prepareDevicePairLink() {
+  const button=document.getElementById('pmSyncCreateLink');
+  if(button.disabled) return;
+  button.disabled=true;
+  clearDevicePairLink();
+  try {
+    const link=await pmSync?.createLink();
+    if(!link||!pmSync.getStatus().connected) {
+      showDeviceLinkError('링크를 만들지 못했습니다. 연결을 확인하고 다시 시도해주세요.');return;
+    }
+    devicePairExpiry=Date.parse(link.expiresAt);
+    document.getElementById('pmSyncPairLink').value=window.location.origin+'/#connect='+link.token;
+    document.getElementById('pmSyncPairPanel').hidden=false;
+    document.getElementById('pmSyncStatus').textContent='이 링크를 다른 기기에서 10분 안에 열어주세요.';
+    devicePairTimer=setTimeout(clearDevicePairLink,Math.max(0,devicePairExpiry-Date.now()));
+  } finally {button.disabled=false;}
+}
+async function copyDevicePairLink() {
+  const input=document.getElementById('pmSyncPairLink');
+  if(!input.value||Date.now()>=devicePairExpiry) {
+    clearDevicePairLink();showDeviceLinkError('링크가 만료되었습니다. 다른 기기 연결을 다시 눌러주세요.');return;
+  }
+  try {
+    await navigator.clipboard.writeText(input.value);
+    document.getElementById('pmSyncStatus').textContent='링크를 복사했습니다. 다른 기기에서 열어주세요.';
+  } catch {
+    input.focus();input.select();
+    document.getElementById('pmSyncStatus').textContent='선택한 링크를 복사해서 다른 기기에서 열어주세요.';
+  }
 }
 function seedDeviceSync() {return pmSync?.seed(currentState());}
 function refreshDeviceSync() {return pmSync?.retry();}
 function acceptLatestDeviceSync() {return pmSync?.acceptRemote();}
-function disconnectDeviceSync() {return pmSync?.disconnect();}
+function disconnectDeviceSync() {clearDevicePairLink();return pmSync?.disconnect();}
 function exportPreviousDeviceRecords() {
   const state=readStored(PRE_SYNC_KEY);
   if(state) return saveTransferFile(state,'pmSyncStatus');
