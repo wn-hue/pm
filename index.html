@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -728,6 +728,14 @@
   .transfer-preview .transfer-caption { padding:0; }
   #transferResult { padding:0 4px;color:var(--text-secondary); }
   #transferResult:empty { display:none; }
+  .sync-content { display:grid;gap:12px;padding:4px 0 12px; }
+  .sync-content p { margin:0; }
+  .sync-content form { display:grid;gap:8px; }
+  .sync-content label { color:var(--text-secondary);font-size:13px; }
+  .sync-content input { width:100%;min-width:0;min-height:46px;padding:10px 12px;background:var(--bg-card);font-size:16px; }
+  .sync-content .btn { width:100%; }
+  .sync-attention { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 12px;background:var(--warning-light);border-radius:12px;color:var(--warning);font-size:13px; }
+  .sync-attention .btn { flex-shrink:0;padding:6px 4px;background:transparent;color:inherit;font-size:13px; }
   .modal-overlay { align-items:flex-end;padding:0;background:#00000045; }
   .modal-content,.time-editor { width:100%;max-width:480px;max-height:90dvh;border-radius:25px 25px 0 0;padding-bottom:env(safe-area-inset-bottom); }
   .sheet-grip { display:flex;justify-content:center;padding:11px 0 4px;touch-action:none; }
@@ -770,6 +778,7 @@
     </div>
   </header>
   <p id="localSaveStatus" class="helper" role="alert" hidden></p>
+  <div id="pmSyncAlert" class="sync-attention" hidden><span id="pmSyncAlertText" role="status"></span><button type="button" class="btn" onclick="openDeviceSync()">기기 연결</button></div>
 
   <div id="mobileDock" class="mobile-dock">
     <div id="pmCopyAction" class="dock-primary"><button class="btn" id="copyBriefingButton" aria-label="카톡 공지 복사" onclick="copyShareText()"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg><span id="copyBriefingDate" class="copy-date"></span><span id="copyBriefingLabel">공지 복사</span></button></div>
@@ -833,6 +842,24 @@
       <div id="manualEmptyState" class="note-empty"><p>저장한 특이사항이 없습니다.</p></div>
       <div id="manualNoteList" class="saved-notes" hidden></div>
       <details class="schedule-tools"><summary>적용 중 일정 · 기록 정정</summary><p id="scheduleSettingsSummary" class="helper"></p><p class="helper">화학동도 카톡 공지로 갱신합니다. 직접 정정해야 할 때만 아래에서 선택하세요.</p><div class="settings-inline"><select id="manualChemLine" aria-label="정정할 화학동"><option value="화7">화7</option><option value="화8">화8</option><option value="화9">화9</option><option value="화13">화13</option><option value="화14">화14</option><option value="P1B화1">P1B화1</option></select><button class="btn btn-sub btn-sm" onclick="manualChemAction('시작')">PM 시작</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('완료')">PM 완료</button><button class="btn btn-sub btn-sm" onclick="manualChemAction('time')">시간정정</button></div></details>
+      <details id="pmSyncTools" class="transfer-tools" hidden><summary>기기 연결</summary>
+        <div class="sync-content">
+          <p id="pmSyncStatus" class="helper" role="status" aria-live="polite"></p>
+          <form id="pmSyncLoginForm" onsubmit="signInDeviceSync(event)" hidden>
+            <label for="pmSyncCode">개인 연결 코드</label>
+            <input type="password" id="pmSyncCode" name="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" maxlength="128" required>
+            <button type="submit" class="btn">이 기기 연결</button>
+          </form>
+          <div id="pmSyncSeedPanel" class="sync-content" hidden>
+            <p class="helper">가장 최신 기록이 있는 기기에서 한 번만 올려주세요.</p>
+            <button type="button" class="btn" onclick="seedDeviceSync()">이 기기 기록으로 시작</button>
+          </div>
+          <button type="button" id="pmSyncRetry" class="btn btn-sub" onclick="refreshDeviceSync()" hidden>최신 기록 확인</button>
+          <button type="button" id="pmSyncAcceptRemote" class="btn btn-sub" onclick="acceptLatestDeviceSync()" hidden>서버 기록 불러오기</button>
+          <button type="button" id="pmSyncPreviousBackup" class="btn btn-sub" onclick="exportPreviousDeviceRecords()" hidden>이전 기기 기록 백업</button>
+          <button type="button" id="pmSyncLogout" class="btn btn-sub" onclick="disconnectDeviceSync()" hidden>이 기기 연결 해제</button>
+        </div>
+      </details>
       <details id="transferTools" class="transfer-tools" ontoggle="if(this.open) openTransferTools()"><summary>앱 데이터 옮기기</summary>
         <div class="transfer-content">
           <div id="transferActions" class="transfer-rows">
@@ -1047,7 +1074,49 @@
 </div>
 <div id="uiToast" role="status" aria-live="polite"></div>
 
+<script src="/pm-sync.js"></script>
 <script>
+// PM calendars and wall-clock input always use Korean time on every device.
+// Keep the browser clock as the source of instants, including injected test clocks.
+const PM_TIME_OFFSET = 9 * 60 * 60 * 1000;
+class PMDate extends globalThis.Date {
+  constructor(...args) {
+    if (args.length > 1) {
+      super(globalThis.Date.UTC(...args) - PM_TIME_OFFSET);
+    } else if (typeof args[0] === 'string' && /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)?$/.test(args[0])) {
+      const value = args[0].length === 10 ? args[0] + 'T00:00:00' : args[0];
+      super(value + '+09:00');
+    } else {
+      super(...args);
+    }
+  }
+
+  koreanParts() { return new globalThis.Date(this.getTime() + PM_TIME_OFFSET); }
+  getFullYear() { return this.koreanParts().getUTCFullYear(); }
+  getMonth() { return this.koreanParts().getUTCMonth(); }
+  getDate() { return this.koreanParts().getUTCDate(); }
+  getDay() { return this.koreanParts().getUTCDay(); }
+  getHours() { return this.koreanParts().getUTCHours(); }
+  getMinutes() { return this.koreanParts().getUTCMinutes(); }
+  getSeconds() { return this.koreanParts().getUTCSeconds(); }
+  getMilliseconds() { return this.koreanParts().getUTCMilliseconds(); }
+  getTimezoneOffset() { return Number.isNaN(this.getTime()) ? NaN : -540; }
+
+  setKoreanPart(method, args) {
+    const shifted = this.koreanParts();
+    shifted[method](...args);
+    return this.setTime(shifted.getTime() - PM_TIME_OFFSET);
+  }
+  setFullYear(...args) { return this.setKoreanPart('setUTCFullYear', args); }
+  setMonth(...args) { return this.setKoreanPart('setUTCMonth', args); }
+  setDate(...args) { return this.setKoreanPart('setUTCDate', args); }
+  setHours(...args) { return this.setKoreanPart('setUTCHours', args); }
+  setMinutes(...args) { return this.setKoreanPart('setUTCMinutes', args); }
+  setSeconds(...args) { return this.setKoreanPart('setUTCSeconds', args); }
+  setMilliseconds(...args) { return this.setKoreanPart('setUTCMilliseconds', args); }
+}
+const Date = PMDate;
+
 function escapeHtml(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -1266,6 +1335,8 @@ function currentState() {
   return JSON.parse(JSON.stringify({chemList,pulseList,manualNotes,equipWorkFlags,elecDummyFlags,pulseProcessFlags,elecCompletedFlags,inlineDesmearFlags}));
 }
 let lastLocalState = currentState();
+let pmSync=null;
+const PRE_SYNC_KEY='pm_before_cloud_sync_master';
 // Only the last successful local action is reversible. A later edit retires it.
 let pendingPMUndo=null;
 function syncPMUndo() {
@@ -1331,7 +1402,7 @@ function restoreLocalState(state) {
   inlineDesmearFlags=ensureObject(state.inlineDesmearFlags);
   lastLocalState=currentState();
 }
-function persistLocalState(state=currentState()) {
+function persistLocalState(state=currentState(),{sync=true}={}) {
   try {
     // One atomic storage write is sufficient to recover every field after a reload.
     localStorage.setItem(LOCAL_STATE_KEY,JSON.stringify(state));
@@ -1346,6 +1417,7 @@ function persistLocalState(state=currentState()) {
   try {STATE_FIELDS.forEach((field,index)=>localStorage.setItem(MASTER_KEYS[index],JSON.stringify(state[field])));} catch(error) {console.warn('이전 형식 사본 저장 실패:',error);}
   document.getElementById('localSaveStatus').textContent='';
   document.getElementById('localSaveStatus').hidden=true;
+  if(sync) pmSync?.tellLocalSave(state);
   return true;
 }
 
@@ -1432,13 +1504,13 @@ async function readTransferFile(file) {
     showTransferPreview(archive);result.textContent='';
   } catch(error) {if(version===transferReadVersion) result.textContent=error.message;}
 }
-async function saveTransferFile() {
+async function saveTransferFile(snapshot,resultId='transferResult') {
   if(transferBusy) return;
-  const result=document.getElementById('transferResult');
+  const result=document.getElementById(resultId);
   let ownsBusy=true;
   setTransferBusy(true);
   try {
-    const archive=await createTransferArchive();
+    const archive=await createTransferArchive(snapshot);
     const stamp=archive.createdAt.replace(/[-:]/g,'').replace(/\.\d+Z$/,'Z');
     const file=new File([JSON.stringify(archive,null,2)],`PM-backup-${stamp}.json`,{type:'application/json'});
     // A dismissed system share sheet must never leave the app's controls locked.
@@ -1511,6 +1583,89 @@ function initializeLocalData() {
   if(persistLocalState()) {
     try {localStorage.removeItem('pm_pending_changes_master');} catch(error) { /* A later startup can retry cleanup. */ }
   }
+}
+
+function openDeviceSync() {
+  const details=document.getElementById('pmSyncTools');
+  if(details.hidden) return;
+  switchTab('tab4',{top:true});
+  details.open=true;
+  details.scrollIntoView?.({block:'start'});
+  details.querySelector('summary')?.focus({preventScroll:true});
+}
+
+function renderDeviceSync(status) {
+  const {phase,pending,connected,linked,error}=status;
+  const details=document.getElementById('pmSyncTools');
+  details.hidden=phase==='disabled'&&!pending&&!connected;
+  const couldSignIn=['signed-out','login-error'].includes(phase)||(!connected&&!linked&&['offline','error'].includes(phase));
+  document.getElementById('pmSyncLoginForm').hidden=!couldSignIn;
+  document.getElementById('pmSyncSeedPanel').hidden=phase!=='uninitialized';
+  const retry=document.getElementById('pmSyncRetry');
+  retry.hidden=!linked||!['ready','offline','error','uninitialized'].includes(phase);
+  retry.textContent=pending?'다시 저장':'최신 기록 확인';
+  document.getElementById('pmSyncAcceptRemote').hidden=phase!=='conflict';
+  document.getElementById('pmSyncPreviousBackup').hidden=!readStored(PRE_SYNC_KEY);
+  document.getElementById('pmSyncLogout').hidden=!connected&&!linked&&error!=='logout-pending';
+  const messages={
+    'signed-out':error==='logout-pending'?'이 기기의 동기화를 중지했습니다. 인터넷 연결 후 해제를 다시 눌러주세요.':pending?'기기에 저장한 변경이 있습니다. 다시 연결하면 동기화를 이어갑니다.':'개인 연결 코드를 입력하세요.',
+    'login-error':error==='unauthorized'?'연결 코드를 다시 확인해주세요.':'연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    'loading':'PM 기록을 확인하는 중입니다.',
+    'uninitialized':'동기화할 기록이 아직 없습니다.',
+    'ready':'이 기기는 최신 기록을 사용 중입니다.',
+    'syncing':'다른 기기에도 기록을 저장하는 중입니다.',
+    'pending':'다른 기기와 동기화할 변경이 있습니다.',
+    'offline':pending?'인터넷에 연결되면 기기의 변경을 다시 저장합니다.':'인터넷에 연결되면 최신 기록을 확인합니다.',
+    'conflict':'다른 기기에서 먼저 수정했습니다. 서버 기록을 불러오면 이 기기의 변경은 별도 백업으로 보관합니다.',
+    'error':pending?'이 기기에 저장했습니다. 연결 상태를 확인하고 다시 저장하세요.':'최신 기록을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    'disabled':'기기 연결을 준비 중입니다.'
+  };
+  document.getElementById('pmSyncStatus').textContent=messages[phase]||'';
+  const alert=document.getElementById('pmSyncAlert');
+  const attention=phase==='conflict'?'다른 기기에서 기록이 변경되었습니다.':pending&&['offline','error','signed-out','disabled'].includes(phase)?'동기화하지 못한 변경이 있습니다.':'';
+  alert.hidden=!attention;
+  document.getElementById('pmSyncAlertText').textContent=attention;
+}
+
+function applyDeviceSyncState(state,{reason}={}) {
+  try {
+    assertTransferState(state);
+    const previous=currentState();
+    if(JSON.stringify(state)===JSON.stringify(previous)) return true;
+    if(reason==='join'||reason==='conflict') localStorage.setItem(PRE_SYNC_KEY,JSON.stringify(previous));
+    if(!persistLocalState(state,{sync:false})) return false;
+    restoreExactPMState(state);
+    safeRenderAll();
+    return true;
+  } catch(error) {return false;}
+}
+
+function initializeDeviceSync() {
+  if(typeof createPMSync!=='function') return;
+  pmSync=createPMSync({
+    fetch:window.fetch.bind(window),storage:localStorage,sessionStorage,
+    onState:applyDeviceSyncState,onStatus:renderDeviceSync,getLocalState:currentState
+  });
+  pmSync.startPolling();
+  return pmSync.initialize();
+}
+
+async function signInDeviceSync(event) {
+  event.preventDefault();
+  const input=document.getElementById('pmSyncCode');
+  const code=input.value.trim();
+  input.value='';
+  if(!code) return;
+  input.blur();
+  await pmSync?.login(code);
+}
+function seedDeviceSync() {return pmSync?.seed(currentState());}
+function refreshDeviceSync() {return pmSync?.retry();}
+function acceptLatestDeviceSync() {return pmSync?.acceptRemote();}
+function disconnectDeviceSync() {return pmSync?.disconnect();}
+function exportPreviousDeviceRecords() {
+  const state=readStored(PRE_SYNC_KEY);
+  if(state) return saveTransferFile(state,'pmSyncStatus');
 }
 
 let selectedDateStr = '2026-09-25';
@@ -2143,6 +2298,7 @@ window.onload = function() {
 
   tick();
   setInterval(tick, 1000);
+  return initializeDeviceSync();
 };
 
 function tick() {

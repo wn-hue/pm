@@ -10,7 +10,46 @@ const html = fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const code = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
 const clone = value => JSON.parse(JSON.stringify(value));
 
-function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'2026-09-25T00:00',status:'시작',note:'0시PM'},{id:'화8',lastDone:'2026-09-23T18:30',status:'완료',note:''},{id:'화9',lastDone:'2026-09-24T19:30',status:'완료',note:''},{id:'화13',lastDone:'2026-09-22T13:00',status:'완료',note:'촉매건욕'},{id:'화14',lastDone:'2026-09-24T15:00',status:'완료',note:''}])}, now = '2026-10-01T08:00:00+09:00', storageError = false} = {}) {
+test('PM calendar, copied timestamps and midnight stay in Korea time across device timezones',()=>{
+  const {spawnSync}=require('node:child_process');
+  const script=String.raw`
+    const {app}=require('./automation/headless-app.cjs');
+    process.env.TZ=process.argv[1];
+    const a=app({now:'2026-12-31T15:30:00.000Z'});
+    const today=a.run('selectedDateStr');
+    a.parse('화8 0시 15분 화학동 건욕 완료');
+    const completion=a.run('chemList[1].lastDone');
+    const due=a.run('getChemDue(chemList[1]).toISOString()');
+    const rollover=a.run("resolveDayInput(1,new Date('2026-12-31T23:00')).toISOString()");
+    const minuteChange=a.run("(()=>{const d=new Date('2026-11-01T01:30');d.setMinutes(45);return d.toISOString()})()");
+    a.run("selectBriefingDate('2026-11-03')");
+    const electric=a.run("getElectroLines().map(line=>line.number)");
+    const etch=a.run("getEtchingLine(new Date('2026-09-25T00:00'))");
+    const interval=a.run("(()=>{const d=new Date('2026-11-01T00:00');const before=+d;d.setDate(d.getDate()+1);return (+d-before)/3600000})()");
+    a.setNow('2027-01-01T15:00:00.000Z');
+    a.run("selectQuickDay('today')");
+    console.log(JSON.stringify({today,completion,due,rollover,minuteChange,electric,etch,interval,nextDay:a.run('selectedDateStr'),errors:a.logs}));
+  `;
+  let expected;
+  for(const timezone of ['Asia/Seoul','UTC','America/Los_Angeles']) {
+    const child=spawnSync(process.execPath,['-e',script,timezone],{cwd:path.join(__dirname,'..'),encoding:'utf8'});
+    assert.equal(child.status,0,child.stderr);
+    const result=JSON.parse(child.stdout);
+    if(expected) assert.deepEqual(result,expected,timezone);else expected=result;
+  }
+  assert.equal(expected.today,'2027-01-01');
+  assert.equal(expected.completion,'2026-12-31T15:15:00.000Z');
+  assert.equal(expected.due,'2027-01-03T15:15:00.000Z');
+  assert.equal(expected.rollover,'2026-12-31T15:00:00.000Z');
+  assert.equal(expected.minuteChange,'2026-10-31T16:45:00.000Z');
+  assert.equal(expected.etch,'에3.4');
+  assert.equal(expected.interval,24);
+  assert.deepEqual(expected.electric,[18,22,1]);
+  assert.equal(expected.nextDay,'2027-01-02');
+  assert.deepEqual(expected.errors,[]);
+});
+
+function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'2026-09-25T00:00',status:'시작',note:'0시PM'},{id:'화8',lastDone:'2026-09-23T18:30',status:'완료',note:''},{id:'화9',lastDone:'2026-09-24T19:30',status:'완료',note:''},{id:'화13',lastDone:'2026-09-22T13:00',status:'완료',note:'촉매건욕'},{id:'화14',lastDone:'2026-09-24T15:00',status:'완료',note:''}])}, now = '2026-10-01T08:00:00+09:00', storageError = false, syncFetch} = {}) {
   let clock = new Date(now).getTime();
   const nodes = new Map(); const logs = []; const alerts = []; const timers = [];
   class Element {
@@ -40,12 +79,13 @@ function app({stored = {chem_data_master:JSON.stringify([{id:'화7',lastDone:'20
   const context = vm.createContext({Date:ClockDate, console:{error:(...args)=>logs.push(args),warn(){}},
     localStorage,sessionStorage,document:{body:new Element('body'),getElementById:id=>nodes.get(id)||null,createElement:()=>new Element(),
       querySelectorAll:()=>[],querySelector:()=>null,execCommand:()=>true},
-    window:{isSecureContext:true,scrollY:320,scrollTo(){}},navigator:{clipboard:{writeText:async()=>{}}},
+    window:{isSecureContext:true,fetch:syncFetch,scrollY:320,scrollTo(){}},navigator:{clipboard:{writeText:async()=>{}}},
     alert:text=>alerts.push(text),confirm:()=>true,setTimeout:callback=>{timers.push(callback);return timers.length;},clearTimeout(){},setInterval(){}});
+  if(syncFetch) vm.runInContext(fs.readFileSync(path.join(__dirname,'../pm-sync.js'),'utf8'),context);
   vm.runInContext(code,context);
   const run = text => vm.runInContext(text,context);
-  run('window.onload()');
-  return {run,context,nodes,storage,logs,alerts,timers,setNow:value=>{clock=new Date(value).getTime();},
+  const ready=run('window.onload()');
+  return {ready,run,context,nodes,storage,logs,alerts,timers,setNow:value=>{clock=new Date(value).getTime();},
     data:expression=>clone(run(expression)),parse:text=>{nodes.get('kakaoRawInput').value=text;run('parseAndApplyKakaoMsg()');}};
 }
 
@@ -1365,9 +1405,56 @@ test('custom construction notices do not become chemical PM and mixed notices ke
   assert.equal(a.run("manualNotes.some(n=>n.kind==='schedule'&&n.text==='인써트 교체')"),true);
 });
 
-test('personal app keeps explicit file transfer local without server SDK, login, connection or upload',()=>{
-  assert.doesNotMatch(html,/firebase|connectPMServer|syncDataToFirebase|importKakaoEvents|serverLogin|connection-tools|연결 · 데이터 관리|자동 연동 관리|동기화 저장|\bfetch\s*\(|WebSocket|XMLHttpRequest/i);
-  assert.match(html,/Content-Security-Policy" content="connect-src 'none'"/);
+test('two connected installations use the same PM records through the real app save and refresh entry points',async()=>{
+  const {makeHandler}=await import('../api/pm-sync.mjs');
+  const {createHash}=require('node:crypto');
+  const {BlobPreconditionFailedError}=await import('@vercel/blob');
+  const origin='https://pm-fixture.example';
+  const accessCode='FixtureConnectionCode123456789';
+  const codeHash=createHash('sha256').update(accessCode).digest('hex');
+  let state=null,revision=null,writes=0;
+  const handler=makeHandler({env:{PM_SYNC_ORIGIN:origin,PM_SYNC_CODE_SHA256:codeHash,
+    PM_SYNC_SESSION_SECRET:'test-secret-for-independent-installations',BLOB_READ_WRITE_TOKEN:'fixture'},blob:{
+    get:async()=>state?{statusCode:200,blob:{etag:revision},stream:new Response(JSON.stringify(state)).body}:null,
+    put:async(_path,body,options)=>{
+      if(revision!==null&&options.ifMatch!==revision) throw new BlobPreconditionFailedError();
+      state=JSON.parse(body);revision=`"fixture-${++writes}"`;return {etag:revision};
+    },
+    head:async()=>({etag:revision})
+  }});
+  function deviceFetch(){
+    let cookie='';
+    return async (path,options)=>{
+      const headers=new Headers(options.headers);
+      headers.set('origin',origin);
+      if(cookie) headers.set('cookie',cookie);
+      const response=await handler(new Request(origin+path,{...options,headers}));
+      if(response.headers.has('set-cookie')) cookie=response.headers.get('set-cookie').split(';')[0];
+      return response;
+    };
+  }
+  const first=app({syncFetch:deviceFetch()}), second=app({stored:{},syncFetch:deviceFetch()});
+  await first.ready;await second.ready;
+  await first.run(`pmSync.login(${JSON.stringify(accessCode)})`);
+  assert.equal(first.run('pmSync.getStatus().phase'),'uninitialized');assert.equal(writes,0);
+  await first.run('seedDeviceSync()');
+  assert.equal(writes,1);
+  await second.run(`pmSync.login(${JSON.stringify(accessCode)})`);
+  assert.equal(second.run('pmSync.getStatus().phase'),'ready');
+  assert.equal(writes,1,'a newly connected device must only read shared records');
+  assert.deepEqual(second.data('currentState()'),first.data('currentState()'));
+
+  second.run("completeChemPM('화7')");
+  await second.run('refreshDeviceSync()');
+  await first.run('refreshDeviceSync()');
+  assert.equal(first.run("chemList.find(line=>line.id==='화7').status"),'완료');
+  assert.deepEqual(first.data('currentState()'),second.data('currentState()'));
+  assert.equal(writes,2);
+});
+
+test('local PM controls and backup work without the optional same-origin sync module',()=>{
+  assert.doesNotMatch(html,/firebase|connectPMServer|syncDataToFirebase|importKakaoEvents|WebSocket|XMLHttpRequest/i);
+  assert.match(html,/Content-Security-Policy" content="connect-src 'self'"/);
   const a=app();let calls=0;
   a.context.firebase={initializeApp:()=>{calls++;throw Error('unexpected connection');}};
   a.context.fetch=()=>{calls++;throw Error('unexpected request');};

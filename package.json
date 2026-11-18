@@ -1,0 +1,11 @@
+{
+  "name": "pm-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.cjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.9.0"
+  }
+}
