@@ -29,7 +29,7 @@ async function fixture(overrides = {}) {
   const { BlobNotFoundError, BlobPreconditionFailedError } = await import('@vercel/blob');
   let saved = null;
   let version = 0;
-  let now = 1795107600000;
+  let now = initialTime;
   const blob = {
     async get(path, options) {
       assert.equal(path, 'pm-sync/state-v1.json');
@@ -79,6 +79,8 @@ async function fixture(overrides = {}) {
   return { request, signIn, blob, setTime: value => { now = value; } };
 }
 
+const initialTime = 1795107600000;
+
 test('only an authenticated session on the production origin can read or update the snapshot', async () => {
   const a = await fixture();
   const empty = { revision: null, state: state() };
@@ -103,6 +105,43 @@ test('only an authenticated session on the production origin can read or update 
   assert.equal((await a.request('GET', { cookie })).status, 401);
   const disabled = await fixture({ env: {} });
   assert.equal((await disabled.request()).status, 503);
+});
+
+test('a connected device can grant a short-lived link to a second device', async () => {
+  const a = await fixture();
+  const create = { action: 'create-link' };
+  const login = accessCode => a.request('POST', { body: { action: 'login', accessCode } });
+  assert.equal((await a.request('POST', { body: create })).status, 401);
+
+  const first = await a.signIn();
+  assert.equal((await a.request('POST', { cookie: first, body: create, headers: { Origin: 'https://other.test' } })).status, 403);
+  const issued = await a.request('POST', { cookie: first, body: create });
+  assert.equal(issued.status, 200);
+  assert.equal(issued.headers.get('cache-control'), 'private, no-store');
+  const { token, expiresAt } = await issued.json();
+  assert.match(token, /^p\.\d{10}\.[\w-]{22}\.[\w-]{43}$/);
+  assert.equal(Date.parse(expiresAt), initialTime + 600_000);
+
+  const session = first.split('=')[1];
+  assert.equal((await login(`p.${session}`)).status, 401);
+  assert.equal((await a.request('GET', { cookie: `__Host-pm-sync=${token.slice(2)}` })).status, 401);
+  const tampered = token.replace(/^(.+\.)([A-Za-z0-9_-])/, (_, prefix, firstChar) =>
+    `${prefix}${firstChar === 'A' ? 'B' : 'A'}`);
+  assert.equal((await login(tampered)).status, 401);
+
+  const joined = await login(token);
+  assert.equal(joined.status, 200);
+  const second = joined.headers.get('set-cookie').split(';')[0];
+  assert.notEqual(first, second);
+  const snapshot = state();
+  assert.equal((await a.request('PUT', { cookie: first, body: { revision: null, state: snapshot } })).status, 200);
+  assert.deepEqual((await (await a.request('GET', { cookie: second })).json()).state, snapshot);
+
+  a.setTime(Date.parse(expiresAt));
+  const expired = await login(token);
+  assert.equal(expired.status, 401);
+  assert.equal(expired.headers.has('set-cookie'), false);
+  assert.equal((await a.request('GET', { cookie: second })).status, 200);
 });
 
 test('two devices share one state, and simultaneous saves and initialization cannot overwrite it', async () => {

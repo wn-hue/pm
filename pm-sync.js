@@ -1,7 +1,11 @@
 (function(root,factory) {
   const api=factory(root);
   if(typeof module==='object' && module.exports) module.exports=api;
-  else root.createPMSync=api.createPMSync;
+  else {
+    root.createPMSync=api.createPMSync;
+    root.readPMConnectionToken=api.readPMConnectionToken;
+    root.takePMConnectionToken=api.takePMConnectionToken;
+  }
 })(typeof globalThis!=='undefined'?globalThis:this,function(root) {
   'use strict';
 
@@ -19,6 +23,34 @@
   const same=(a,b)=>stable(a)===stable(b);
   const revisionValid=value=>value===null || typeof value==='string' || (Number.isSafeInteger(value)&&value>=0);
   const uid=()=>root.crypto?.randomUUID?.() || Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+
+  const ownerToken=/^[A-Za-z0-9_-]{24,128}$/;
+  const pairingToken=/^p\.\d{10}\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/;
+  const validToken=value=>ownerToken.test(value)||pairingToken.test(value);
+
+  function tokenFromHash(hash) {
+    const value=hash.slice('#connect='.length);
+    return hash.startsWith('#connect=')&&validToken(value)?value:'';
+  }
+
+  function readPMConnectionToken(text,origin) {
+    if(typeof text!=='string'||text.length>2048) return '';
+    const value=text.trim();
+    if(validToken(value)) return value;
+    try {
+      const url=new URL(value);
+      if(url.origin!==origin||url.username||url.password||url.search||url.pathname!=='/') return '';
+      return tokenFromHash(url.hash);
+    } catch {return '';}
+  }
+
+  function takePMConnectionToken(location,history) {
+    const hash=location?.hash;
+    if(!hash?.startsWith('#connect=')) return null;
+    try {history.replaceState(history.state,'',location.pathname+location.search);}
+    catch {return '';}
+    return tokenFromHash(hash);
+  }
 
   /* onState is synchronous: return false if the app cannot persist the incoming
      snapshot. tellLocalSave is called only AFTER the app's own successful save.
@@ -268,10 +300,11 @@
       if(!connected) return Promise.resolve(emit(phase==='disabled'?'disabled':'signed-out',error));
       emit('pending');return enqueue(flushPending);
     }
-    function initialize() {
+    function initialize(connectionToken=null) {
       const marker=read(CONNECTION_KEY),saved=read(BASE_KEY);
       linked=marker?.version===1&&marker.enabled===true;
       if(saved?.version===1&&revisionValid(saved.revision)&&object(saved.state)) base=saved;
+      if(connectionToken) return login(connectionToken);
       if(marker?.version===1&&marker.enabled===false) return Promise.resolve(emit('signed-out'));
       emit('loading');return enqueue(async()=>{
         try {return await reconcile('join');} catch(err) {return handleError(err);}
@@ -289,6 +322,17 @@
         } catch(err) {return handleError(err,true);}
         finally {accessCode='';}
       });
+    }
+    async function createLink() {
+      if(!connected) return null;
+      try {
+        const data=await request('POST',{action:'create-link'});
+        if(!pairingToken.test(data.token)||!Number.isFinite(Date.parse(data.expiresAt))) return null;
+        return data;
+      } catch(err) {
+        if(err?.status===401) handleError(err);
+        return null;
+      }
     }
     function seed(state=getLocal()) {
       const snapshot=copy(state);
@@ -371,9 +415,9 @@
       root.removeEventListener?.('storage',storageChanged);root.document?.removeEventListener?.('visibilitychange',wake);
       listening=false;
     }
-    return {initialize,login,seed,tellLocalSave,pull,retry,acceptRemote,disconnect,getStatus,startPolling,stop,
+    return {initialize,login,createLink,seed,tellLocalSave,pull,retry,acceptRemote,disconnect,getStatus,startPolling,stop,
       getPendingState:()=>copy(currentPending()?.state??null),
       getRecoverySnapshots:()=>recoveryEntries(true).filter(item=>item.key.startsWith(RECOVERY_PREFIX)).map(item=>copy(item.value))};
   }
-  return {createPMSync};
+  return {createPMSync,readPMConnectionToken,takePMConnectionToken};
 });
