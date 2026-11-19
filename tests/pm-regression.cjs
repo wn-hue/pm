@@ -185,9 +185,9 @@ test('all tabs and both full modal tables render without swallowed runtime error
   assert.equal(a.logs.length,0);
   assert.equal(a.nodes.get('chemListContainer').children.length >= 5,true);
   assert.match(a.nodes.get('elecGaugesContainer').innerHTML,/전14 산탈지\.산세\.박리/);
-  assert.match(html,/<strong>디스미어<\/strong>/);
-  assert.match(html,/>블랙홀<\/strong>/);
-  assert.match(html,/<strong>전기동<\/strong>/);
+  assert.match(html,/<th scope="row">디스미어<\/th>/);
+  assert.match(html,/<th scope="row">블랙홀/);
+  assert.match(html,/<th scope="row">전기동<\/th>/);
 });
 
 test('master values beat v45 and v18; missing lines and empty notes recover independently',()=>{
@@ -1652,6 +1652,15 @@ test('confirmed October 30 pulse is a plan in notice and matrix without fabricat
   assert.match(a.nodes.get('electro_cell_5').innerHTML,/전기동 20 액퍼내기 확정/);
   const table=a.nodes.get('pulseTableBody').children[1].innerHTML;
   assert.match(table,/10월 30일/);assert.match(table,/확정/);assert.doesNotMatch(table,/<input/);
+  const cards=a.nodes.get('pulseCardList').children;
+  assert.equal(cards.length,before.length);
+  const card=cards[1].innerHTML;
+  assert.match(card,/<h3>전기동 20라인 \(펄스\)<\/h3>/);
+  assert.match(card,/D-2/);
+  assert.match(card,/차기 확정<\/span><time datetime="2026-10-30">/);
+  assert.deepEqual([...card.matchAll(/<time datetime="([^"]+)"/g)].map(match=>match[1]),[
+    '2026-10-30','2026-06-29','2027-02-27','2027-06-27'
+  ]);
   assert.deepEqual(a.data('pulseList'),before);
 });
 
