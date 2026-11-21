@@ -432,12 +432,28 @@
   .time-editor { max-width:420px; min-width:0; }
   #chemTimeModal { overflow:hidden; overscroll-behavior:none; }
   #chemTimeModal .modal-body { overscroll-behavior:contain; }
-  .time-fields { display:grid; grid-template-columns:80px minmax(0,1fr); gap:12px; }
-  .time-fields label { min-width:0; display:grid; gap:6px; font-size:13px; font-weight:700; }
-  .clock-selects { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px; }
-  .time-fields select { min-width:0; width:100%;min-height:48px;font-size:16px; }
-  .time-fields input { min-width:0; width:100%; min-height:48px; font-size:18px; }
-  .time-editor .modal-body { display:grid; gap:16px; }
+  .time-editor .modal-body { display:grid;gap:12px; }
+  .chem-time-fields { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }
+  .chem-time-field { min-width:0;text-align:center; }
+  .chem-time-label { display:block;margin-bottom:4px;color:var(--text-secondary);font-size:13px;font-weight:600; }
+  .chem-time-wheel {
+    --wheel-row:44px;height:calc(3 * var(--wheel-row));overflow:hidden auto;
+    overscroll-behavior:contain;scroll-snap-type:y mandatory;scrollbar-width:none;
+    touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none;
+    background:linear-gradient(to bottom,var(--bg-subtle) 33.333%,var(--accent-light) 33.333% 66.667%,var(--bg-subtle) 66.667%);
+    border-radius:12px;
+  }
+  .chem-time-wheel::-webkit-scrollbar { display:none; }
+  .chem-time-wheel::before,.chem-time-wheel::after { content:'';display:block;height:var(--wheel-row); }
+  .chem-time-wheel:focus-visible { outline:2px solid var(--focus);outline-offset:2px; }
+  .chem-time-wheel [role="option"] {
+    display:grid;place-items:center;height:var(--wheel-row);scroll-snap-align:center;
+    color:var(--text-secondary);font-size:16px;font-variant-numeric:tabular-nums;cursor:pointer;
+  }
+  .chem-time-wheel [aria-selected="true"] { color:var(--text-primary);font-weight:700; }
+  #chemTimePreview { color:var(--text-primary);font-size:13px;font-weight:600; }
+  #chemTimeError { color:var(--danger);font-size:13px; }
+  #chemTimeError:empty { display:none; }
   #uiToast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; padding:12px 18px; border-radius:12px; z-index:10001; width:max-content; max-width:calc(100% - 24px); display:none; box-shadow:0 8px 30px #0f172a25; }
   .table-responsive { overflow-x:auto; }
   .table-responsive table { min-width:760px; }
@@ -590,6 +606,7 @@
   .chem-panel h2 { padding:0 4px;font-size:15px;font-weight:600;color:var(--text-secondary);letter-spacing:-.2px; }
   #tab1ChemStatusContainer { display:block;overflow:hidden;border:0;border-radius:16px;background:var(--bg-card);box-shadow:none; }
   .chem-overview { position:relative;padding:0;border:0;border-radius:0;box-shadow:none;background:var(--bg-card); }
+  .chem-overview.compact { touch-action:pan-y pinch-zoom; }
   .chem-overview+.chem-overview { border:0; }
   .chem-overview:not(:last-child)::after { content:'';position:absolute;left:16px;right:0;bottom:0;height:1px;background:var(--border-light);pointer-events:none; }
   .chem-overview.warn,.chem-overview.late { background:var(--bg-card); }
@@ -1155,9 +1172,14 @@
     <div class="modal-header"><strong id="chemTimeTitle" tabindex="-1">화학동 시간정정</strong><button class="btn btn-sub" onclick="closeModal('chemTimeModal')" aria-label="시간정정 닫기">닫기</button></div>
     <div class="modal-body">
       <p id="chemTimeHint" class="helper"></p>
-      <div class="time-fields"><label>일<input id="chemEditDay" oninput="updateChemTimePreview()" type="number" inputmode="numeric" min="1" max="31"></label><label>시각<span class="clock-selects"><select id="chemEditHour" onchange="updateChemTimePreview()" aria-label="PM 시"></select><select id="chemEditMinute" onchange="updateChemTimePreview()" aria-label="PM 분"></select></span></label></div>
+      <p id="chemTimeGesture" class="helper">일·시·분을 위아래로 밀거나 숫자를 눌러 선택하세요.</p>
+      <div class="chem-time-fields">
+        <div class="chem-time-field"><span id="chemDayLabel" class="chem-time-label">일</span><div id="chemEditDay" class="chem-time-wheel" role="listbox" aria-labelledby="chemDayLabel" aria-describedby="chemTimeGesture" tabindex="0"></div></div>
+        <div class="chem-time-field"><span id="chemHourLabel" class="chem-time-label">시</span><div id="chemEditHour" class="chem-time-wheel" role="listbox" aria-labelledby="chemHourLabel" aria-describedby="chemTimeGesture" tabindex="0"></div></div>
+        <div class="chem-time-field"><span id="chemMinuteLabel" class="chem-time-label">분</span><div id="chemEditMinute" class="chem-time-wheel" role="listbox" aria-labelledby="chemMinuteLabel" aria-describedby="chemTimeGesture" tabindex="0"></div></div>
+      </div>
       <p id="chemTimePreview" class="helper" role="status" aria-live="polite"></p>
-      <p id="chemTimeError" role="alert" style="color:var(--danger)"></p>
+      <p id="chemTimeError" role="alert"></p>
       <button class="btn" onclick="saveChemTimeEditor()">시간 저장</button>
     </div>
   </section>
@@ -1916,8 +1938,9 @@ function closeModal(id) {
       window.scrollTo(0,y);
     }
     activeModalId=null;
-    const returnFocus=id==='chemTimeModal'?editorReturnFocus:sheetReturnFocus;
-    if(returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
+    const trigger=id==='chemTimeModal'?editorReturnFocus:sheetReturnFocus;
+    const returnFocus=trigger?.isConnected?trigger:(trigger?.id?document.getElementById(trigger.id):null);
+    returnFocus?.focus({preventScroll:true});
   }
 }
 
@@ -2087,9 +2110,67 @@ function chemCompactInfo(line,now=new Date()) {
     at:running?(now<transfer?transfer:target):getChemDue(line)
   };
 }
+let chemRowSwipe=null,chemRowSwipeClick=null;
+function cancelChemRowSwipe() { chemRowSwipe=null; }
+function startChemRowSwipe(event,container) {
+  cancelChemRowSwipe();chemRowSwipeClick=null;
+  if(activeModalId||event.touches?.length!==1) return;
+  const target=event.target?.closest?event.target:event.target?.parentElement;
+  if(!target||target.closest('button,input,select,textarea,a,[contenteditable]')) return;
+  const row=target.closest('.chem-overview.compact[data-chem-id]');
+  if(!row||!container.contains?.(row)||!REQUIRED_CHEM_IDS.includes(row.dataset.chemId)) return;
+  const touch=event.touches[0];
+  chemRowSwipe={id:row.dataset.chemId,row,finger:touch.identifier,x:touch.clientX,y:touch.clientY,horizontal:false};
+}
+function moveChemRowSwipe(event) {
+  const swipe=chemRowSwipe;
+  if(!swipe) return;
+  if(activeModalId||event.touches?.length!==1||swipe.row.isConnected===false) { cancelChemRowSwipe();return; }
+  const touch=Array.from(event.touches).find(item=>item.identifier===swipe.finger);
+  if(!touch) { cancelChemRowSwipe();return; }
+  const dx=touch.clientX-swipe.x,dy=touch.clientY-swipe.y;
+  if(!swipe.horizontal) {
+    if(Math.max(Math.abs(dx),Math.abs(dy))<12) return;
+    // Commit only to a clearly leftward gesture; ordinary scrolling keeps its native behavior.
+    if(dx>=0||Math.abs(dx)<Math.abs(dy)*1.5) { cancelChemRowSwipe();return; }
+    swipe.horizontal=true;
+  }
+  chemRowSwipeClick={id:swipe.id,until:Date.now()+700};
+  if(event.cancelable) event.preventDefault();
+}
+function endChemRowSwipe(event) {
+  const swipe=chemRowSwipe;cancelChemRowSwipe();
+  if(!swipe||!swipe.horizontal) return;
+  chemRowSwipeClick={id:swipe.id,until:Date.now()+700};
+  if(event.cancelable) event.preventDefault();
+  if(activeModalId||event.touches?.length||swipe.row.isConnected===false) return;
+  const touch=Array.from(event.changedTouches||[]).find(item=>item.identifier===swipe.finger);
+  if(!touch) return;
+  const dx=touch.clientX-swipe.x,dy=touch.clientY-swipe.y;
+  if(dx>-64||Math.abs(dx)<Math.abs(dy)*1.5) return;
+  document.getElementById(`chemSummary-${swipe.id}`)?.focus?.({preventScroll:true});
+  openChemTimeEditor(swipe.id);
+}
+function suppressChemRowSwipeClick(event) {
+  if(!chemRowSwipeClick||event.detail===0) return;
+  if(Date.now()>chemRowSwipeClick.until) { chemRowSwipeClick=null;return; }
+  const target=event.target?.closest?event.target:event.target?.parentElement;
+  if(target?.closest('.chem-overview.compact[data-chem-id]')?.dataset.chemId!==chemRowSwipeClick.id) return;
+  event.preventDefault();event.stopImmediatePropagation();chemRowSwipeClick=null;
+}
+function initializeChemRowSwipe(container) {
+  if(container.chemSwipeBound) return;
+  container.chemSwipeBound=true;
+  container.addEventListener?.('touchstart',event=>startChemRowSwipe(event,container),{passive:true});
+  container.addEventListener?.('touchmove',moveChemRowSwipe,{passive:false});
+  container.addEventListener?.('touchend',endChemRowSwipe,{passive:false});
+  container.addEventListener?.('touchcancel',cancelChemRowSwipe,{passive:true});
+  container.addEventListener?.('click',suppressChemRowSwipeClick,true);
+}
 function renderTab1ChemStatus() {
   const container = document.getElementById('tab1ChemStatusContainer');
   if (!container) return;
+  initializeChemRowSwipe(container);
   chemList = ensureChemIntegrity(chemList);
   const now=new Date();
   const overview=chemHomeAttention(now),jumpStatus=document.getElementById('chemJumpStatus');
@@ -2116,7 +2197,7 @@ function renderTab1ChemStatus() {
     }
     const detail=facts?`<dl class="chem-facts">${facts}</dl>`:'<p class="chem-detail-hint">카톡 공지를 붙여넣어 기록을 갱신해주세요.</p>';
     const undo=pendingPMUndo?.origin===line.id?`<div class="pm-undo"><span>${escapeHtml(pendingPMUndo.label)}</span><button id="chemUndo-${line.id}" class="btn" onclick="undoRecentPMChange()" aria-label="${line.id} PM ${running?'시작':'완료'} 되돌리기">되돌리기</button></div>`:'';
-    return `<article class="chem-overview compact ${info.state==='unknown'?'chem-unknown':info.state}"><details id="chemDetail-${line.id}" class="chem-compact-details"${expandedChemIds.has(line.id)?' open':''} ontoggle="rememberChemDetail('${line.id}',this.open)"><summary id="chemSummary-${line.id}" aria-label="${line.id} 상세정보"><div class="chem-compact-head"><strong>${line.id}</strong><span class="chem-state">${info.label}</span></div>${time}${workLine}${buildup}</summary><div class="chem-expanded">${detail}<button id="chemEdit-${line.id}" class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></details><button id="chemAction-${line.id}" class="btn chem-quick-action${running?' chem-complete':''}" onclick="handleChemQuickAction('${line.id}','${running?'완료':'시작'}')"${chemQuickActionLocks.has(line.id)?' disabled':''} aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'완료':'시작'}</button>${undo}</article>`;
+    return `<article class="chem-overview compact ${info.state==='unknown'?'chem-unknown':info.state}" data-chem-id="${line.id}"><details id="chemDetail-${line.id}" class="chem-compact-details"${expandedChemIds.has(line.id)?' open':''} ontoggle="rememberChemDetail('${line.id}',this.open)"><summary id="chemSummary-${line.id}" aria-label="${line.id} 상세정보"><div class="chem-compact-head"><strong>${line.id}</strong><span class="chem-state">${info.label}</span></div>${time}${workLine}${buildup}</summary><div class="chem-expanded">${detail}<button id="chemEdit-${line.id}" class="btn btn-sub" onclick="openChemTimeEditor('${line.id}')" aria-label="${line.id} 시간정정">시간정정</button></div></details><button id="chemAction-${line.id}" class="btn chem-quick-action${running?' chem-complete':''}" onclick="handleChemQuickAction('${line.id}','${running?'완료':'시작'}')"${chemQuickActionLocks.has(line.id)?' disabled':''} aria-label="${line.id} PM ${running?'완료':'시작'}">${running?'완료':'시작'}</button>${undo}</article>`;
   }).join('');
   container.chemRenderKey=renderKey;container.innerHTML=html;
   if(focusedId) document.getElementById(focusedId)?.focus({preventScroll:true});
@@ -2448,6 +2529,7 @@ window.onload = function() {
   currentDateChoice = 'today';
   savePassPreference();
   initializeSheetDismissal();
+  initializeChemTimeWheels();
   initializeMobileLayout();
   document.getElementById('transferUndoButton').hidden=!readStored(PRE_TRANSFER_KEY);
 
@@ -4194,6 +4276,54 @@ function halfHourMinuteOptions(minute) {
   return placeholder+[0,30].map(value=>`<option value="${value}" ${value===minute?'selected':''}>${String(value).padStart(2,'0')}분</option>`).join('');
 }
 
+const CHEM_TIME_WHEELS = {
+  chemEditDay:{unit:'일',values:Array.from({length:31},(_,index)=>index+1)},
+  chemEditHour:{unit:'시',values:Array.from({length:24},(_,index)=>index)},
+  chemEditMinute:{unit:'분',values:[0,30]},
+};
+let chemTimeDraft={};
+
+function setChemTimeWheel(id,index,center=true) {
+  const value=CHEM_TIME_WHEELS[id].values[index];
+  if(value===undefined) return;
+  const wheel=document.getElementById(id);
+  if(center && wheel.clientHeight) wheel.scrollTop=index*wheel.clientHeight/3;
+  if(chemTimeDraft[id]===value) return;
+  wheel.querySelector?.('[aria-selected="true"]')?.setAttribute('aria-selected','false');
+  wheel.children[index]?.setAttribute('aria-selected','true');
+  wheel.setAttribute?.('aria-activedescendant',`${id}-${index}`);
+  chemTimeDraft[id]=value;
+  document.getElementById('chemTimeError').textContent='';
+  updateChemTimePreview();
+}
+
+function syncChemTimeWheel(id) {
+  const wheel=document.getElementById(id);
+  if(!wheel.clientHeight || activeModalId!=='chemTimeModal') return;
+  const last=CHEM_TIME_WHEELS[id].values.length-1;
+  const index=Math.max(0,Math.min(last,Math.round(wheel.scrollTop*3/wheel.clientHeight)));
+  setChemTimeWheel(id,index,false);
+}
+
+function initializeChemTimeWheels() {
+  for(const [id,{unit,values}] of Object.entries(CHEM_TIME_WHEELS)) {
+    const wheel=document.getElementById(id);
+    wheel.innerHTML=values.map((value,index)=>`<div id="${id}-${index}" role="option" data-index="${index}" aria-selected="false">${String(value).padStart(2,'0')}${unit}</div>`).join('');
+    wheel.onscroll=()=>syncChemTimeWheel(id);
+    wheel.onclick=event=>{
+      const option=event.target.closest('[data-index]');
+      if(option) setChemTimeWheel(id,Number(option.dataset.index));
+    };
+    wheel.onkeydown=event=>{
+      if(!['ArrowUp','ArrowDown','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      const index=values.indexOf(chemTimeDraft[id]);
+      const next={ArrowUp:index-1,ArrowDown:index+1,Home:0,End:values.length-1}[event.key];
+      setChemTimeWheel(id,next);
+    };
+  }
+}
+
 function handleTimeEditorKey(event,modalId='chemTimeModal') {
   if(event.key==='Escape') {event.preventDefault();closeModal(modalId);return;}
   if(event.key!=='Tab') return;
@@ -4215,22 +4345,20 @@ function openChemTimeEditor(id) {
   const t=line.needsReview?new Date():new Date(line.lastDone);
   document.getElementById('chemTimeTitle').textContent=`${id} ${!line.needsReview&&line.status==='시작'?'시작':'직전 완료'} 시간정정`;
   document.getElementById('chemTimeHint').textContent=!line.needsReview&&line.status==='시작'?'시작 시각을 정정합니다. 진행 시간과 브리핑에 함께 반영됩니다.':'직전 완료 시각을 정정합니다. 차기 예정은 이 시각에서 72시간 후로 계산됩니다.';
-  document.getElementById('chemEditDay').value=t.getDate();
-  document.getElementById('chemEditHour').innerHTML=Array.from({length:24},(_,hour)=>`<option value="${hour}" ${hour===t.getHours()?'selected':''}>${hour}시</option>`).join('');
-  document.getElementById('chemEditHour').value=String(t.getHours());
   const minute=t.getMinutes()===30?30:0;
-  document.getElementById('chemEditMinute').innerHTML=halfHourMinuteOptions(minute);
-  document.getElementById('chemEditMinute').value=String(minute);
   if(![0,30].includes(t.getMinutes())) document.getElementById('chemTimeHint').textContent+=` 현재 저장 시각은 ${formatTimeKr(t.getHours(),t.getMinutes())}입니다. 저장할 시각을 확인해주세요.`;
-  document.getElementById('chemTimeError').textContent='';updateChemTimePreview();
+  chemTimeDraft={};
   openModal('chemTimeModal');
+  setChemTimeWheel('chemEditDay',t.getDate()-1);
+  setChemTimeWheel('chemEditHour',t.getHours());
+  setChemTimeWheel('chemEditMinute',minute===30?1:0);
   document.getElementById('chemTimeTitle').focus({preventScroll:true});
 }
 
 function chemEditDate(line) {
-  const h=document.getElementById('chemEditHour').value,m=document.getElementById('chemEditMinute').value;
-  if(!/^(?:[0-9]|1[0-9]|2[0-3])$/.test(h)||!['0','30'].includes(m)) return null;
-  return resolveDayInput(Number(document.getElementById('chemEditDay').value),line.needsReview?new Date():new Date(line.lastDone),Number(h),Number(m));
+  const {chemEditDay:day,chemEditHour:hour,chemEditMinute:minute}=chemTimeDraft;
+  if(![0,30].includes(minute)) return null;
+  return resolveDayInput(day,line.needsReview?new Date():new Date(line.lastDone),hour,minute);
 }
 function updateChemTimePreview() {
   const line=chemList.find(item=>item.id===editingChemId),el=document.getElementById('chemTimePreview');if(!line||!el) return;
@@ -4241,16 +4369,19 @@ function saveChemTimeEditor() {
   const line=chemList.find(item=>item.id===editingChemId); if(!line) return;
   const error=document.getElementById('chemTimeError');
   if(JSON.stringify(line)!==editingChemBaseline) {error.textContent='다른 곳에서 이 라인이 변경되었습니다. 닫고 다시 열어 최신 시각을 확인해주세요.';return;}
-  const hourValue=document.getElementById('chemEditHour').value;
-  const minuteValue=document.getElementById('chemEditMinute').value;
-  if(!/^(?:[0-9]|1[0-9]|2[0-3])$/.test(hourValue) || !['0','30'].includes(minuteValue)) {error.textContent='시와 분(00분 또는 30분)을 선택해주세요.';return;}
-  const hour=Number(hourValue),minute=Number(minuteValue);
-  const date=resolveDayInput(Number(document.getElementById('chemEditDay').value),line.needsReview?new Date():new Date(line.lastDone),hour,minute);
-  if(!date) {error.textContent='유효한 일자를 입력해주세요.';return;}
+  Object.keys(CHEM_TIME_WHEELS).forEach(syncChemTimeWheel);
+  const date=chemEditDate(line);
+  if(!date) {error.textContent='유효한 일·시·분을 선택해주세요.';return;}
   if(date>new Date()) {error.textContent='실제 시작·완료 시각은 미래로 저장할 수 없습니다. 날짜와 시각을 확인해주세요.';return;}
+  const before=currentState();
   if(line.needsReview) line.status='완료';
   delete line.plannedDue; line.needsReview=false; line.lastDone=date.toISOString();
-  savePMData(); safeRenderAll(); closeModal('chemTimeModal');
+  if(!savePMData()) {
+    restoreExactPMState(before);
+    error.textContent='시간을 저장하지 못했습니다. 저장 공간을 확인한 뒤 다시 시도해주세요.';
+    return;
+  }
+  safeRenderAll(); closeModal('chemTimeModal');
   showToast(`${line.id} 시간정정 완료`);
 }
 

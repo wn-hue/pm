@@ -508,7 +508,7 @@ test('legacy chemistry note timestamp is removed while the corrected start time 
 test('restored dirty labels and time-only manual corrections cannot reintroduce duplicate clocks',()=>{
   const a=app();a.run("restoreLocalState({...currentState(),chemList:[{id:'화13',lastDone:'2026-09-30T13:00',status:'시작',note:'13시 촉매건욕'}]});safeRenderAll()");
   a.run("openChemTimeEditor('화13')");
-  a.nodes.get('chemEditDay').value='30';a.nodes.get('chemEditHour').value='10';a.nodes.get('chemEditMinute').value='0';
+  a.run("setChemTimeWheel('chemEditDay',29);setChemTimeWheel('chemEditHour',10);setChemTimeWheel('chemEditMinute',0)");
   a.run('saveChemTimeEditor()');
   assert.equal(a.nodes.get('shareTextOutput').value.split('\n').find(text=>text.startsWith('-화13')),'-화13 9월 30일 10시 PM 진행중 · 촉매 건욕');
   assert.deepEqual(a.data('inlineDesmearFlags'),{});
@@ -519,7 +519,7 @@ test('restored dirty labels and time-only manual corrections cannot reintroduce 
 test('single-save time editor saves half-hour minutes, month rollover and start status without counting PM',()=>{
   const a=app({now:'2026-12-31T23:00:00+09:00'});
   a.run("chemList[3]={id:'화13',lastDone:'2026-12-31T13:00:00+09:00',status:'시작',note:'촉매 건욕'};openChemTimeEditor('화13')");
-  a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditHour').value='0';a.nodes.get('chemEditMinute').value='30';
+  a.run("setChemTimeWheel('chemEditDay',0);setChemTimeWheel('chemEditHour',0);setChemTimeWheel('chemEditMinute',1)");
   a.setNow('2027-01-01T01:00:00+09:00');a.run('saveChemTimeEditor()');
   assert.equal(a.run("formatDateOnly(new Date(chemList[3].lastDone))"),'2027-01-01');
   assert.equal(a.run('new Date(chemList[3].lastDone).getMinutes()'),30);
@@ -531,10 +531,10 @@ test('single-save time editor saves half-hour minutes, month rollover and start 
 test('time editor refuses invalid input and concurrent remote edits instead of overwriting',()=>{
   const a=app();a.run("openChemTimeEditor('화13')");
   const previous=a.run('chemList[3].lastDone');
-  a.nodes.get('chemEditHour').value='25';a.nodes.get('chemEditMinute').value='30';a.run('saveChemTimeEditor()');
+  a.run("chemTimeDraft.chemEditHour=25;setChemTimeWheel('chemEditMinute',1);saveChemTimeEditor()");
   assert.equal(a.run('chemList[3].lastDone'),previous);
   assert.match(a.nodes.get('chemTimeError').textContent,/선택/);
-  a.nodes.get('chemEditHour').value='10';a.nodes.get('chemEditMinute').value='30';
+  a.run("setChemTimeWheel('chemEditHour',10);setChemTimeWheel('chemEditMinute',1)");
   a.run("chemList[3].note='전체건욕';saveChemTimeEditor()");
   assert.equal(a.run('chemList[3].lastDone'),previous);
   assert.match(a.nodes.get('chemTimeError').textContent,/다른 곳/);
@@ -772,7 +772,7 @@ test('13 and 14 count separately; time edits and planned notices do not count PM
   a.parse('화14 5일 07:30 화학동 건욕');
   assert.equal(a.run("getInlineCycle('화14').count"),0);
   a.run("openChemTimeEditor('화13')");
-  a.nodes.get('chemEditDay').value='2';a.nodes.get('chemEditHour').value='11';a.nodes.get('chemEditMinute').value='30';
+  a.run("setChemTimeWheel('chemEditDay',1);setChemTimeWheel('chemEditHour',11);setChemTimeWheel('chemEditMinute',1)");
   a.run('saveChemTimeEditor()');
   assert.equal(a.run("getInlineCycle('화13').count"),1);
 });
@@ -849,14 +849,14 @@ test('legacy inline metadata stays stored while local PM registrations are saved
 test('manual PM minute controls allow only 00/30 and do not round stored precision on opening',()=>{
   const a=app();a.run("chemList[0].lastDone='2026-10-01T07:17:00+09:00';openChemTimeEditor('화7')");
   const previous=a.run('chemList[0].lastDone');
-  assert.equal(a.nodes.get('chemEditMinute').value,'0');
-  assert.match(a.nodes.get('chemEditMinute').innerHTML,/value="0"/);
-  assert.match(a.nodes.get('chemEditMinute').innerHTML,/value="30"/);
-  assert.doesNotMatch(a.nodes.get('chemEditMinute').innerHTML,/value="17"/);
+  assert.equal(a.run('chemTimeDraft.chemEditMinute'),0);
+  assert.match(a.nodes.get('chemEditMinute').innerHTML,/>00분<\/div>/);
+  assert.match(a.nodes.get('chemEditMinute').innerHTML,/>30분<\/div>/);
+  assert.doesNotMatch(a.nodes.get('chemEditMinute').innerHTML,/>17분<\/div>/);
   assert.doesNotMatch(a.nodes.get('chemEditMinute').innerHTML,/분 선택/);
   assert.equal(a.run('chemList[0].lastDone'),previous);
-  a.nodes.get('chemEditMinute').value='17';a.run('saveChemTimeEditor()');assert.equal(a.run('chemList[0].lastDone'),previous);
-  a.nodes.get('chemEditMinute').value='0';a.run('saveChemTimeEditor()');
+  a.run('chemTimeDraft.chemEditMinute=17;saveChemTimeEditor()');assert.equal(a.run('chemList[0].lastDone'),previous);
+  a.run("setChemTimeWheel('chemEditMinute',0);saveChemTimeEditor()");
   assert.equal(a.run('new Date(chemList[0].lastDone).getMinutes()'),0);
 });
 
@@ -869,13 +869,51 @@ test('electric manual minute correction rejects non-half-hours and preserves abs
   assert.equal(a.run("formatDateOnly(new Date(pulseProcessFlags[timerKey('전기동 21라인')].startedAt))"),'2026-10-01');
 });
 
+test('chemistry time wheels center on the record and support scrolling, tapping and arrow keys',()=>{
+  const a=app();
+  const day=a.nodes.get('chemEditDay'),hour=a.nodes.get('chemEditHour'),minute=a.nodes.get('chemEditMinute');
+  for(const wheel of [day,hour,minute]) wheel.clientHeight=132;
+  a.run("openChemTimeEditor('화8')");
+  assert.deepEqual([day.scrollTop,hour.scrollTop,minute.scrollTop],[22*44,18*44,44]);
+  const before=a.storage.get('pm_local_state_master');
+  day.scrollTop=23*44;day.onscroll();
+  hour.onclick({target:{closest:()=>({dataset:{index:'17'}})}});
+  minute.onkeydown({key:'ArrowUp',preventDefault(){}});
+  minute.onkeydown({key:'ArrowUp',preventDefault(){}});
+  assert.match(a.nodes.get('chemTimePreview').textContent,/9월 24일 17시 · 차기 PM 9월 27일 17시/);
+  assert.equal(minute.scrollTop,0);
+  assert.equal(a.storage.get('pm_local_state_master'),before);
+  a.run("closeModal('chemTimeModal');openChemTimeEditor('화8')");
+  assert.deepEqual([day.scrollTop,hour.scrollTop,minute.scrollTop],[22*44,18*44,44]);
+  // Save reads the visible wheel position even if a final scroll event is pending.
+  hour.scrollTop=19*44;
+  a.run('saveChemTimeEditor()');
+  assert.equal(a.run('chemList[1].lastDone'),'2026-09-23T10:30:00.000Z');
+});
+
+test('chemistry time correction keeps the draft and original record when local save fails',()=>{
+  const a=app();
+  const before=a.data('chemList[1]');
+  const write=a.context.localStorage.setItem;
+  a.run("openChemTimeEditor('화8');setChemTimeWheel('chemEditHour',17)");
+  a.context.localStorage.setItem=()=>{throw Error('write unavailable');};
+  a.run('saveChemTimeEditor()');
+  assert.deepEqual(a.data('chemList[1]'),before);
+  assert.equal(a.run('chemTimeDraft.chemEditHour'),17);
+  assert.match(a.nodes.get('chemTimeError').textContent,/저장하지 못했습니다/);
+  assert.equal(a.nodes.get('chemTimeModal').style.display,'flex');
+  a.context.localStorage.setItem=write;
+  a.run('saveChemTimeEditor()');
+  assert.equal(a.run('chemList[1].lastDone'),'2026-09-23T08:30:00.000Z');
+});
+
 test('time editor focuses the title without opening a keyboard and restores background scroll',()=>{
   const a=app();const doc=a.context.document;
   const trigger={isConnected:true,focus:options=>{trigger.options=options;},blur(){}};
   doc.activeElement=trigger;
   let titleFocus=null,restoredY=null;
   a.nodes.get('chemTimeTitle').focus=options=>{titleFocus=options;};
-  a.nodes.get('chemEditDay').focus=()=>assert.fail('Opening must not focus the numeric input');
+  a.nodes.get('chemEditDay').focus=()=>assert.fail('Opening must not focus or scroll a time wheel');
   a.context.window.scrollTo=(x,y)=>{restoredY=y;};
   Object.assign(doc.body.style,{position:'',top:'',width:'',overflow:''});
   a.run("openChemTimeEditor('화13')");
@@ -926,8 +964,8 @@ test('a new browser keeps legacy lines unverified and P1B planned without invent
 test('new-device completion entry initializes the actual cycle instead of legacy dates',()=>{
   const a=app({stored:{},now:'2026-10-27T08:00:00+09:00'});
   a.run("openChemTimeEditor('화13')");
-  assert.equal(a.nodes.get('chemEditDay').value,27);
-  a.nodes.get('chemEditHour').value='7';a.nodes.get('chemEditMinute').value='30';
+  assert.equal(a.run('chemTimeDraft.chemEditDay'),27);
+  a.run("setChemTimeWheel('chemEditHour',7);setChemTimeWheel('chemEditMinute',1)");
   a.run('saveChemTimeEditor()');
   assert.equal(a.run('chemList[3].status'),'완료');
   assert.equal(a.run('chemList[3].needsReview'),false);
@@ -1576,7 +1614,7 @@ test('day-only chemistry corrections preview the full year and month and refuse 
   const a=app({now:'2026-12-31T23:00:00+09:00'});
   a.run("chemList[3]={...chemList[3],lastDone:'2026-12-31T13:00:00+09:00',status:'시작'};openChemTimeEditor('화13')");
   const before=a.data('chemList[3]');
-  a.nodes.get('chemEditDay').value='1';a.nodes.get('chemEditHour').value='0';a.nodes.get('chemEditMinute').value='30';
+  a.run("setChemTimeWheel('chemEditDay',0);setChemTimeWheel('chemEditHour',0);setChemTimeWheel('chemEditMinute',1)");
   a.run('updateChemTimePreview();saveChemTimeEditor()');
   assert.match(a.nodes.get('chemTimePreview').textContent,/2027년 1월 1일 0시 30분/);
   assert.match(a.nodes.get('chemTimeError').textContent,/미래/);assert.deepEqual(a.data('chemList[3]'),before);
@@ -2091,4 +2129,72 @@ test('legacy five-line backup restores with only the new P1B plan added and a va
   const next=JSON.parse(await archiveText(dest));assert.equal(next.state.chemList.length,6);
   const reload=transferApp({stored:Object.fromEntries(dest.storage),now:'2026-11-02T09:00:00+09:00'});
   assert.deepEqual(reload.data('chemList'),dest.data('chemList'));
+});
+
+
+function chemRowSwipeApp() {
+  const a=app({now:'2026-11-21T16:00:00+09:00'});
+  const container=a.nodes.get('tab1ChemStatusContainer');
+  const row={dataset:{chemId:'화13'},isConnected:true,style:{},parentElement:container};
+  const target={parentElement:row};
+  const button={parentElement:row};
+  const rowSelector=selector=>/data-chem-id|chem-overview|article/.test(selector);
+  row.closest=selector=>rowSelector(selector)?row:null;
+  target.closest=selector=>rowSelector(selector)?row:null;
+  button.closest=selector=>rowSelector(selector)?row:/button/.test(selector)?button:null;
+  container.contains=element=>[row,target,button].includes(element);
+  let prevented=0,stopped=0;
+  a.context.swipeContainer=container;
+  a.context.swipeRow=row;
+  a.context.swipeTarget=target;
+  a.context.swipeButton=button;
+  a.context.swipeTouch=(x,y,options={})=>{
+    const point={identifier:options.identifier??7,clientX:x,clientY:y};
+    return {target:options.target||target,touches:options.end?[]:options.multiple?[point,{identifier:8,clientX:x+10,clientY:y}]:[point],changedTouches:[point],cancelable:true,
+      preventDefault(){prevented++;},stopPropagation(){stopped++;}};
+  };
+  a.context.swipeClick={target,cancelable:true,preventDefault(){prevented++;},stopPropagation(){stopped++;},stopImmediatePropagation(){stopped++;}};
+  return {...a,gestureCounts:()=>({prevented,stopped})};
+}
+
+test('a deliberate left swipe opens chemistry time correction without changing the PM record',()=>{
+  const a=chemRowSwipeApp(),before=a.data('currentState()');
+  a.run('startChemRowSwipe(swipeTouch(240,40),swipeContainer);moveChemRowSwipe(swipeTouch(142,44));endChemRowSwipe(swipeTouch(142,44,{end:true}))');
+  assert.equal(a.run('activeModalId'),'chemTimeModal');
+  assert.equal(a.run('editingChemId'),'화13');
+  assert.deepEqual(a.data('currentState()'),before);
+  assert.ok(a.gestureCounts().prevented>0);
+  a.run('suppressChemRowSwipeClick(swipeClick)');
+  assert.ok(a.gestureCounts().stopped>0);
+});
+
+test('vertical scrolls, right swipes, taps and short drags leave chemistry correction closed',()=>{
+  for(const points of [[[240,40],[237,80],[140,81]],[[140,40],[190,41],[240,42]],[[240,40],[238,42],[238,42]],[[240,40],[205,42],[205,42]]]) {
+    const a=chemRowSwipeApp(),before=a.data('currentState()');
+    const [start,move,end]=points;
+    a.run(`startChemRowSwipe(swipeTouch(${start}),swipeContainer);moveChemRowSwipe(swipeTouch(${move}));endChemRowSwipe(swipeTouch(${end},{end:true}))`);
+    assert.equal(a.run('activeModalId'),null,JSON.stringify(points));
+    assert.deepEqual(a.data('currentState()'),before);
+  }
+  const a=chemRowSwipeApp();
+  a.run('startChemRowSwipe(swipeTouch(240,40),swipeContainer);endChemRowSwipe(swipeTouch(240,40,{end:true}));suppressChemRowSwipeClick(swipeClick)');
+  assert.deepEqual(a.gestureCounts(),{prevented:0,stopped:0});
+});
+
+test('chemistry row swipes ignore action buttons and cancel multi-touch or interrupted gestures',()=>{
+  for(const startOptions of ['{target:swipeButton}','{multiple:true}']) {
+    const a=chemRowSwipeApp();
+    a.run(`startChemRowSwipe(swipeTouch(240,40,${startOptions}),swipeContainer);moveChemRowSwipe(swipeTouch(130,40));endChemRowSwipe(swipeTouch(130,40,{end:true}))`);
+    assert.equal(a.run('activeModalId'),null);
+    assert.equal(a.gestureCounts().prevented,0);
+  }
+  for(const interruption of ['moveChemRowSwipe(swipeTouch(130,40,{multiple:true}))','cancelChemRowSwipe()','swipeRow.isConnected=false']) {
+    const a=chemRowSwipeApp();
+    a.run(`startChemRowSwipe(swipeTouch(240,40),swipeContainer);moveChemRowSwipe(swipeTouch(160,40));${interruption};endChemRowSwipe(swipeTouch(130,40,{end:true}))`);
+    assert.equal(a.run('activeModalId'),null);
+  }
+  const a=chemRowSwipeApp();
+  a.run("openModal('pulseModal');startChemRowSwipe(swipeTouch(240,40),swipeContainer);moveChemRowSwipe(swipeTouch(130,40));endChemRowSwipe(swipeTouch(130,40,{end:true}))");
+  assert.equal(a.run('activeModalId'),'pulseModal');
+  assert.equal(a.gestureCounts().prevented,0);
 });
