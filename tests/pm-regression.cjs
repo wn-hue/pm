@@ -405,6 +405,55 @@ test('parser completed records differ from planned notices and schedules survive
   const b=app({stored:Object.fromEntries(a.storage)});assert.equal(b.run('getChemDue(chemList[1]).getMinutes()'),20);
 });
 
+test('a plain timed chemical work row corrects the active cycle and copied briefing together',()=>{
+  const now='2026-11-21T22:00:00+09:00',a=app({now});
+  a.run("chemList[0]={...chemList[0],lastDone:'2026-11-21T20:30:00+09:00',status:'시작',note:'촉매cs',needsReview:false,previousCompletion:'2026-11-18T10:00:00+09:00'}");
+  a.parse('화7 19시 화학동 건욕');
+  assert.equal(a.run('chemList[0].lastDone'),'2026-11-21T10:00:00.000Z');
+  assert.equal(a.run('chemList[0].note'),'화학동 건욕');
+  assert.equal(a.run('chemList[0].status'),'시작');
+  assert.equal(a.run('getChemDue(chemList[0]).getHours()'),19);
+  assert.equal(a.run('chemList[0].plannedDue'),null);
+  assert.match(a.nodes.get('shareTextOutput').value,/-화7 19시 PM 진행중 · 화학동 건욕/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/-화7.*촉매cs/);
+  const b=app({stored:Object.fromEntries(a.storage),now});
+  assert.equal(b.run('chemList[0].lastDone'),a.run('chemList[0].lastDone'));
+  assert.match(b.nodes.get('shareTextOutput').value,/-화7 19시 PM 진행중 · 화학동 건욕/);
+});
+
+test('a plain future work row schedules a waiting line and explicit work wins over legacy PM labels',()=>{
+  const a=app({now:'2026-11-21T17:00:00+09:00'});
+  a.run("chemList[0]={...chemList[0],lastDone:'2026-11-18T18:30:00+09:00',status:'완료',note:'촉매cs',needsReview:false};manualNotes=[{date:selectedDateStr,line:'화7',text:'촉매 건욕'},{date:selectedDateStr,line:'화7',text:'인써트 교체',kind:'schedule'}]");
+  const completed=a.run('chemList[0].lastDone');
+  a.parse('화7 19시 화학동 건욕');
+  assert.equal(a.run('chemList[0].lastDone'),completed);
+  assert.equal(a.run('chemList[0].status'),'완료');
+  assert.equal(a.run('chemList[0].plannedDue'),'2026-11-21T10:00:00.000Z');
+  assert.equal(a.run('chemList[0].note'),'화학동 건욕');
+  assert.match(a.nodes.get('shareTextOutput').value,/화7 19시 화학동 건욕 \(인써트 교체\)/);
+  assert.doesNotMatch(a.nodes.get('shareTextOutput').value,/화7 19시 촉매 건욕/);
+  assert.equal(a.run('manualNotes.length'),2);
+});
+
+test('plain active work corrections keep the cycle day and guard future actual, cancelled and maintenance rows',()=>{
+  const a=app({now:'2026-11-21T08:00:00+09:00'});
+  a.run("chemList[0]={...chemList[0],lastDone:'2026-11-20T20:30:00+09:00',status:'시작',note:'촉매cs',needsReview:false,previousCompletion:'2026-11-18T10:00:00+09:00'}");
+  a.run("selectQuickDay('tomorrow')");
+  a.parse('화7 19시 화학동 건욕');
+  assert.equal(a.run('chemList[0].lastDone'),'2026-11-20T10:00:00.000Z');
+  assert.match(a.nodes.get('shareTextOutput').value,/-화7 11월 20일 19시 PM 진행중 · 화학동 건욕/);
+  const actual=a.data('chemList[0]');
+  for(const row of ['2026년 11월 19일\n화7 19시 촉매 건욕','화7 18시 촉매 건욕 취소','화7 18시 화학동 건욕 탱크 보수 예정']) {
+    a.parse(row);assert.deepEqual(a.data('chemList[0]'),actual);
+  }
+  a.parse('2026년 11월 21일\n화7 19시 화학동 건욕 PM 시작');
+  assert.deepEqual(a.data('chemList[0]'),actual);
+  a.parse('2026년 11월 21일\n화7 19시 화학동 건욕');
+  assert.equal(a.run('chemList[0].lastDone'),actual.lastDone);
+  assert.equal(a.run('chemList[0].status'),'시작');
+  assert.equal(a.run('chemList[0].plannedDue'),'2026-11-21T10:00:00.000Z');
+});
+
 test('parser isolates multiple lines, preserves shared descriptions, and deduplicates manual notes',()=>{
   const a=app();const notice='디9 스웰러 건욕, 전18 유산동필터 교체\n전15 프리딥 설비작업\n화7, 화8 07:15 전체건욕 완료';
   a.parse(notice);a.parse(notice);
@@ -891,6 +940,24 @@ test('chemistry time wheels center on the record and support scrolling, tapping 
   assert.equal(a.run('chemList[1].lastDone'),'2026-09-23T10:30:00.000Z');
 });
 
+test('saving during smooth wheel scrolling uses the last tapped number',()=>{
+  const a=app();
+  const hour=a.nodes.get('chemEditHour');
+  const destinations=[];
+  hour.clientHeight=132;
+  hour.scrollTo=options=>destinations.push(options.top);
+  a.run("openChemTimeEditor('화8')");
+  const tap=index=>hour.onclick({detail:1,target:{closest:()=>({dataset:{index:String(index)}})}});
+  tap(20);
+  hour.scrollTop=19*44;hour.onscroll();
+  tap(21);
+  hour.scrollTop=20*44;hour.onscroll();
+  assert.deepEqual(destinations,[20*44,21*44]);
+  assert.match(a.nodes.get('chemTimePreview').textContent,/9월 23일 21시 30분/);
+  a.run('saveChemTimeEditor()');
+  assert.equal(a.run('chemList[1].lastDone'),'2026-09-23T12:30:00.000Z');
+});
+
 test('chemistry time correction keeps the draft and original record when local save fails',()=>{
   const a=app();
   const before=a.data('chemList[1]');
@@ -1217,7 +1284,7 @@ test('PM home restores direct chemistry controls with timing details while speci
   assert.equal(scrolled,true);assert.equal(focused,true);assert.equal(a.logs.length,0);
   const home=a.nodes.get('tab1ChemStatusContainer').innerHTML;
   assert.match(home,/화7 PM 완료/);assert.match(home,/화8 PM 시작/);assert.match(home,/화7 시간정정/);
-  assert.match(home,/handleChemQuickAction\('화7','완료'\)/);assert.match(home,/openChemTimeEditor\('화8'\)/);
+  assert.match(home,/handleChemQuickAction\('화7','완료'\)/);assert.match(home,/openChemTimeEditor\('화8',event\)/);
   a.nodes.get('manualChemLine').value='화8';a.run("manualChemAction('time')");
   assert.match(a.nodes.get('chemTimeTitle').textContent,/화8/);
   assert.match(home,/12시간 액이송/);assert.match(home,/14시간 PM 목표/);assert.match(home,/직전 완료/);
@@ -1263,6 +1330,25 @@ test('chemistry shortcut prioritizes real attention at timing boundaries without
   assert.deepEqual(a.data('chemList.map(line=>line.id)'),order);
   const displayed=[...a.nodes.get('tab1ChemStatusContainer').innerHTML.matchAll(/id="chemSummary-([^"]+)"/g)].map(match=>match[1]);
   assert.deepEqual(displayed,order);assert.equal(displayed.length,6);
+});
+
+test('화7 uses 촉매cs for blank work in the card and notice, while explicit pasted work takes priority',()=>{
+  const a=app({now:'2026-10-01T12:00:00+09:00'});
+  a.run("chemList[0]={...chemList[0],status:'완료',lastDone:'2026-09-28T13:00:00+09:00',note:''};safeRenderAll()");
+  const share=()=>a.nodes.get('shareTextOutput').value;
+  const summary=()=>a.nodes.get('tab1ChemStatusContainer').innerHTML.match(/<summary[^>]*aria-label="화7 상세정보"[^>]*>([\s\S]*?)<\/summary>/)[1];
+  assert.match(share(),/^화7 13시 촉매cs$/m);
+  assert.match(summary(),/촉매cs/);
+  assert.match(a.nodes.get('chem_cell_4').innerHTML,/화7.*13시 \(촉매cs\)/);
+  assert.equal(a.run('chemList[0].note'),'');
+
+  a.run("setChemStepStatusById('화7','시작')");
+  assert.match(share(),/^-화7 12시 PM 진행중 · 촉매cs$/m);
+  a.parse('화7 11시 화학동 건욕 PM 진행중');
+  assert.match(share(),/^-화7 11시 PM 진행중 · 화학동 건욕$/m);
+  assert.match(summary(),/화학동 건욕/);
+  assert.doesNotMatch(summary(),/촉매cs/);
+  assert.equal(a.run('chemList[0].note'),'화학동 건욕');
 });
 
 test('compact chemistry keeps expanded details during refresh and exposes buildup warnings without opening',()=>{
