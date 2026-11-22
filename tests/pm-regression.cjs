@@ -2284,3 +2284,33 @@ test('chemistry row swipes ignore action buttons and cancel multi-touch or inter
   assert.equal(a.run('activeModalId'),'pulseModal');
   assert.equal(a.gestureCounts().prevented,0);
 });
+
+test('chemistry rows show how far away the key time is and elapsed time reads in hours and minutes',()=>{
+  const a=app({now:'2026-10-28T09:00:00+09:00'});
+  assert.equal(a.run("chemRelativeTime(new Date('2026-10-28T21:00:00+09:00'))"),'12시간 후');
+  assert.equal(a.run("chemRelativeTime(new Date('2026-10-28T09:40:00+09:00'))"),'40분 후');
+  assert.equal(a.run("chemRelativeTime(new Date('2026-10-28T11:30:00+09:00'))"),'2시간 30분 후');
+  assert.equal(a.run("chemRelativeTime(new Date('2026-10-30T14:00:00+09:00'))"),'2일 5시간 후');
+  assert.equal(a.run("chemRelativeTime(new Date('2026-10-07T09:00:00+09:00'))"),'21일 지남');
+  assert.equal(a.run("chemRelativeTime(new Date('2026-10-28T09:00:20+09:00'))"),'지금');
+  assert.equal(a.run('formatChemElapsed(3.5*3600000)'),'3시간 30분');
+  assert.equal(a.run('formatChemElapsed(25*60000)'),'25분');
+  a.run("chemList[0]={id:'화7',status:'시작',lastDone:'2026-10-28T05:30:00+09:00',note:''};rememberChemDetail('화7',true);renderTab1ChemStatus()");
+  const html=a.nodes.get('tab1ChemStatusContainer').innerHTML;
+  assert.match(html,/<span class="chem-relative">8시간 후<\/span>/);
+  assert.match(html,/<dt>경과 시간<\/dt><dd>3시간 30분<\/dd>/);
+});
+
+test('a collapsed notice preview stays collapsed on reopen while paste still shows the result',()=>{
+  const a=app();
+  a.run('rememberNoticePreview(false)');
+  assert.equal(a.storage.get('pm_ui_notice_preview_collapsed'),'1');
+  const b=app({stored:{...Object.fromEntries(a.storage)}});
+  assert.equal(b.nodes.get('noticeDetails').open,false);
+  b.parse('화13 07:17 촉매 건욕 PM 진행중');
+  assert.equal(b.nodes.get('noticeDetails').open,true);
+  assert.equal(b.storage.get('pm_ui_notice_preview_collapsed'),'1');
+  b.run('rememberNoticePreview(true)');
+  assert.equal(b.storage.has('pm_ui_notice_preview_collapsed'),false);
+  assert.equal(app({stored:{...Object.fromEntries(b.storage)}}).nodes.get('noticeDetails').open,true);
+});
