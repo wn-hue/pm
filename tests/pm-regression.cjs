@@ -2158,6 +2158,52 @@ test('P1B electric 1 repeats on Tuesdays and keeps MSF pulse identity',()=>{
   assert.equal(a.run('pulseList.length'),4);
 });
 
+test('P1B deburring and desmear recur on Thursdays from November 26 without moving electric PM',()=>{
+  const a=app({now:'2026-11-25T09:00:00+09:00'});
+  for(const [date,thursday,electric] of [
+    ['2026-11-19',false,false],['2026-11-23',false,false],['2026-11-24',false,true],['2026-11-25',false,false],
+    ['2026-11-26',true,false],['2026-11-27',false,false],['2026-12-01',false,true],['2026-12-03',true,false],
+  ]) {
+    a.run(`selectBriefingDate('${date}')`);
+    const lines=a.data(`getDayLines(new Date('${date}T00:00'))`);
+    const notice=a.nodes.get('shareTextOutput').value.split('\n');
+    assert.equal(lines.includes('P1B데1'),thursday,date);
+    assert.equal(lines.includes('P1B디1'),thursday,date);
+    assert.equal(notice.filter(line=>line==='P1B데1').length,Number(thursday),date);
+    assert.equal(notice.filter(line=>line==='P1B디1 기본PM').length,Number(thursday),date);
+    assert.equal(notice.includes('P1B전1 기본PM (7시패스)'),electric,date);
+    assert.equal(a.nodes.get('matrixP1BDesmear').hidden,date<'2026-11-23',date);
+    assert.equal(a.nodes.get('etch_cell_4').innerHTML.includes('P1B 데버링 1'),date>='2026-11-23',date);
+  }
+  a.nodes.get('manualDateInput').value='2026-11-26';a.run('updateManualLineOptions()');
+  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="P1B데1"/);
+  assert.match(a.nodes.get('manualLineSelect').innerHTML,/value="P1B디1"/);
+});
+
+test('P1B deburring and desmear aliases keep pasted special work on the corresponding Thursday line',()=>{
+  const a=app({now:'2026-11-26T09:00:00+09:00'});
+  for(const [alias,line] of [
+    ['P1B데1','P1B데1'],['MSF 데1','P1B데1'],['P1B(MSF) 데버링 1라인','P1B데1'],
+    ['P1B디1','P1B디1'],['MSF 디1','P1B디1'],['P1B(MSF) 디스미어 1라인','P1B디1'],
+  ]) {
+    const note=a.data(`parseScheduleSentence(${JSON.stringify(alias+' 오늘 인써트 교체')})`);
+    assert.deepEqual([note.line,note.text,note.kind],[line,'인써트 교체','schedule'],alias);
+  }
+  const previous=a.data('currentState()');
+  const announcement='동도금 11월 26일 PM일정\nMSF 데1 인써트 교체\nP1B 디스미어 1라인 옥사멧 점검';
+  a.parse(announcement);a.parse(announcement);
+  assert.deepEqual(a.data('manualNotes.map(note=>note.line)'),['P1B데1','P1B디1']);
+  assert.deepEqual(a.data('chemList'),previous.chemList);
+  assert.deepEqual(a.data('pulseList'),previous.pulseList);
+  const share=a.nodes.get('shareTextOutput').value;
+  assert.match(share,/^P1B데1 \(인써트 교체\)$/m);
+  assert.match(share,/^P1B디1 기본PM \(옥사멧 점검\)$/m);
+  for(const id of ['custom_P1B데1','custom_P1B디1']) a.nodes.get(id).closest=()=>({cellIndex:4});
+  a.run("renderManualNotesInMatrix(Array.from({length:7},(_,i)=>({dateStr:formatDateOnly(new Date(2026,10,23+i))})))");
+  assert.match(a.nodes.get('custom_P1B데1').innerHTML,/인써트 교체/);
+  assert.match(a.nodes.get('custom_P1B디1').innerHTML,/옥사멧 점검/);
+});
+
 test('P1B and MSF notice aliases update only P1B chemistry, then actual completion starts 72 hours',()=>{
   for(const alias of ['P1B화1','P1B 화학동 1라인','P1B(MSF) 화학동 1라인','MSF 화1','MSF 화학동 1라인']) {
     const a=app({now:'2026-11-02T20:00:00+09:00'}),before=a.data('chemList.slice(0,5)');

@@ -1108,6 +1108,7 @@
                 </td>
                 <td>
                   <div>디스미어 7 <span id="custom_des7"></span></div>
+                  <div id="matrixP1BDesmear" hidden>P1B 디스미어 1 <span id="custom_P1B디1"></span></div>
                 </td>
                 <td>
                   <div>디스미어 10 <span id="custom_des10"></span></div>
@@ -1273,10 +1274,10 @@ function ensureObject(data) {
 
 const LEGACY_CHEM_IDS = ['화7', '화8', '화9', '화13', '화14'];
 const REQUIRED_CHEM_IDS = [...LEGACY_CHEM_IDS, 'P1B화1'];
-const P1B_LINE_SOURCE = String.raw`(?:P1B(?:\s*\(MSF\))?|MSF(?:\s*\(P1B\))?)\s*(?:화학동|화|전기동|전)\s*1(?!\d)(?:\s*라인)?`;
+const P1B_LINE_SOURCE = String.raw`(?:P1B(?:\s*\(MSF\))?|MSF(?:\s*\(P1B\))?)\s*(화학동|화|전기동|전|데버링|데|디스미어|디)\s*1(?!\d)(?:\s*라인)?`;
 function normalizeP1BLine(text) {
   const match=String(text).match(new RegExp('(?<![가-힣A-Za-z0-9])'+P1B_LINE_SOURCE,'i'));
-  return match?(/화/.test(match[0])?'P1B화1':'MSF 전기동'):null;
+  return match?{화:'P1B화1',전:'MSF 전기동',데:'P1B데1',디:'P1B디1'}[match[1][0]]:null;
 }
 function electroNoteLine(number) {return number===1?'MSF 전기동':`전기동 ${number}`;}
 function electroLabel(number) {return number===1?'P1B전1':`전${number}`;}
@@ -2748,9 +2749,11 @@ function renderWeeklyMatrix() {
       } else if (i === 4) {
         extraHtml += `<div><strong>데버링 2</strong> <span id="custom_deb2"></span></div>`;
       }
+      if (hasP1BThursdayPM(d)) extraHtml += '<div><strong>P1B 데버링 1</strong> <span id="custom_P1B데1"></span></div>';
       cell.innerHTML = `<div><strong>${etchLine}</strong> <span id="custom_etch_${i+1}"></span></div>` + extraHtml;
     }
   }
+  document.getElementById('matrixP1BDesmear').hidden = !hasP1BThursdayPM(weekDates[3].date);
 
   setTag('tag_w_des11', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
   setTag('tag_w_des15', checkBiWeek(ANCHOR_BIWEEK.des11, targetDate));
@@ -2803,6 +2806,7 @@ function renderManualNotesInMatrix(weekDates) {
     let targetId = '';
     const l = item.line;
     if (l==='MSF 전기동') targetId = 'custom_P1B전1';
+    else if (l==='P1B데1' || l==='P1B디1') targetId = `custom_${l}`;
     else if (l.includes('고압수세 1') || l.includes('고압수세1')) targetId = 'custom_wash1';
     else if (l.includes('데버링 3') || l.includes('데3')) targetId = 'custom_deb3';
     else if (l.includes('데버링 2') || l.includes('데2')) targetId = 'custom_deb2';
@@ -3371,15 +3375,22 @@ function getElectroDetails(number,dateStr=selectedDateStr) {
   return {work:overrides.at(-1)||defaultWork,pass:ELECTRO_PASS_TEXT,extra:[...new Set(extras)].join(' ')};
 }
 
+function hasP1BThursdayPM(date) {
+  return date.getDay()===4 && formatDateOnly(date)>='2026-11-26';
+}
+
 function getDayLines(date) {
   const day = date.getDay();
   const lines = [getEtchingLine(date)];
   if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.wash1,date)) lines.push('고압수세 1');
   if (day === 3) lines.push('데버링 3');
   if (day === 5) lines.push('데버링 2');
+  const p1bThursday=hasP1BThursdayPM(date);
+  if (p1bThursday) lines.push('P1B데1');
   const desmear = {1:[8],2:[9,6],3:[12],4:[7],5:[10]}[day] || [];
   if (day === 1 && checkBiWeek(ANCHOR_BIWEEK.des11,date)) desmear.push(11,15);
   lines.push(...desmear.map(number => `디스미어 ${number}`));
+  if (p1bThursday) lines.push('P1B디1');
   const blackhole = {1:'화12',3:'화11',5:'화10'}[day];
   if (blackhole) lines.push(blackhole);
   lines.push(...getElectroLines(formatDateOnly(date)).map(line => electroNoteLine(line.number)));
@@ -4123,6 +4134,7 @@ function generateShareText() {
   chemList = ensureChemIntegrity(chemList);
   const targetDate = new Date(selectedDateStr + 'T00:00:00');
   const day = targetDate.getDay();
+  const p1bThursday = hasP1BThursdayPM(targetDate);
   const m = targetDate.getMonth() + 1;
   const d = targetDate.getDate();
 
@@ -4143,6 +4155,8 @@ function generateShareText() {
   }
   if (day === 3) {
     debarr = '데3' + getNote('데버링 3');
+  } else if (p1bThursday) {
+    debarr = 'P1B데1' + getNote('P1B데1');
   } else if (day === 5) {
     debarr = '데2' + getNote('데버링 2');
   }
@@ -4168,6 +4182,7 @@ function generateShareText() {
     blackhole = `화11 정기PM${getNote('화11')}`;
   } else if (day === 4) {
     desmear.push(`디7 기본PM${getNote('디스미어 7')}`);
+    if (p1bThursday) desmear.push(`P1B디1 기본PM${getNote('P1B디1')}`);
   } else if (day === 5) {
     desmear.push(`디10 기본PM${getNote('디스미어 10')}`);
     blackhole = `화10 정기PM${getNote('화10')}`;
@@ -4229,7 +4244,7 @@ function generateShareText() {
   chems=chems.map(text=>annotate(normalizeScheduleLine(text)||'',text));
   ongoing=ongoing.map(text=>annotate(normalizeScheduleLine(text)||'',text));
   etching=annotate(todayEtch,etching);
-  if(debarr) debarr=annotate(day===3?'데버링 3':'데버링 2',debarr);
+  if(debarr) debarr=annotate(p1bThursday?'P1B데1':day===3?'데버링 3':'데버링 2',debarr);
   if(wash) wash=annotate('고압수세 1',wash);
   if(blackhole) blackhole=annotate({1:'화12',3:'화11',5:'화10'}[day],blackhole);
   const scheduledExtras=[...scheduled].map(([line,notes])=>{
