@@ -730,6 +730,9 @@
   #kakaoFeedback { display:flex;align-items:center;gap:12px;padding:0 15px; }
   #kakaoFeedback #kakaoParseResult { flex:1;min-width:0;margin:0; }
   #kakaoFeedback #kakaoParseResult:not(:empty) { padding:4px 0 12px; }
+  #kakaoCorrections { display:grid;gap:8px;padding:0 15px 12px; }
+  #kakaoCorrections .btn { min-height:44px; }
+  #kakaoCorrections .helper { margin:0 0 4px; }
   #kakaoUndoBar { flex-shrink:0;margin-bottom:6px;padding:0;border:0; }
   .notice-preview { overflow-wrap:anywhere; }
   .mobile-dock { position:fixed;z-index:1000;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:grid;gap:6px;width:calc(100% - 28px);max-width:456px;padding:8px;border:1px solid var(--dock-border);border-radius:25px;background:var(--dock);box-shadow:var(--shadow-dock);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px); }
@@ -945,6 +948,7 @@
         <div class="parser-content">
           <div class="paste-composer"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4H6a2 2 0 0 0-2 2v14h16V6a2 2 0 0 0-2-2h-2M9 3h6v4H9zM12 11v6m-3-3 3 3 3-3"/></svg><textarea id="kakaoRawInput" rows="1" aria-label="카카오톡 PM 공지" placeholder="카톡 공지를 붙여넣으세요" onpaste="queueKakaoPaste()" oninput="handleKakaoInput(event)"></textarea></div>
           <div id="kakaoFeedback"><p id="kakaoParseResult" class="helper" role="status" aria-live="polite" tabindex="-1"></p><div id="kakaoUndoBar" class="pm-undo" hidden><button id="kakaoUndoButton" class="btn" onclick="undoRecentPMChange()" aria-label="방금 반영한 공지 되돌리기">되돌리기</button></div></div>
+          <div id="kakaoCorrections" hidden></div>
           <button id="kakaoApplyButton" class="btn" onclick="parseAndApplyKakaoMsg()" hidden>수정 내용 반영</button>
         </div>
       </details>
@@ -1274,10 +1278,12 @@ function ensureObject(data) {
 
 const LEGACY_CHEM_IDS = ['화7', '화8', '화9', '화13', '화14'];
 const REQUIRED_CHEM_IDS = [...LEGACY_CHEM_IDS, 'P1B화1'];
-const P1B_LINE_SOURCE = String.raw`(?:P1B(?:\s*\(MSF\))?|MSF(?:\s*\(P1B\))?)\s*(화학동|화|전기동|전|데버링|데|디스미어|디)\s*1(?!\d)(?:\s*라인)?`;
+const P1B_LINE_SOURCE = String.raw`(?:P1B(?:\s*\(MSF\))?|MSF(?:\s*\(P1B\))?)\s*(디(?:\s*1)?\s*화|화학동|화|전기동|전|데버링|데|디스미어|디)\s*1(?!\d)(?:\s*라인)?`;
 function normalizeP1BLine(text) {
   const match=String(text).match(new RegExp('(?<![가-힣A-Za-z0-9])'+P1B_LINE_SOURCE,'i'));
-  return match?{화:'P1B화1',전:'MSF 전기동',데:'P1B데1',디:'P1B디1'}[match[1][0]]:null;
+  if(!match) return null;
+  const process=match[1].includes('화')?'화':match[1][0];
+  return {화:'P1B화1',전:'MSF 전기동',데:'P1B데1',디:'P1B디1'}[process];
 }
 function electroNoteLine(number) {return number===1?'MSF 전기동':`전기동 ${number}`;}
 function electroLabel(number) {return number===1?'P1B전1':`전${number}`;}
@@ -2162,7 +2168,7 @@ function chemCompactInfo(line,now=new Date()) {
   const running=!line.needsReview&&line.status==='시작',start=new Date(line.lastDone);
   const transfer=new Date(start.getTime()+12*3600000),target=new Date(start.getTime()+14*3600000);
   return {
-    state,label:state==='late'?(running?'미완료 지연':'주기 초과'):running?'진행 중':state==='warn'?'임박':'예정',
+    state,label:state==='late'?(running?'진행 중 · 지연':'주기 초과'):running?'진행 중':state==='warn'?'임박':'예정',
     caption:running?(now<transfer?'액이송':'PM 목표'):'다음 PM',
     at:running?(now<transfer?transfer:target):getChemDue(line)
   };
@@ -2347,13 +2353,14 @@ function extractRunningChemWork(body,{marker,detailStart}) {
 }
 
 function kakaoRows(raw, reference, now) {
-  let date = new Date(reference), dated = false, messageTime = null, backlightTime = null;
+  let date = new Date(reference), dated = false, briefing = false, messageTime = null, backlightTime = null;
   return raw.split(/\r?\n/).map(text => {
     const rowDate = kakaoDateHeading(text,now);
     const numericDate = text.match(/^(\d{4})[.\/-]\s*(\d{1,2})[.\/-]\s*(\d{1,2})(?:\D|$)/);
     if (rowDate || numericDate) {
       const candidate = rowDate || new Date(Number(numericDate[1]),Number(numericDate[2])-1,Number(numericDate[3]));
       if (rowDate || (candidate.getMonth() === Number(numericDate[2])-1 && candidate.getDate() === Number(numericDate[3]))) { date = candidate; dated = true; }
+      briefing = Boolean(rowDate && /동도금/.test(text) && /PM\s*일정/i.test(text));
       messageTime = null; backlightTime = null;
     }
     const chatHeader = text.match(/^\[[^\]]+\]\s*\[((?:오전|오후)\s*\d{1,2}:\d{2})\]/) ||
@@ -2363,8 +2370,8 @@ function kakaoRows(raw, reference, now) {
     if (/백\s*라이트|빽\s*라이트|back\s*li(?:gh|ng)t/i.test(content)) {
       backlightTime = kakaoClock(content) || messageTime;
     }
-    const row = {text:content,date:new Date(date),dated,messageTime,backlightTime,workContinuation:!chatHeader&&CHEM_WORK_ADDITION.test(content)};
-    if (/이상\s*입니다/.test(text)) { backlightTime = null; messageTime = null; }
+    const row = {text:content,date:new Date(date),dated,briefing,messageTime,backlightTime,workContinuation:!chatHeader&&CHEM_WORK_ADDITION.test(content)};
+    if (/이상\s*입니다/.test(text)) { backlightTime = null; messageTime = null; briefing = false; }
     return row;
   });
 }
@@ -2372,6 +2379,7 @@ function kakaoRows(raw, reference, now) {
 function parseAndApplyKakaoMsg() {
   const input = document.getElementById('kakaoRawInput');
   const raw = input.value.trim();
+  clearKakaoStartCorrections();
   if (!raw) { showKakaoResult('카톡 공지를 붙여넣어 주세요.'); return; }
   const before=currentState();
   updateKakaoDraftActions();
@@ -2384,7 +2392,8 @@ function parseAndApplyKakaoMsg() {
     if (formatDateOnly(headerDate) === formatDateOnly(now)) selectQuickDay('today');
     else if (formatDateOnly(headerDate) === formatDateOnly(tomorrow)) selectQuickDay('tomorrow');
   }
-  let updatedChemCount = 0; let updatedNoteCount = 0; let updatedPMNoteCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0; let staleCount = 0;
+  let updatedChemCount = 0; let updatedNoteCount = 0; let updatedPMNoteCount = 0; let ignoredPassCount = 0; let missingTimeCount = 0;
+  const staleLines=new Set(),startCorrections=new Map();
   const featureRules = [
     ['스웰러 건욕',/스웰러\s*건욕/], ['망간 건욕',/망간\s*건욕/],
     ['산탈지.산세.프리딥.박리',/프리딥/], ['산탈지.산세.박리',/산탈지[.·\s]*산세[.·\s]*박리/],
@@ -2506,19 +2515,26 @@ function parseAndApplyKakaoMsg() {
           if ((ongoing || completed) && !dated && !bareTimedWork) date = new Date(now);
           date.setHours(time.hour,time.minute,0,0);
           if (ongoing || completed) {
-            if (!dated && date > now) date.setDate(date.getDate()-1);
+            // Today's PM briefing can include work that started the previous day.
+            const briefingCarryover = row.briefing && !row.messageTime && !explicit && !dayOnly && !relativeDay &&
+              formatDateOnly(date)===formatDateOnly(now) && /진행|PM\s*중/i.test(chemStatus.marker?.[0]||'');
+            if (date > now && (!dated || briefingCarryover)) date.setDate(date.getDate()-1);
             if (date > now) { missingTimeCount++; continue; }
             const previousStart=new Date(item.lastDone);
             const sameCycle=ongoing&&isRunning&&formatDateOnly(date)===formatDateOnly(previousStart);
             const afterCompletion=!validDateTime(item.previousCompletion)||date>new Date(item.previousCompletion);
-            if (!item.needsReview && date < previousStart && !(sameCycle&&afterCompletion)) { staleCount++; continue; }
-            if (!item.needsReview && ongoing && item.status==='완료' && date.getTime()===new Date(item.lastDone).getTime()) { staleCount++; continue; }
-            if (completed) recordInlineChemCompletion(item,date);
-            if (ongoing&&!item.needsReview&&item.status==='완료') item.previousCompletion=item.lastDone;
-            item.status = ongoing ? '시작' : '완료';
-            item.needsReview=false; item.lastDone = date.toISOString();
-            if(!sameCycle) item.backlightPmAt=null;
-            delete item.plannedDue;
+            const reopensCompletion=!item.needsReview&&ongoing&&item.status==='완료'&&date<=previousStart;
+            if(reopensCompletion||(!item.needsReview&&date<previousStart&&!(sameCycle&&afterCompletion))) {
+              staleLines.add(key);
+              const today=formatDateOnly(now);
+              if(reopensCompletion&&afterCompletion&&!INLINE_CHEM_IDS.includes(key)&&row.briefing&&chemStatus.ongoing&&chemStatus.marker&&
+                (explicit||dayOnly||relativeDay==='오늘')&&[date,row.date,previousStart].every(day=>formatDateOnly(day)===today)) {
+                startCorrections.set(key,{baseline:JSON.stringify(item),start:date.toISOString(),completion:previousStart.toISOString(),
+                  work:extractRunningChemWork(workBody,chemStatus)});
+              }
+              continue;
+            }
+            applyKakaoChemActualTime(item,date,{ongoing,sameCycle});
           } else {
             // Planned PM is an announcement, not a fabricated completion 72 hours earlier.
             item.plannedDue = date.toISOString();
@@ -2527,14 +2543,8 @@ function parseAndApplyKakaoMsg() {
           changed = true;
         }
         if (ongoing&&(time||isRunning)) {
-          if(!time&&dated&&formatDateOnly(date)!==formatDateOnly(new Date(item.lastDone))) {staleCount++;continue;}
-          const {parts,append}=extractRunningChemWork(workBody,chemStatus);
-          if(parts.length) {
-            const old=append&&isRunning?item.note.split(/\s*·\s*/).filter(Boolean):[];
-            const note=[...new Set([...old,...parts])].join(' · ');
-            const value=note==='기본PM'?'':note;
-            if(item.note!==value) {item.note=value;changed=true;}
-          }
+          if(!time&&dated&&formatDateOnly(date)!==formatDateOnly(new Date(item.lastDone))) {staleLines.add(key);continue;}
+          if(applyKakaoRunningWork(item,extractRunningChemWork(workBody,chemStatus),isRunning)) changed=true;
         } else if(!isRunning||completed) {
           const work=extractChemWork(segment);
           if (work) { const note=work==='기본PM'?'':work; if(item.note!==note) {item.note=note;changed=true;} }
@@ -2557,17 +2567,44 @@ function parseAndApplyKakaoMsg() {
   safeRenderAll();
   input.value='';input.blur();updateKakaoDraftActions();
   if(!saved) {showKakaoResult('저장하지 못해 기존 기록을 유지했습니다. 저장 공간을 확인한 뒤 공지를 다시 붙여넣어 주세요.');return;}
+  for(const [key,correction] of startCorrections) {
+    if(JSON.stringify(chemList.find(line=>line.id===key))===correction.baseline) pendingKakaoStartCorrections.set(key,correction);
+  }
+  renderKakaoStartCorrections();
   const changes=[updatedChemCount?`일정 ${updatedChemCount}건`:'',updatedPMNoteCount?`PM 작업 ${updatedPMNoteCount}건`:'',updatedNoteCount?`특이사항 ${updatedNoteCount}건`:'',ignoredPassCount?'전기동 7시패스 고정':''].filter(Boolean);
-  const skipped=missingTimeCount?`날짜·시각 확인이 필요한 ${missingTimeCount}건은 제외했습니다.`:'';
+  const stale=[...staleLines].filter(line=>!pendingKakaoStartCorrections.has(line));
+  const skipped=[missingTimeCount?`날짜·시각 확인이 필요한 ${missingTimeCount}건은 제외했습니다.`:'',
+    stale.length?`${stale.join(' · ')}의 공지가 오래되어 기존 기록을 유지했습니다.`:'',
+    pendingKakaoStartCorrections.size?`${[...pendingKakaoStartCorrections.keys()].join(' · ')} 완료 기록 확인이 필요합니다.`:''].filter(Boolean);
   if(!changes.length) {
-    showKakaoResult(skipped || (staleCount?'오래된 공지는 현재 기록에 반영하지 않았습니다.':'반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.'));
+    showKakaoResult(skipped.join(' · ') || '반영할 내용을 찾지 못했습니다. 라인명·시각·작업 내용을 확인해주세요.');
     return;
   }
   document.getElementById('noticeDetails').open=true;
   const names=changedPMLineNames(before,currentState());
   const lines=names.slice(0,4).join(' · ')+(names.length>4?` 외 ${names.length-4}개 라인`:'');
-  showKakaoResult(`${lines?lines+' 반영':changes.join(' · ')}${skipped?' · '+skipped:''}`);
+  showKakaoResult([lines?lines+' 반영':changes.join(' · '),...skipped].join(' · '));
   savePassPreference();
+}
+
+function applyKakaoChemActualTime(item,date,{ongoing,sameCycle=false,replacesCompletion=false}) {
+  if(!ongoing) recordInlineChemCompletion(item,date);
+  if(ongoing&&!replacesCompletion&&!item.needsReview&&item.status==='완료') item.previousCompletion=item.lastDone;
+  item.status=ongoing?'시작':'완료';
+  item.needsReview=false;
+  item.lastDone=date.toISOString();
+  if(!sameCycle) item.backlightPmAt=null;
+  delete item.plannedDue;
+}
+
+function applyKakaoRunningWork(item,{parts,append},wasRunning) {
+  if(!parts.length) return false;
+  const old=append&&wasRunning?item.note.split(/\s*·\s*/).filter(Boolean):[];
+  const note=[...new Set([...old,...parts])].join(' · ');
+  const value=note==='기본PM'?'':note;
+  if(item.note===value) return false;
+  item.note=value;
+  return true;
 }
 
 function changedPMLineNames(before,after) {
@@ -4339,8 +4376,57 @@ function showKakaoResult(message) {
   document.getElementById('kakaoParseResult').textContent=message;
 }
 
+const pendingKakaoStartCorrections=new Map();
+
+function renderKakaoStartCorrections() {
+  const panel=document.getElementById('kakaoCorrections');
+  panel.hidden=pendingKakaoStartCorrections.size===0;
+  panel.innerHTML=[...pendingKakaoStartCorrections].map(([id,{start,completion}])=>`<div>
+    <p class="helper" id="kakaoCorrectionTime-${id}">저장된 완료 ${formatDateTimeKr(new Date(completion))} · 공지의 시작 ${formatDateTimeKr(new Date(start))}</p>
+    <button type="button" class="btn btn-sub" aria-describedby="kakaoCorrectionTime-${id}" onclick="applyKakaoStartCorrection('${id}')">${id} 진행 중으로 정정</button>
+  </div>`).join('');
+}
+
+function clearKakaoStartCorrections() {
+  if(!pendingKakaoStartCorrections.size) return;
+  pendingKakaoStartCorrections.clear();
+  renderKakaoStartCorrections();
+}
+
+function applyKakaoStartCorrection(id) {
+  const correction=pendingKakaoStartCorrections.get(id);
+  if(!correction) return;
+  const item=chemList.find(line=>line.id===id);
+  const before=currentState();
+  const saved=readStored(LOCAL_STATE_KEY);
+  const start=new Date(correction.start),now=new Date();
+  if(JSON.stringify(item)!==correction.baseline||JSON.stringify(saved)!==JSON.stringify(before)||
+    start>now||formatDateOnly(start)!==formatDateOnly(now)) {
+    pendingKakaoStartCorrections.delete(id);
+    renderKakaoStartCorrections();
+    showKakaoResult(`${id} 기록이 변경되었거나 날짜가 지났습니다. 공지를 다시 붙여넣어 주세요.`);
+    return;
+  }
+  applyKakaoChemActualTime(item,start,{ongoing:true,replacesCompletion:true});
+  applyKakaoRunningWork(item,correction.work,false);
+  if(!savePMData()) {
+    restoreExactPMState(before);
+    safeRenderAll();
+    showKakaoResult(`${id} 정정을 저장하지 못했습니다. 기존 기록을 유지했습니다.`);
+    return;
+  }
+  rememberRecentPMChange(before,`${id} 진행 중 정정`);
+  pendingKakaoStartCorrections.delete(id);
+  renderKakaoStartCorrections();
+  safeRenderAll();
+  document.getElementById('noticeDetails').open=true;
+  showKakaoResult(`${id} ${formatDateTimeKr(start)} 시작으로 정정했습니다.`);
+  document.getElementById('kakaoParseResult').focus({preventScroll:true});
+}
+
 let kakaoPasteTimer=null,kakaoPastePending=false;
 function handleKakaoInput(event) {
+  clearKakaoStartCorrections();
   document.getElementById('kakaoParseResult').textContent='';
   updateKakaoDraftActions();
   if(kakaoPastePending || event?.inputType?.startsWith('insertFromPaste')) queueKakaoPaste();
@@ -4352,6 +4438,7 @@ function updateKakaoDraftActions() {
   if(input.value.trim() && input.scrollHeight) input.style.height=`${Math.min(input.scrollHeight,160)}px`;
 }
 function queueKakaoPaste() {
+  clearKakaoStartCorrections();
   kakaoPastePending=true;clearTimeout(kakaoPasteTimer);
   kakaoPasteTimer=setTimeout(()=>{kakaoPastePending=false;if(document.getElementById('kakaoRawInput').value.trim()) parseAndApplyKakaoMsg();},0);
 }
